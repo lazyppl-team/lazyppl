@@ -1,0 +1,67 @@
+name:                lazyppl
+version:             0.1.0.0
+github:              "githubuser/lazyppl"
+license:             BSD3
+author:              "Sam Staton and others"
+maintainer:          "sam.staton@cs.ox.ac.uk"
+copyright:           "2021 Author name here"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+# Metadata used when publishing your package
+# synopsis:            Lazy Probabilistic Programming
+# category:            PPL
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/githubuser/lazyppl#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- transformers
+- mtl
+- vector
+- random
+- statistics
+- bytestring
+- cassava
+- gamma
+- log-domain
+- Chart
+- Chart-diagrams
+- colour
+- containers
+- data-default-class
+- lens
+- debug
+- monad-extras
+- lazyio
+- spoon
+
+library:
+  source-dirs: src
+
+executables:
+  lazyppl-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - lazyppl
+
+tests:
+  lazyppl-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - lazyppl
