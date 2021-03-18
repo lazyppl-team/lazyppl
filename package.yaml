@@ -45,15 +45,37 @@ library:
   source-dirs: src
 
 executables:
-  lazyppl-exe:
-    main:                Main.hs
-    source-dirs:         app
+  wiener-exe:
+    main:                Wiener.hs
+    source-dirs:         src
     ghc-options:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -main-is Wiener
     dependencies:
     - lazyppl
+  regression-exe:
+    main:                Regression.hs
+    source-dirs:         src
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -main-is Regression
+    dependencies:
+    - lazyppl
+  clustering-exe:
+    main:                Clustering.hs
+    source-dirs:         src
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -main-is Clustering
+    dependencies:
+    - lazyppl
+
 
 tests:
   lazyppl-test:

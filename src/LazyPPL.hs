@@ -1,7 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-- Log numbers version of MHMonadNP --} 
-module MHMonadNPLog where
+module LazyPPL where
 
 import Control.Monad.Trans.Writer
 import Control.Monad.Trans.Class

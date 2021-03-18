@@ -7,13 +7,6 @@ import Graphics.Rendering.Chart.State
 import Data.Colour
 import Data.Colour.Names
 
-import Data.List
-import Control.Monad
-import Control.Monad.State.Lazy (State, state , put, get, runState)
-import Data.Map (empty,lookup,insert,size,keys)
-import Data.IORef
-import System.IO.Unsafe
-
 import Data.Default.Class
 import Control.Lens
 import Data.Monoid 
@@ -70,14 +63,14 @@ testPiecewiseRegression =
   do
     fs' <- mh 0.2 (regress 0.1 (splice (poissonPP 0 0.1) linear) dataset)
     let fs = map fst $ take 500 $ every 1000 $ drop 10000 $ fs'
-    plot_funs "poissonLinReg.svg" dataset fs
+    plot_funs "piecewise-reg.svg" dataset fs
 
 -- similar, but using likelihood weighted importance sampling
 testPiecewiseRegressionLWIS =
   do
     fs' <- lwis 100000 $ regress 0.1 (splice (poissonPP 0 0.1) linear ) dataset
     let fs = take 500 $ fs'
-    plot_funs "poissonLinRegLWIS.svg" dataset fs
+    plot_funs "piecewise-regLWIS.svg" dataset fs
 
 
 
@@ -105,7 +98,7 @@ sample_fun f =
 plot_funs :: String -> [(Double,Double)] -> [Double -> Double] -> IO ()
 plot_funs filename dataset funs =
   let graphs  = map sample_fun funs                 in
-  let my_lines  = plot_lines_style . line_color .~ blue `withOpacity` 0.1
+  let my_lines  = plot_lines_style . line_color .~ blue `withOpacity` 0.01 
                 $ plot_lines_values .~ graphs $ def in
   let my_dots = plot_points_style .~ filledCircles 4 (opaque black)
               $ plot_points_values .~ dataset
@@ -122,3 +115,7 @@ plot_funs filename dataset funs =
      putStrLn (" Done!")
      return ()
 
+
+
+main :: IO ()
+main = do { testPiecewiseRegression } 

@@ -1,6 +1,6 @@
-module DistrNPLog where
+module Distr where
 
-import MHMonadNPLog
+import LazyPPL
 import Statistics.Distribution
 import Statistics.Distribution.Normal (normalDistr)
 import Statistics.Distribution.Beta (betaDistr)

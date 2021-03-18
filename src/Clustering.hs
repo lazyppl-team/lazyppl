@@ -76,7 +76,7 @@ example = cluster dataset (do {x <- normal 5 4 ; y <- normal 5 4 ; prec <- gamma
 test =
   do
     xycws' <- mh 0.05 example
-    let xycws = take 200000 $ xycws'
+    let xycws = take 50000 $ xycws'
     let maxw = (maximum $ map snd xycws :: Product (Log Double))
     let (Just xyc) = Data.List.lookup maxw $ map (\(z,w) -> (w,z)) xycws
     plot_coords "clustering.svg" xyc
@@ -127,3 +127,6 @@ plot_coords filename xycs =
     
 
 
+
+main :: IO ()
+main = do { test } 

@@ -25,18 +25,22 @@ dataset :: [(Double, Double)]
 dataset = [(0,0.6), (1, 0.7), (2,1.2), (3,3.2), (4,6.8), (5, 8.2), (6,8.4)]
 
 {-- A regression model where we have a Wiener function g plus a start point a. --}
-example :: Meas [(Double,Double)]
+example :: Meas (Double -> Double)
 example = do g <- sample wiener
              a <- sample $ normal 0 3
              let f x = a + g x
              mapM (\(x,y) -> score $ normalPdf (f x) 0.3 y) dataset
-             return $ map (\x -> (x,f x)) [0,0.25..6]
+             return f
 
+-- Note that example returns a random function,
+-- and so mh will return a stream of (function,weight) pairs.
+-- Because of laziness, the values of the functions will be sampled at different times,
+-- some only when we come to plot the functions. 
 testWienerRegression =
   do
-    xyws <- mh 0.1 example
-    let xys = map fst $ take 100 $ every 1000 $ drop 10000 $ xyws
-    plot_coords "wienerNP.svg" dataset xys
+    fws <- mh 0.1 example
+    let xys = map (\f -> map (\x -> (x,f x)) [0,0.25..6]) $ map fst $ take 100 $ every 1000 $ drop 10000 $ fws
+    plot_coords "wiener.svg" dataset xys
 
 
 {-- Random Wiener function (Brownian motion), defined using hidden state and a "Brownian bridge" --} 
@@ -96,3 +100,6 @@ plot_coords filename dataset xys =
     
 
 
+
+main :: IO ()
+main = do { testWienerRegression } 
