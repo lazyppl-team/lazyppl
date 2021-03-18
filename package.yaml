@@ -1,10 +1,9 @@
 name:                lazyppl
 version:             0.1.0.0
-github:              "githubuser/lazyppl"
-license:             BSD3
+license:             MIT
 author:              "Sam Staton and others"
 maintainer:          "sam.staton@cs.ox.ac.uk"
-copyright:           "2021 Author name here"
+copyright:           "2021 Sam Staton and others"
 
 extra-source-files:
 - README.md
