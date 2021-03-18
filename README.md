@@ -1,7 +1,5 @@
 # lazyppl
 
-> "lazy ppl accomplish more..."
-
 This provides a simple Metropolis-Hastings implementation that works with lazy programs, together with some examples.
 
 To try the different examples, use ``stack run wiener-exe`` and so on.
@@ -29,9 +27,9 @@ The implementation is currently not very fast or memory efficient at all. The Me
 
 ## Examples
 
-* [``Regression.hs``](src/Regression.hs) contains the piecewise linear regression. Key idea: the change points are drawn from a lazy Poisson process. 
-* [``Clustering.hs``](src/Clustering.hs) contains some simple clustering examples, where the number of clusters is unknown. Key uses of laziness: stick-breaking is lazy, and we also use stochastic memoization.  
-* [``Wiener.hs``](src/Wiener.hs) contains a simple implementation of regression using a Wiener process. Via maintaining a hidden table of previous calls, it appears to be a bona fide random function $R\to R$ that is constructed lazily. Because the functions are built lazily, some values of the functions will be sampled during the simulation, and others just during the plotting. 
+* [``Wiener.hs``](src/Wiener.hs) contains a simple implementation of regression using a Wiener process. Via maintaining a hidden table of previous calls, it appears to be a bona fide random function $R\to R$ that is constructed lazily. Because the functions are built lazily, some values of the functions will be sampled during the simulation, and others just during the plotting. ![Wiener process regression](./wiener.svg)
+* [``Regression.hs``](src/Regression.hs) contains the piecewise linear regression. Key idea: the change points are drawn from a lazy Poisson process. ![Poisson-split piecewise linear regression](./piecewise-reg.svg)
+* [``Clustering.hs``](src/Clustering.hs) contains some simple clustering examples, where the number of clusters is unknown. Key uses of laziness: stick-breaking is lazy, and we also use stochastic memoization.  ![Dirichlet process clustering](./clustering.svg)
 
 ## Installation
 
