@@ -16,20 +16,20 @@ The aim of this implementation is to demonstrate that it's possible to have firs
 
 The implementation is currently not very fast or memory efficient at all. The Metropolis-Hastings implementation is only ~25 lines of Haskell. 
 
-## Library
-
-* [``LazyPPL.hs``](src/LazyPPL.hs) contains a likelihood weighted importance sampling algorithm (lwis) and a Metropolis-Hastings algorithm, together with the basic monads. There are two monads, `Prob` and `Meas`. 
-  * `Prob` is to be thought of as a monad of probability measures. It provides a function `uniform`. 
-  * `Meas` is to be thought of as a monad of unnormalized measures. It provides an interface using `sample` (which draws from a `Prob`) and `score` (which weights a trace, typically by a likelihood). 
-  * Our Metropolis Hastings algorithm takes as an argument a probability `p` of changing any given site. This is different from single-site MH (which picks exactly one site to change each step) and multi-site MH (which changes all sites at each step). The reason for this is that in the lazy setting we cannot explore how many sites there are without triggering more computation (that would require a lot of Haskell hacking). We can recover single-site MH by putting `p=1/num_sites` and multi-site MH by putting `p=1`. 
-  * A key implementation idea is that the underlying sample space is `Tree`, which comprises a lazy tree of `Double`s that is infinitely wide and infinitely deep. Informally, at any moment, if you need some unknown or lazy amount of randomness, you can grab just one branch of the tree, without worrying about affecting the other branches. That branch will itself be a `Tree`, so this can all happen recursively or in a nested way without any problems. 
-* [``Distr.hs``](src/Distr.hs) contains common parametric distributions such as normal distributions etc..
-
 ## Examples
 
 * [``Wiener.hs``](src/Wiener.hs) contains a simple implementation of regression using a Wiener process. Via maintaining a hidden table of previous calls, it appears to be a bona fide random function $R\to R$ that is constructed lazily. Because the functions are built lazily, some values of the functions will be sampled during the simulation, and others just during the plotting. ![Wiener process regression](./wiener.svg)
 * [``Regression.hs``](src/Regression.hs) contains the piecewise linear regression. Key idea: the change points are drawn from a lazy Poisson process. ![Poisson-split piecewise linear regression](./piecewise-reg.svg)
 * [``Clustering.hs``](src/Clustering.hs) contains some simple clustering examples, where the number of clusters is unknown. Key uses of laziness: stick-breaking is lazy, and we also use stochastic memoization.  ![Dirichlet process clustering](./clustering.svg)
+
+## Library
+
+* [``LazyPPL.hs``](src/LazyPPL.hs) contains a likelihood weighted importance sampling algorithm (lwis) and a Metropolis-Hastings algorithm, together with the basic monads. There are two monads, `Prob` and `Meas`. 
+    * `Prob` is to be thought of as a monad of probability measures. It provides a function `uniform`. 
+    * `Meas` is to be thought of as a monad of unnormalized measures. It provides an interface using `sample` (which draws from a `Prob`) and `score` (which weights a trace, typically by a likelihood). 
+    * Our Metropolis Hastings algorithm takes as an argument a probability `p` of changing any given site. This is different from single-site MH (which picks exactly one site to change each step) and multi-site MH (which changes all sites at each step). The reason for this is that in the lazy setting we cannot explore how many sites there are without triggering more computation (that would require a lot of Haskell hacking). We can recover single-site MH by putting `p=1/num_sites` and multi-site MH by putting `p=1`. 
+    * A key implementation idea is that the underlying sample space is `Tree`, which comprises a lazy tree of `Double`s that is infinitely wide and infinitely deep. Informally, at any moment, if you need some unknown or lazy amount of randomness, you can grab just one branch of the tree, without worrying about affecting the other branches. That branch will itself be a `Tree`, so this can all happen recursively or in a nested way without any problems. 
+* [``Distr.hs``](src/Distr.hs) contains common parametric distributions such as normal distributions etc..
 
 ## Installation
 
