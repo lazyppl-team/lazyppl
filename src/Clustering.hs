@@ -8,7 +8,6 @@ import Data.Colour
 import Data.Colour.Names
 import Data.Colour.RGBSpace.HSV
 import Data.Colour.SRGB
-
 import Numeric.Log
 
 import Data.List
@@ -58,7 +57,7 @@ crp alpha = do vs <- stickBreaking alpha 0
     Tags each point with a colour describing the cluster it is in --}
 cluster :: [a] -> (Prob b) -> (b -> a -> Double) -> Meas [(a,Double)]
 cluster xs pparam like =
-        do pcluster <- sample $ crp 1
+        do pcluster <- sample $ crp 0.3
            param    <- sample $ memoize $ \i -> pparam
            color    <- sample $ memoize $ \i -> uniform 
            mapM (\x -> do {i <- sample pcluster ; score $ like (param i) x ; return (x,(color i))}) xs
@@ -70,13 +69,13 @@ dataset = [(7.7936387,7.469271),(5.3105156,7.891521),(5.4320135,5.135559),(7.384
     Here the parameters are the x and y coordinates 
     and standard deviation of the cluster --} 
 example :: Meas [((Double,Double),Double)]
-example = cluster dataset (do {x <- normal 5 4 ; y <- normal 5 4 ; prec <- gamma 3 2 ; return (x,y,1/(sqrt prec)) })
+example = cluster dataset (do {x <- normal 5 4 ; y <- normal 5 4 ; prec <- gamma 2 4 ; return (x,y,1/(sqrt prec)) })
                   (\(x,y,s) (x',y') -> normalPdf x s x' * normalPdf y s y')
 
 test =
   do
-    xycws' <- mh 0.05 example
-    let xycws = take 50000 $ xycws'
+    xycws' <- mh 0.03 example
+    let xycws = take 100000 $ xycws'
     let maxw = (maximum $ map snd xycws :: Product (Log Double))
     let (Just xyc) = Data.List.lookup maxw $ map (\(z,w) -> (w,z)) xycws
     plot_coords "clustering.svg" xyc
@@ -130,3 +129,5 @@ plot_coords filename xycs =
 
 main :: IO ()
 main = do { test } 
+
+

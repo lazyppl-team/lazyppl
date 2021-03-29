@@ -7,7 +7,6 @@ import Statistics.Distribution.Beta (betaDistr)
 import Statistics.Distribution.Gamma (gammaDistr)
 import qualified Statistics.Distribution.Poisson as Poisson
 import Data.List
-import Control.Spoon
 
 import Debug.Trace
 
@@ -32,17 +31,10 @@ gamma a b = do
   x <- uniform
   return $ quantile (gammaDistr a b) x 
 
--- Modified to catch a rare bug
--- in the Haskell implementation of the
--- inverse incomplete beta function.
--- (Not a fix, just resample if the bug occurs.)
 beta :: Double -> Double -> Prob Double
 beta a b = do
   x <- uniform
-  case (spoon $ quantile (betaDistr a b) (min x 1)) of
-    Just x -> return x
-    Nothing -> beta a b
---  return $ quantile (betaDistr a b) (min x 1) 
+  return $ quantile (betaDistr a b) x
 
 poisson :: Double -> Prob Integer
 poisson lambda = do
