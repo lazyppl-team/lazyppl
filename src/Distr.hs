@@ -7,7 +7,12 @@ import Statistics.Distribution.Beta (betaDistr)
 import Statistics.Distribution.Gamma (gammaDistr)
 import qualified Statistics.Distribution.Poisson as Poisson
 import Data.List
-
+import Data.Map (empty,lookup,insert,size,keys)
+import Data.IORef
+import Control.Monad
+import Control.Monad.Extra
+import System.IO.Unsafe
+import Control.Monad.State.Lazy (State, state , put, get, runState)
 import Debug.Trace
 
 
@@ -62,3 +67,28 @@ bernoulli :: Double -> Prob Bool
 bernoulli r = do
   x <- uniform
   return $ x < r
+
+
+
+{-- Stochastic memoization.
+    We use unsafePerformIO to maintain
+    a table of calls that have already been made.
+    If a is finite, we could just sample all values of a in advance
+    and avoid unsafePerformIO.
+    If it is countably infinite, there probably also implementation tricks.
+--}
+memoize :: Ord a => (a -> Prob b) -> Prob (a -> b)
+memoize f = Prob $ do g <- get
+                      let ( (Tree _ gs), g2) = splitTree g
+                      put g2
+                      return $ unsafePerformIO $ do
+                                ref <- newIORef Data.Map.empty
+                                return $ \x -> unsafePerformIO $ do
+                                          m <- liftM (Data.Map.lookup x) (readIORef ref)
+                                          case m of
+                                              Just y -> return y
+                                              Nothing -> do let (Prob m) = f x
+                                                            n <- readIORef ref
+                                                            let (y,_) = runState m (gs !! (1 + size n))
+                                                            modifyIORef' ref (Data.Map.insert x y)
+                                                            return y
