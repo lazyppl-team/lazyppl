@@ -68,6 +68,15 @@ bernoulli r = do
   x <- uniform
   return $ x < r
 
+{-
+ uniform distribution on [0, ..., n-1]
+-}
+uniformdiscrete :: Int -> Prob Int
+uniformdiscrete n =
+  do
+    let upper = fromIntegral n
+    r <- uniformbounded 0 upper
+    return $ floor r
 
 
 {-- Stochastic memoization.
