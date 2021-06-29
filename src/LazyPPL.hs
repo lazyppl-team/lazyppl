@@ -91,6 +91,7 @@ weightedsamples (Meas m) =
                              (x, w) <- runWriterT m
                              rest <- helper
                              return $ (x,w) : rest
+                       newStdGen      
                        g <- getStdGen
                        let rs = randomTree g
                        let xws = runProb helper rs
@@ -102,6 +103,7 @@ lwis :: Int -> Meas a -> IO [a]
 lwis n m =        do xws <- weightedsamples m
                      let xws' = take n $ accumulate xws 0
                      let max = snd $ last xws'
+                     newStdGen
                      g <- getStdGen
                      let rs = (randoms g :: [Double])
                      return $ map (\r -> fst $ head $ filter (\(x,w)-> w>=(Exp $ log r) * max) xws') rs
@@ -123,6 +125,7 @@ mh p (Meas m) = do
      -- Split the random number generator in two
      -- One part is used as the first seed for the simulation,
      -- and one part is used for the randomness in the MH algorithm.
+     newStdGen
      g <- getStdGen
      let (g1,g2) = split g
      let t = randomTree g1
