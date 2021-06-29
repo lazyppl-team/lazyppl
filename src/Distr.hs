@@ -78,6 +78,13 @@ uniformdiscrete n =
     r <- uniformbounded 0 upper
     return $ floor r
 
+{-- Categorical distribution: takes a list of k numbers that sum to 1, 
+    and returns a number between 0 and (k-1) --}
+categorical :: [Double] -> Prob Int
+categorical xs = do 
+  r <- uniform
+  let (Just i) = findIndex (>r) $ tail $ scanl (+) 0 xs
+  return i
 
 {-- Stochastic memoization.
     We use unsafePerformIO to maintain
