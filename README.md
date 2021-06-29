@@ -18,10 +18,13 @@ The implementation is currently not very fast or memory efficient at all. The Me
 
 ## Examples
 
-* [``Wiener.hs``](src/Wiener.hs) contains a simple implementation of regression using a Wiener process. Via maintaining a hidden table of previous calls, it appears to be a bona fide random function $R\to R$ that is constructed lazily. Because the functions are built lazily, some values of the functions will be sampled during the simulation, and others just during the plotting. ![Wiener process regression](./wiener.svg)
-* [``Regression.hs``](src/Regression.hs) contains the piecewise linear regression. Key idea: the change points are drawn from a lazy Poisson process. ![Poisson-split piecewise linear regression](./piecewise-reg.svg)
+* [``Wiener.hs``](src/Wiener.hs) contains a simple implementation of regression using a Wiener process. Via maintaining a hidden table of previous calls, it appears to be a bona fide random function $R\to R$ that is constructed lazily. Because the functions are built lazily, some values of the functions will be sampled during the simulation, and others just during the plotting.
+![Wiener process regression](./wiener.svg)
+* [``Regression.hs``](src/Regression.hs) contains the piecewise linear regression. Key idea: the change points are drawn from a lazy Poisson process.
+![Poisson-split piecewise linear regression](./piecewise-reg.svg)
 * [``Clustering.hs``](src/Clustering.hs) contains some simple clustering examples, where the number of clusters is unknown. Key uses of laziness: stick-breaking is lazy, and we also use stochastic memoization.  ![Dirichlet process clustering](./clustering.svg)
-* [``ProgramInduction.hs``](src/ProgramInduction.hs) contains a simple example of program induction over a simple arithmetic language. Key use of laziness: Random expressions are represented as an infinite forest together with a finite path through it.  ![Program induction](./expr-reg.svg)
+* [``ProgramInduction.hs``](src/ProgramInduction.hs) contains a simple example of program induction over a simple arithmetic language. Key use of laziness: Random expressions are represented as an infinite forest together with a finite path through it.
+![Program induction](./expr-reg.svg)
 
 
 ## Library
