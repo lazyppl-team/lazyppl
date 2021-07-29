@@ -115,10 +115,7 @@ accumulate [] a = []
 {-- MH: Produce a stream of samples, using Metropolis Hastings
     We use (mutatetree p) to propose different distributions.
     If p = 1/dimension then this is a bit like single-site lightweight MH.
-    If p = 1 thimport Data.Map (empty,lookup,insert,size,keys)
-import Data.IORef
-import System.IO.Unsafe
-en this is like multi-site lightweight MH --}
+    If p = 1 then this is like multi-site lightweight MH --}
 mh :: forall a. Double -> Meas a -> IO [(a,Product (Log Double))]
 mh p (Meas m) = do
      -- Top level: produce a stream of samples.
