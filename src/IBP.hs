@@ -40,7 +40,7 @@ newRestaurant alpha = do
         -- s <- uniform 
         -- !() <- return $ unsafePerformIO (print $ "restaurant") -- ++ show s)
         r <- uniform 
-        ref <- return $ ( unsafePerformIO (newIORef (round (r-r))))
+        ref <- newCounter
         matrix <- ibp alpha  
         return $ R (matrix, ref) 
 

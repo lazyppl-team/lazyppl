@@ -114,13 +114,17 @@ memoize f =  Prob $ do g <- get
 
 
 {--
-An unsafe "next" function for a hidden counter. 
+Some "unsafe" functions for a hidden counter. 
 This is useful for implementing some nonparametric models 
 like the indian buffet process. 
 The function is deterministic but we perform some redundant sampling
 so that the function is treated as impure by the compiler and 
 thus re-evalued every time.  
 --}
+newCounter :: Prob (IORef Int)
+newCounter = do r <- uniform
+                return $ unsafePerformIO $ newIORef (round (r-r))
+
 readAndIncrement :: IORef Int -> Prob Int 
 readAndIncrement ref = do
     r <- uniform
