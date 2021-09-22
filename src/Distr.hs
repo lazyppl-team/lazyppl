@@ -1,3 +1,5 @@
+{-# LANGUAGE BangPatterns #-}
+
 module Distr where
 
 import LazyPPL
@@ -93,7 +95,7 @@ categorical xs = do
     and avoid unsafePerformIO.
     If it is countably infinite, there probably also are implementation tricks.
 --}
-memoize :: Ord a => Show a => (a -> Prob b) -> Prob (a -> b)
+memoize :: Ord a => (a -> Prob b) -> Prob (a -> b)
 memoize f =  Prob $ do g <- get
                        let ( (Tree _ gs), g2) = splitTree g
                        put g2
@@ -109,6 +111,25 @@ memoize f =  Prob $ do g <- get
                                                             let (y,_) = runState k (gs !! (1 + size n))
                                                             modifyIORef' ref (Data.Map.insert x y)
                                                             return y
+
+
+{--
+An unsafe "next" function for a hidden counter. 
+This is useful for implementing some nonparametric models 
+like the indian buffet process. 
+The function is deterministic but we perform some redundant sampling
+so that the function is treated as impure by the compiler and 
+thus re-evalued every time.  
+--}
+readAndIncrement :: IORef Int -> Prob Int 
+readAndIncrement ref = do
+    r <- uniform
+    return $ unsafePerformIO $ do 
+        !i <- readIORef ref 
+        () <- writeIORef ref (i + 1 + round (r - r))
+        return i 
+
+
 
 
 

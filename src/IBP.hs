@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
 
 module IBP where
 
@@ -25,17 +24,15 @@ import qualified Numeric.Log
 An implementation of the indian buffet process. 
 --} 
 
+ 
+-- Some abstract types 
 data Restaurant = R ([[Bool]], IORef Int)  
 data Dish = D Int  deriving (Eq,Ord,Show)
 
 newCustomer :: Restaurant -> Prob [Dish]
-newCustomer (R (matrix, ref)) = 
-    do 
-        r <- uniform
-        return $ unsafePerformIO $ do
-            !i <- readIORef ref 
-            () <- writeIORef ref (i + 1 + round (r - r))
-            return $ [ D k | k <- [0..(length (matrix!!i) - 1)], matrix!!i!!k ]
+newCustomer (R (matrix, ref)) = do 
+    i <- readAndIncrement ref 
+    return [ D k | k <- [0..(length (matrix!!i) - 1)], matrix!!i!!k ]
 
             
 newRestaurant :: Double -> Prob Restaurant 
@@ -83,7 +80,8 @@ print_feature_groups features names = do
         [0..(k-1)];
 
 {--
-Another possible implementation of the indian buffet process which uses a truncated stickbreaking construction. 
+Another possible implementation of the indian buffet process 
+which uses a truncated stickbreaking construction. 
 It is only an approximation to the true IBP, but doesn't need IO.   
 --}
 data RestaurantS = RS [Double] 
