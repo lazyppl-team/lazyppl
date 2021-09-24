@@ -21,6 +21,25 @@ import Data.Monoid
 
 import Debug.Trace
 
+{--
+Abstract types for the CRP. 
+--}
+
+data Restaurant = Restaurant [Double]
+data Table = Table Int deriving (Eq,Ord,Show)
+
+newCustomer :: Restaurant -> Prob Table 
+newCustomer (Restaurant restaurant) =
+                do r <- uniform
+                   return $ Table $ fromJust $ findIndex (> r) (scanl1 (+) restaurant)
+
+
+newRestaurant :: Double -> Prob Restaurant   
+newRestaurant alpha = do sticks <- stickBreaking alpha 0
+                         return $ Restaurant sticks 
+
+
+
 {-- Stick breaking breaks the unit interval into an
     infinite number of parts (lazily) --}
 stickBreaking :: Double -> Double -> Prob [Double]
@@ -54,10 +73,13 @@ crp alpha = do vs <- stickBreaking alpha 0
     Tags each point with a colour describing the cluster it is in --}
 cluster :: [a] -> (Prob b) -> (b -> a -> Double) -> Meas [(a,Double)]
 cluster xs pparam like =
-        do pcluster <- sample $ crp 0.3
+        do rest <- sample $ newRestaurant 0.3 
            param    <- sample $ memoize $ \i -> pparam
            color    <- sample $ memoize $ \i -> uniform
-           mapM (\x -> do {i <- sample pcluster ; score $ like (param i) x ; return (x,(color i))}) xs
+           mapM (\x -> do 
+                    (Table i) <- sample $ newCustomer rest
+                    score $ like (param i) x
+                    return (x,(color i))  ) xs
 
 -- Example 2d data set
 dataset = [(7.7936387,7.469271),(5.3105156,7.891521),(5.4320135,5.135559),(7.3844196,7.478719),(6.7382938,7.476735),(0.6663453,4.460257),(3.2001898,2.653919),(2.1231227,3.758051),(3.3734472,2.420528),(0.4699408,1.835277)]
