@@ -77,7 +77,7 @@ cluster xs pparam like =
            param    <- sample $ memoize $ \i -> pparam
            color    <- sample $ memoize $ \i -> uniform
            mapM (\x -> do 
-                    (Table i) <- sample $ newCustomer rest
+                    i <- sample $ newCustomer rest
                     score $ like (param i) x
                     return (x,(color i))  ) xs
 
@@ -94,11 +94,10 @@ example = cluster dataset (do {x <- normal 5 4 ; y <- normal 5 4 ; prec <- gamma
 test =
   do
     xycws' <- mh 0.03 example
-    let xycws = take 100000 $ xycws'
+    let xycws = take 10000 $ xycws'
     let maxw = (maximum $ map snd xycws :: Product (Log Double))
     let (Just xyc) = Data.List.lookup maxw $ map (\(z,w) -> (w,z)) xycws
     plot_coords "clustering.svg" xyc
-
 
 
 
