@@ -58,13 +58,6 @@ regress sigma prior dataset =
 dataset :: [(Double, Double)]
 dataset = [(0,0.6), (1, 0.7), (2,1.2), (3,3.2), (4,6.8), (5, 8.2), (6,8.4)]
 
--- plot an example of a piecewise linear function
-testOneDraw =
-  do
-    fws <- weightedsamples (sample randlinear)
-    let (ys,f) = fst $ head fws
-    plot_funs "onedraw.svg" (zip [0..6] ys) [f]
-
 -- plot the results of piecewise linear regression, using Metropolis Hastings
 testPiecewiseRegression =
   do
