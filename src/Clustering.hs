@@ -1,6 +1,8 @@
 module Clustering where
 import LazyPPL
 import Distr
+import Distr.DirichletP
+
 import Graphics.Rendering.Chart
 import Graphics.Rendering.Chart.Backend.Diagrams
 import Graphics.Rendering.Chart.State
@@ -8,66 +10,16 @@ import Data.Colour
 import Data.Colour.Names
 import Data.Colour.RGBSpace.HSV
 import Data.Colour.SRGB
-import Numeric.Log
 
 import Data.List
-import Data.Maybe
-import Control.Monad
-import Control.Monad.State.Lazy (State, state , put, get, runState)
 
 import Data.Default.Class
 import Control.Lens
 import Data.Monoid
-
-import Debug.Trace
-
-{--
-Abstract types for the CRP. 
---}
-
-data Restaurant = Restaurant [Double]
-data Table = Table Int deriving (Eq,Ord,Show)
-
-newCustomer :: Restaurant -> Prob Table 
-newCustomer (Restaurant restaurant) =
-                do r <- uniform
-                   return $ Table $ fromJust $ findIndex (> r) (scanl1 (+) restaurant)
+import Numeric.Log
 
 
-newRestaurant :: Double -> Prob Restaurant   
-newRestaurant alpha = do sticks <- stickBreaking alpha 0
-                         return $ Restaurant sticks 
-
-
-
-{-- Stick breaking breaks the unit interval into an
-    infinite number of parts (lazily) --}
-stickBreaking :: Double -> Double -> Prob [Double]
-stickBreaking alpha lower =
-  do r <- beta 1 alpha
-     let v = r * (1 - lower)
-     vs <- stickBreaking alpha v
-     return (v : vs)
-
-{-- We can then define the Dirichlet Process --}
-iid :: Prob a -> Prob [a]
-iid p = do {r <- p ; rs <- iid p ; return $ r : rs}
-
-dp :: Double -> Prob a -> Prob (Prob a)
-dp alpha p = do xs <- iid p
-                vs <- stickBreaking alpha 0
-                return $ do r <- uniform
-                            return $ xs !! (fromJust $ findIndex (> r) (scanl1 (+) vs))
-
-{-- Return a distribution over distributions
-    saying what the chance of getting the
-    first, second, third bit of stick is etc --}
-crp :: Double -> Prob (Prob Int)
-crp alpha = do vs <- stickBreaking alpha 0
-               return $ do r <- uniform
-                           return $ fromJust $ findIndex (> r) (scanl1 (+) vs)
-
-{-- A generic stick-breaking-based clustering program
+{-- A generic Chinese-Restaurant clustering program
     Takes pparam :: Prob b, a distribution on parameters
           like :: b -> a -> Double, parameterized likelihood function \
     Tags each point with a colour describing the cluster it is in --}
