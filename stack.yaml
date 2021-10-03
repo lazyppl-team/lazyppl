@@ -45,7 +45,7 @@ extra-deps:
 - continued-fractions-0.10.0.2
 - converge-0.1.0.1
 - math-functions-0.3.4.2
-
+- Histogram-0.1.0.2
 
 # Override default flag values for local packages and extra-deps
 # flags: {}

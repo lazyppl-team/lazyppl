@@ -1,66 +1,19 @@
-
 module IBP where
 
 import LazyPPL
 import Distr
+import Distr.IBP
 
 import Data.List
-import Data.Maybe
-import Control.Monad
-import Control.Monad.State.Lazy (State, state , put, get, runState)
-
-import Data.Default.Class
-import Control.Lens
 import Data.Monoid
-import System.Random
-
-import System.IO.Unsafe
-import Data.IORef
 
 import qualified Numeric.Log 
 
-
-{-- 
-An implementation of the indian buffet process. 
+{-- Demonstration of using Indian Buffet Process for feature finding.
+    Following 
+    A Nonparametric Bayesian Method for Inferring Features From Similarity Judgments
+    Navarro and Griffiths. NeurIPS 2006.
 --} 
-
- 
--- Some abstract types 
-data Restaurant = R ([[Bool]], IORef Int)  
-data Dish = D Int  deriving (Eq,Ord,Show)
-
-newCustomer :: Restaurant -> Prob [Dish]
-newCustomer (R (matrix, ref)) = do 
-    i <- readAndIncrement ref 
-    return [ D k | k <- [0..(length (matrix!!i) - 1)], matrix!!i!!k ]
-
-            
-newRestaurant :: Double -> Prob Restaurant 
-newRestaurant alpha = do
-        -- s <- uniform 
-        -- !() <- return $ unsafePerformIO (print $ "restaurant") -- ++ show s)
-        r <- uniform 
-        ref <- newCounter
-        matrix <- ibp alpha  
-        return $ R (matrix, ref) 
-
-
-matrix :: Double -> Int -> [Int] -> Prob [[Bool]] 
-matrix alpha index features = 
-     do 
-        let i = fromIntegral index
-        existingDishes <- mapM (\m -> bernoulli ((fromIntegral m) / i)) features 
-        let newFeatures = zipWith (\a -> \b -> if b then a + 1 else a) features existingDishes 
-        nNewDishes     <- fmap fromIntegral $ poisson (alpha / i) 
-        let fixZero = if features == [] && nNewDishes == 0 then 1 else nNewDishes  
-        let newRow = existingDishes ++ (take fixZero $ repeat True) 
-        rest           <- matrix alpha (index + 1) (newFeatures ++ (take fixZero $ repeat 1)) 
-        return $ newRow : rest  
-
--- the distribution on matrices 
-ibp :: Double -> Prob [[Bool]]  
-ibp alpha = matrix alpha 1 [] 
-
 
 {--
 Some helpers for printing the groups of features. 
@@ -72,35 +25,12 @@ removeDuplicates (x:xs) = if elem x xs then removeDuplicates xs else x:(removeDu
 
 print_feature_groups :: [[Dish]] -> [String] -> IO ()
 print_feature_groups features names = do 
-    let n = length names 
-    let k = length $ removeDuplicates (concat features) 
-    mapM_ (\f -> do 
-                putStr ("Group " ++ show (f+1) ++ ":")
-                putStrLn $ foldl (++) " " [ names!!i | i <- [0..(n-1)], elem (D f) (features!!i) ]) 
-        [0..(k-1)];
-
-{--
-Another possible implementation of the indian buffet process 
-which uses a truncated stickbreaking construction. 
-It is only an approximation to the true IBP, but doesn't need IO.   
---}
-data RestaurantS = RS [Double] 
-
-data DishS = DS Int deriving (Eq,Ord,Show)
-
-newCustomerS :: RestaurantS -> Prob [DishS]
-newCustomerS (RS rs) = 
-    do fs <- mapM bernoulli rs
-       return $ map DS $ findIndices id fs
-
-newRestaurantS :: Double -> Prob RestaurantS 
-newRestaurantS a = fmap RS $ stickScale 1
-  where stickScale p = do r' <- beta a 1
-                          let r = p * r'
-                          -- Truncate when the probabilities are getting small
-                          rs <- if r < 0.01 then return [] else stickScale r
-                          return $ r : rs
-
+    let n = length names
+    let fs = removeDuplicates $ concat features
+    mapM_ (\j -> do 
+                putStr ("Group " ++ show (j+1) ++ ":")
+                putStrLn $ foldl (++) " " [ names!!i | i <- [0..(n-1)], elem (fs !! j) (features!!i) ]) 
+        [0..(length fs-1)];
 
 
 
@@ -160,3 +90,13 @@ main = do
     print xyc
     print_feature_groups xyc countries_names  
 
+{-- Prints something like:
+Group 1: Iraq Libya 
+Group 2: Nigeria 
+Group 3: Russia 
+Group 4: Cuba Germany Italy Jamaica Russia Spain United States 
+Group 5: Japan United States 
+Group 6: China Indonesia Japan Philippines Vietnam 
+Group 7: Jamaica Libya Nigeria Zimbabwe 
+Group 8: Nigeria Zimbabwe 
+--}
