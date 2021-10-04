@@ -8,6 +8,15 @@ import Data.List
 
 {-- 
 An implementation of the indian buffet process. 
+Griffiths and Ghahramani. 
+Infinite latent feature models and the Indian buffet process. NeurIPS 2006.
+
+Using abstract types here:
+e.g. 
+S. Staton, H. Yang, N. L.. Ackerman, C. Freer, D. Roy. 
+Exchangeable random process and data abstraction. 
+Workshop on probabilistic programming semantics (PPS 2017).
+
 --} 
 
  
@@ -53,6 +62,9 @@ which uses a truncated stickbreaking construction.
 It is only an approximation to the true IBP, but doesn't need IO.   
 
 See also 
+Stick-breaking Construction for the Indian Buffet Process
+Teh, Gorur, Ghahramani. AISTATS 2007.
+
 A stochastic programming perspective on nonparametric Bayes
 Daniel M. Roy, Vikash Mansinghka, Noah Goodman, and Joshua Tenenbaum
 ICML Workshop on Nonparametric Bayesian, 2008. 
