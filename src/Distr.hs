@@ -63,7 +63,7 @@ dirichlet as = do
 uniformbounded :: Double -> Double -> Prob Double
 uniformbounded lower upper = do
   x <- uniform
-  return $ (upper - lower) * x - lower
+  return $ (upper - lower) * x + lower
 
 bernoulli :: Double -> Prob Bool
 bernoulli r = do
