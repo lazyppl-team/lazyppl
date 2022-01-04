@@ -32,6 +32,10 @@ data Col = Col Int
 
 data Matrix = Matrix Counter Counter [[Bool]]
 
+{--
+Generates a random block partition of the rectangle [aa, aA] x [bb, bB] 
+where each block has an associated random draw from the base distribution. 
+--}
 newMondrian :: (Prob a) -> Double -> (Double, Double) -> (Double, Double) -> Prob (Mondrian a)
 newMondrian base budget (aa, aA) (bb, bB) = do 
     cutCost <- exponential (aA - aa + bB - bb) 
