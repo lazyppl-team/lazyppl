@@ -24,6 +24,11 @@ oneDimMondrian budget (low, high) = do
 
 
 
+
+{--
+Some data types. Intuitively, Matrix is a type of 2D exchangeable arrays, and 'Mondrian Double' would be the type of block-structured graphons. 
+--}
+
 data Mondrian a = Block a (Double, Double) (Double, Double) -- args: atomName and two intervals making up the block
                 | Partition Int Double (Mondrian a) (Mondrian a) -- args: dimension cutPosition subtree1 subtree2  
 
@@ -32,6 +37,11 @@ data Col = Col Int
 
 data Matrix = Matrix Counter Counter [[Bool]]
 
+
+{--
+Generates a random block partition of the rectangle [aa, aA] x [bb, bB] 
+where each block has an associated random draw from the base distribution. 
+--}
 newMondrian :: (Prob a) -> Double -> (Double, Double) -> (Double, Double) -> Prob (Mondrian a)
 newMondrian base budget (aa, aA) (bb, bB) = do 
     cutCost <- exponential (aA - aa + bB - bb) 
@@ -51,13 +61,10 @@ newMondrian base budget (aa, aA) (bb, bB) = do
                return $ Partition 1 cut leftTree rightTree
 
 
-sampleMondrian :: Mondrian Double -> Double -> Double -> Prob Bool
-sampleMondrian mondrian r c = do 
-  case mondrian of 
-     Block p _ _ -> bernoulli p
-     Partition 0 cut left right -> if r < cut then sampleMondrian left r c else sampleMondrian right r c 
-     Partition 1 cut left right -> if c < cut then sampleMondrian left r c else sampleMondrian right r c 
-
+{--
+Sample a block structure over [0, 1]^2 from the Mondrian process, 
+and use it to generate an infinite exchangeable array.
+--}
 newMatrix :: (Prob Double) -> Double -> Prob Matrix 
 newMatrix base budget = do 
     mondrian <- newMondrian base budget (0, 1) (0, 1)
@@ -70,6 +77,18 @@ newMatrix base budget = do
         where 
             iid :: Prob a -> Prob [a]
             iid p = do {r <- p ; rs <- iid p ; return $ r : rs}
+
+
+{-- 
+Given a Mondrian block structure and two data points, sample an 'edge'. 
+--}
+sampleMondrian :: Mondrian Double -> Double -> Double -> Prob Bool
+sampleMondrian mondrian r c = do 
+  case mondrian of 
+     Block p _ _ -> bernoulli p
+     Partition 0 cut left right -> if r < cut then sampleMondrian left r c else sampleMondrian right r c 
+     Partition 1 cut left right -> if c < cut then sampleMondrian left r c else sampleMondrian right r c 
+
 
 lookup :: Matrix -> Row -> Col -> Bool 
 lookup (Matrix _ _ matrix) (Row r) (Col c) = matrix!!r!!c 
