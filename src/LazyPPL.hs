@@ -314,7 +314,7 @@ mh1 pc = do
                                 putStrLn $ "Context: " ++ show ctx
                                 putStrLn $ "Replacee: " ++ show (M.findWithDefault v v ctx)
                                 putStrLn $ "Replacer: " ++ show v'
-                                putStrLn $ "Sample: " ++ show a'
+                                putStrLn $ "Sample: " ++ show a
                                 putStrLn "---"
                                 return (a',t,ctx',r2)
                        
