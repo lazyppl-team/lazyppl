@@ -277,8 +277,9 @@ uniformC = ProbCtx $
          else return r
 
 -- An example probability distribution.
-example :: ProbCtx Double
-example = do choice <- uniformC
+exampleProb :: ProbCtx Double
+exampleProb = do 
+             choice <- uniformC
              w <- uniformC
              x <- uniformC
              y <- uniformC
@@ -299,7 +300,7 @@ mh1 pc = do
     putStrLn $ "Initial sample: " ++ show x -- we need this line to force evaluation of the line above
     trunc t >>= \s -> putStrLn $ "Initial tree: " ++ show s
     putStrLn "==="
-    iterateNM 5 step (x,t,M.fromList [],g2)
+    iterateNM 10 step (x,t,M.fromList [],g2)
     return ()
     where step :: RandomGen g => (a, Tree, M.Map Double Double, g) -> IO (a, Tree, M.Map Double Double, g)
           step (a,t,ctx,r) = do ptree <- trunc t
