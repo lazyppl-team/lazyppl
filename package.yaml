@@ -40,6 +40,7 @@ dependencies:
 - lazyio
 - spoon
 - Histogram
+- ghc-heap
 
 library:
   source-dirs: src
