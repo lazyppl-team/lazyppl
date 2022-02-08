@@ -7,6 +7,7 @@ import Control.Monad.Trans.Writer
 import Control.Monad.Trans.Class
 import Data.Monoid
 import System.Random hiding (uniform)
+import qualified System.Random as R
 import Control.Monad
 import Control.Monad.Extra
 import Control.Monad.State.Lazy (State, state , put, get, runState, runStateT, StateT)
@@ -176,9 +177,126 @@ mutateTrees p g (t:ts) = let (g1,g2) = split g in (mutateTree p g1 t) : (mutateT
 -- random tree.
 data PTree = PTree (Maybe Double) [Maybe PTree] deriving Show
 
-flatten :: PTree -> [Double]
-flatten (PTree (Just x) xs)  = x : (concatMap flatten (catMaybes xs))
-flatten (PTree Nothing xs)  = concatMap flatten (catMaybes xs)
+flatten :: PTree -> [[Int]]
+flatten pt = go1 0 [] pt
+  where
+    go1 :: Int -> [Int] -> PTree -> [[Int]]
+    go1 n path (PTree (Just x) xs) = (n:path) : (go2 n (n:path) xs) 
+    go1 n path (PTree Nothing xs) = go2 n (n:path) xs
+
+    go2 :: Int -> [Int] -> [Maybe PTree] -> [[Int]]
+    go2 n path [] = []
+    go2 n path ((Just t):ts) = (go1 n path t) ++ go2 (n+1) path ts
+    go2 n path (Nothing:ts) = go2 (n+1) path ts
+
+{-
+Example of `flatten` working:
+
+pt = PTree Nothing
+           [ Just (PTree (Just 0.346)
+                         [ Just (PTree Nothing
+                                       [ Nothing
+                                       , Just (PTree (Just 0.5)
+                                                     []
+                                              )
+                                       ]
+                                )
+                         ]
+                  )
+           , Nothing
+           , Just (PTree (Just 0.487)
+                         []
+                  )
+           ]
+
+> flatten pt
+[[0,0],[1,0,0,0],[2,0]]
+
+The paths are in reverse (e.g. 0.487 is found by taking the 0th node, and then going to
+its 2nd child).
+-}
+
+mutateNode :: Tree -> [Int] -> Double -> Tree
+mutateNode t [] d = t
+mutateNode (Tree x ts) [0] d = Tree d ts
+mutateNode (Tree x ts) (n:ns) d = Tree x ((take n ts) ++ [mutateNode (ts!!n) ns d] ++ (drop (n+1) ts))
+
+randomElement :: RandomGen g => g -> [a] -> (g, a)
+randomElement g xs = (g', xs !! n)
+  where (n, g') = uniformR (0, length xs - 1) g
+
+mh1 :: (Show a) => Prob a -> IO ()
+mh1 p = do newStdGen
+           g <- getStdGen
+           let (g1,g2) = split g
+           let t = randomTree g1
+           let x = runProb p t
+           x `seq` return () -- evaluates x to whnf 
+           putStrLn "Initial random tree:"
+           trunc t >>= \s -> putStrLn $ show s
+           putStrLn "Initial value:"
+           putStrLn $ show x
+           putStrLn "-----"
+           iterateNM 10 step (g2, t)
+           return ()
+  where step :: RandomGen g => (g, Tree) -> IO (g, Tree)
+        step (g, t) = do let (g1,g2) = split g
+                         (runProb p t) `seq` return () 
+                         ptree <- trunc t
+                         let (g1', randPath) = randomElement g1 (flatten ptree)
+                         let (newNode :: Double, g1'') = random g1'
+                         putStrLn "Start tree:"
+                         trunc t >>= \s -> putStrLn $ show s
+                         let t' = mutateNode t randPath newNode
+                         (runProb p t') `seq` return () 
+                         putStrLn "Modified tree:"
+                         trunc t' >>= \s -> putStrLn $ show s
+                         putStrLn "*****"
+                         return (g2, t')
+
+-- mh1 :: forall a. (Show a) => ProbCtx a -> IO ()
+-- mh1 pc = do
+--     newStdGen
+--     g <- getStdGen
+--     let (g1,g2) = split g
+--     let t = randomTree g1
+--     let x = runProbCtx pc (M.fromList [], t)
+--     putStrLn $ "Initial sample: " ++ show x -- we need this line to force evaluation of the line above
+--     trunc t >>= \s -> putStrLn $ "Initial tree: " ++ show s
+--     putStrLn "==="
+--     iterateNM 10 step (x,t,M.fromList [],g2)
+--     return ()
+--     where step :: RandomGen g => (a, Tree, M.Map Double Double, g) -> IO (a, Tree, M.Map Double Double, g)
+--           step (a,t,ctx,r) = do ptree <- trunc t
+--                                 let plist = flatten ptree
+--                                 let (r1,r2) = split r
+--                                 let (i :: Double, r') = random r1 -- a random node from the evaluated nodes
+--                                 let (v' :: Double, _) = random r2 -- the newly generated random node
+--                                 let v = plist !! (floor $ i * (fromIntegral $ length plist))
+--                                 let ctx' = M.alter (\_ -> Just v') v ctx
+--                                 let a' = runProbCtx pc (ctx', t)
+--                                 putStrLn $ show $ subst ctx ptree
+--                                 putStrLn $ "Context: " ++ show ctx
+--                                 putStrLn $ "Replacee: " ++ show (M.findWithDefault v v ctx)
+--                                 putStrLn $ "Replacer: " ++ show v'
+--                                 putStrLn $ "Sample: " ++ show a
+--                                 putStrLn "---"
+--                                 return (a',t,ctx',r2)
+
+-- test :: IO ()
+-- test = do
+--   newStdGen
+--   g <- getStdGen
+--   let t = randomTree g
+--   let x = runProb exampleProb t
+--   putStrLn $ show x 
+--   trunc t >>= \s -> putStrLn $ show s
+--   putStrLn "==="
+--   let g = mutateNode t [0,0] 0.9
+--   let x = runProb exampleProb g
+--   putStrLn $ show x
+--   trunc g >>= \s -> putStrLn $ show s
+--   return ()
 
 -- Functions for truncating a tree.
 getGCClosureData b = do c <- getBoxedClosureData b
@@ -277,48 +395,18 @@ uniformC = ProbCtx $
          else return r
 
 -- An example probability distribution.
-exampleProb :: ProbCtx Double
+exampleProb :: Prob Double
 exampleProb = do 
-             choice <- uniformC
-             w <- uniformC
-             x <- uniformC
-             y <- uniformC
-             z <- uniformC
+             choice <- uniform
+             w <- uniform
+             x <- uniform
+             y <- uniform
+             z <- uniform
              case floor (choice * 4.0) of
                0 -> return w 
                1 -> return x  
                2 -> return y  
                3 -> return z  
-
-mh1 :: forall a. (Show a) => ProbCtx a -> IO ()
-mh1 pc = do
-    newStdGen
-    g <- getStdGen
-    let (g1,g2) = split g
-    let t = randomTree g1
-    let x = runProbCtx pc (M.fromList [], t)
-    putStrLn $ "Initial sample: " ++ show x -- we need this line to force evaluation of the line above
-    trunc t >>= \s -> putStrLn $ "Initial tree: " ++ show s
-    putStrLn "==="
-    iterateNM 10 step (x,t,M.fromList [],g2)
-    return ()
-    where step :: RandomGen g => (a, Tree, M.Map Double Double, g) -> IO (a, Tree, M.Map Double Double, g)
-          step (a,t,ctx,r) = do ptree <- trunc t
-                                let plist = flatten ptree
-                                let (r1,r2) = split r
-                                let (i :: Double, r') = random r1 -- a random node from the evaluated nodes
-                                let (v' :: Double, _) = random r2 -- the newly generated random node
-                                let v = plist !! (floor $ i * (fromIntegral $ length plist))
-                                let ctx' = M.alter (\_ -> Just v') v ctx
-                                let a' = runProbCtx pc (ctx', t)
-                                putStrLn $ show $ subst ctx ptree
-                                putStrLn $ "Context: " ++ show ctx
-                                putStrLn $ "Replacee: " ++ show (M.findWithDefault v v ctx)
-                                putStrLn $ "Replacer: " ++ show v'
-                                putStrLn $ "Sample: " ++ show a
-                                putStrLn "---"
-                                return (a',t,ctx',r2)
-                       
 
 {-- Useful function which thins out a list. --}
 every :: Int -> [a] -> [a]
