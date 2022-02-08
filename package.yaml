@@ -41,11 +41,23 @@ dependencies:
 - spoon
 - Histogram
 - ghc-heap
+- monad-loops
 
 library:
   source-dirs: src
 
 executables:
+  infinitewalk-exe:
+    main:                InfiniteWalk.hs
+    source-dirs:         src
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -O2
+    - -main-is InfiniteWalk
+    dependencies:
+    - lazyppl
   ibp-exe:
     main:                IBP.hs
     source-dirs:         src
