@@ -216,10 +216,17 @@ The paths are in reverse (e.g. 0.487 is found by taking the 0th node, and then g
 its 2nd child).
 -}
 
-mutateNode :: Tree -> [Int] -> Double -> Tree
+type Site = [Int]
+type Subst = M.Map Site Double
+
+-- you need to provide the Site in reverse order
+mutateNode :: Tree -> Site -> Double -> Tree
 mutateNode t [] d = t
 mutateNode (Tree x ts) [0] d = Tree d ts
 mutateNode (Tree x ts) (n:ns) d = Tree x ((take n ts) ++ [mutateNode (ts!!n) ns d] ++ (drop (n+1) ts))
+
+mutateNodes :: Tree -> Subst -> Tree
+mutateNodes tree sub = M.foldrWithKey (\k d t -> mutateNode t k d) tree sub
 
 randomElement :: RandomGen g => g -> [a] -> (g, a)
 randomElement g xs = (g', xs !! n)
@@ -237,22 +244,111 @@ mh1 p = do newStdGen
            putStrLn "Initial value:"
            putStrLn $ show x
            putStrLn "-----"
-           iterateNM 10 step (g2, t)
+           iterateNM 10 step (g1, g2, M.empty)
            return ()
-  where step :: RandomGen g => (g, Tree) -> IO (g, Tree)
-        step (g, t) = do let (g1,g2) = split g
-                         (runProb p t) `seq` return () 
-                         ptree <- trunc t
-                         let (g1', randPath) = randomElement g1 (flatten ptree)
-                         let (newNode :: Double, g1'') = random g1'
-                         putStrLn "Start tree:"
-                         trunc t >>= \s -> putStrLn $ show s
-                         let t' = mutateNode t randPath newNode
-                         (runProb p t') `seq` return () 
-                         putStrLn "Modified tree:"
-                         trunc t' >>= \s -> putStrLn $ show s
-                         putStrLn "*****"
-                         return (g2, t')
+  where step :: RandomGen g => (g, g, Subst) -> IO (g, g, Subst)
+        step (treeSeed, seed, sub) =
+            do let (seed1, seed2) = split seed
+               -- `t` is the original tree, along with whatever mutations that
+               -- have been made so far.
+               let t = mutateNodes (randomTree treeSeed) sub
+               let x = runProb p t
+               x `seq` return ()
+               ptree <- trunc t
+               -- We select a random site as well as its new value.
+               let (seed1', randSite) = randomElement seed1 (flatten ptree)
+               let (newNode :: Double, seed1'') = random seed1'
+               putStrLn "Start tree:"
+               trunc t >>= \s -> putStrLn $ show s
+               -- `sub'` is the updated list of mutations/substitutions.
+               let sub' = M.insert randSite newNode sub
+               -- `t'` is the new tree under these substitutions.
+               let t' = mutateNodes t sub'
+               (runProb p t') `seq` return () 
+               -- Debug information to show all the sites we consider.
+               putStrLn $  "All sites: " ++ show (map reverse $ flatten ptree)
+               putStrLn $  "Picking site: " ++ show (reverse randSite)
+               putStrLn "Modified tree:"
+               trunc t' >>= \s -> putStrLn $ show s
+               putStrLn "\n*****\n"
+               -- For the next iteration pass the same original seed, which uniquely
+               -- determines the original tree, along with a new seed for doing the
+               -- random calculations, and the updated key-value store of the mutations
+               -- we make to the tree.
+               return (treeSeed, seed2, sub')
+
+-- Swaraj: Apologies for all the comments below. It is scrap work + previous iterations
+-- of my single-site MH stuff. Keeping it here for now just to be able to go back to it
+-- when needed; will properly document/archive later. This is the private dev branch after all...
+
+  --                        ptree <- trunc t
+  --                        let (g1', randPath) = randomElement g1 (flatten ptree)
+  --                        let (newNode :: Double, g1'') = random g1'
+  --                        putStrLn "Start tree:"
+  --                        trunc t >>= \s -> putStrLn $ show s
+  --                        -- performGC
+  --                        let t' = mutateNode t randPath newNode
+  --                        -- performGC
+  --                        (runProb p t') `seq` return () 
+  --                        putStrLn $  "All paths: " ++ show (map reverse $ flatten ptree)
+  --                        putStrLn $  "Picking path: " ++ show (reverse randPath)
+  --                        putStrLn "Modified tree:"
+  --                        trunc t' >>= \s -> putStrLn $ show s
+  --                        putStrLn "\n*****\n"
+  --                        return (g2, t')
+
+-- test :: IO ()
+-- test = do newStdGen
+--           g <- getStdGen
+--           let t = randomTree g
+--           iterateNM 4 step (g,3,-1)
+--           iterateNM 4 step (g,0,1)
+--           return ()
+--   where step :: RandomGen g => (g,Int,Int) -> IO (g,Int,Int)
+--         step (g,n,inc) = do let t' = randomTree g
+--                             let x' = runProb (four n) t'
+--                             x' `seq` return ()
+--                             trunc t' >>= \s -> putStrLn $ show s
+--                             return $ (g, n + inc, inc)
+
+-- four n = do x <- uniform
+--             y <- uniform
+--             z <- uniform
+--             w <- uniform
+--             return $ [x,y,z,w] !! n
+
+-- mh1 :: (Show a) => Prob a -> IO ()
+-- mh1 p = do newStdGen
+--            g <- getStdGen
+--            let (g1,g2) = split g
+--            let t = randomTree g1
+--            let x = runProb p t
+--            x `seq` return () -- evaluates x to whnf 
+--            putStrLn "Initial random tree:"
+--            trunc t >>= \s -> putStrLn $ show s
+--            putStrLn "Initial value:"
+--            putStrLn $ show x
+--            putStrLn "-----"
+--            iterateNM 10 step (g2, t)
+--            return ()
+--   where step :: RandomGen g => (g, Tree) -> IO (g, Tree)
+--         step (g, t) = do let (g1,g2) = split g
+--                          -- (runProb p t) `seq` return () 
+--                          ptree <- trunc t
+--                          let (g1', randPath) = randomElement g1 (flatten ptree)
+--                          let (newNode :: Double, g1'') = random g1'
+--                          putStrLn "Start tree:"
+--                          trunc t >>= \s -> putStrLn $ show s
+--                          -- performGC
+--                          let t' = mutateNode t randPath newNode
+--                          -- performGC
+--                          (runProb p t') `seq` return () 
+--                          putStrLn $  "All paths: " ++ show (map reverse $ flatten ptree)
+--                          putStrLn $  "Picking path: " ++ show (reverse randPath)
+--                          putStrLn "Modified tree:"
+--                          trunc t' >>= \s -> putStrLn $ show s
+--                          putStrLn "\n*****\n"
+--                          return (g2, t')
 
 -- mh1 :: forall a. (Show a) => ProbCtx a -> IO ()
 -- mh1 pc = do
