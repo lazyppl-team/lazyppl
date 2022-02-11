@@ -232,20 +232,51 @@ randomElement :: RandomGen g => g -> [a] -> (g, a)
 randomElement g xs = (g', xs !! n)
   where (n, g') = uniformR (0, length xs - 1) g
 
-mh1 :: (Show a) => Prob a -> IO ()
-mh1 p = do newStdGen
-           g <- getStdGen
-           let (g1,g2) = split g
-           let t = randomTree g1
-           let x = runProb p t
-           x `seq` return () -- evaluates x to whnf 
-           putStrLn "Initial random tree:"
-           trunc t >>= \s -> putStrLn $ show s
-           putStrLn "Initial value:"
-           putStrLn $ show x
-           putStrLn "-----"
-           iterateNM 10 step (g1, g2, M.empty)
-           return ()
+mh1 :: forall a. Int -> Meas a -> IO [(a, Product (Log Double))]
+mh1 n (Meas m) = do
+    newStdGen
+    g <- getStdGen
+    let (gTree,g') = split g
+    let tree = randomTree gTree
+    let (x0, w0) = runProb (runWriterT m) tree
+    x0 `seq` return ()
+    p <- trunc tree
+    samples <- map (\(_,_,_,_,s) -> s) <$> iterateNM n step (gTree, g', M.empty, p, (x0, w0))
+    return samples
+  where step :: RandomGen g => (g, g, Subst, PTree, (a, Product (Log Double))) ->
+                            IO (g, g, Subst, PTree, (a, Product (Log Double)))
+        step (treeSeed, seed, sub, ptree, (x,w)) =
+            do let (seed1, seed2) = split seed
+               let sites = flatten ptree
+               let (seed1', randSite) = randomElement seed1 sites
+               let (newNode :: Double, seed1'') = random seed1'
+               let (u :: Double, _) = random seed1'' -- the 'u' from Luke's notes
+               let sub' = M.insert randSite newNode sub
+               let t' = mutateNodes (randomTree treeSeed) sub'
+               let (x',w') = runProb (runWriterT m) t'
+               x' `seq` return ()
+               ptree' <- trunc t'
+               let sites' = flatten ptree'
+               let alpha = (fromIntegral (length sites) / fromIntegral (length sites'))
+                         * (exp $ ln $ ((getProduct w') / (getProduct w)))
+               if u <= alpha
+               then return (treeSeed, seed2, sub', ptree', (x',w'))
+               else return (treeSeed, seed2, sub,  ptree,  (x,w))
+
+protoMh1 :: (Show a) => Prob a -> IO ()
+protoMh1 p = do newStdGen
+                g <- getStdGen
+                let (g1,g2) = split g
+                let t = randomTree g1
+                let x = runProb p t
+                x `seq` return () -- evaluates x to whnf 
+                putStrLn "Initial random tree:"
+                trunc t >>= \s -> putStrLn $ show s
+                putStrLn "Initial value:"
+                putStrLn $ show x
+                putStrLn "-----"
+                iterateNM 10 step (g1, g2, M.empty)
+                return ()
   where step :: RandomGen g => (g, g, Subst) -> IO (g, g, Subst)
         step (treeSeed, seed, sub) =
             do let (seed1, seed2) = split seed
@@ -263,7 +294,7 @@ mh1 p = do newStdGen
                -- `sub'` is the updated list of mutations/substitutions.
                let sub' = M.insert randSite newNode sub
                -- `t'` is the new tree under these substitutions.
-               let t' = mutateNodes t sub'
+               let t' = mutateNodes (randomTree treeSeed) sub'
                (runProb p t') `seq` return () 
                -- Debug information to show all the sites we consider.
                putStrLn $  "All sites: " ++ show (map reverse $ flatten ptree)
