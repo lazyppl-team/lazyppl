@@ -230,7 +230,10 @@ mutateNodes tree sub = M.foldrWithKey (\k d t -> mutateNode t k d) tree sub
 
 randomElement :: RandomGen g => g -> [a] -> (g, a)
 randomElement g xs = (g', xs !! n)
-  where (n, g') = uniformR (0, length xs - 1) g
+  where (n, g') = randomR (0, length xs - 1) g
+               -- ^^^^^^^ In the old version of the `random` package that
+               -- we are using, the function is called randomR. In newer
+               -- versions it is called uniformR.
 
 mh1 :: forall a. Int -> Meas a -> IO [(a, Product (Log Double))]
 mh1 n (Meas m) = do
