@@ -45,9 +45,9 @@ splitTree (Tree r (t : ts)) = (t , Tree r ts)
 
 uniform :: Prob Double
 uniform = Prob $
-      do ~(Tree r (t:ts)) <- get
-         put t
-         return r
+      do  ~(Tree r (t:ts)) <- get
+          put t
+          return r
 
 
 -- Probabilities for a monad.
@@ -331,7 +331,7 @@ protoMh1 p = do newStdGen
   --                        putStrLn "\n*****\n"
   --                        return (g2, t')
 
--- test :: IO ()
+-- test :: IO ( )
 -- test = do newStdGen
 --           g <- getStdGen
 --           let t = randomTree g
