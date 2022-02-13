@@ -223,7 +223,8 @@ type Subst = M.Map Site Double
 mutateNode :: Tree -> Site -> Double -> Tree
 mutateNode t [] d = t
 mutateNode (Tree x ts) [0] d = Tree d ts
-mutateNode (Tree x ts) (n:ns) d = Tree x ((take n ts) ++ [mutateNode (ts!!n) ns d] ++ (drop (n+1) ts))
+mutateNode (Tree x ts) ms d = Tree x ((take n ts) ++ [mutateNode (ts!!n) ns d] ++ (drop (n+1) ts))
+  where n:ns = reverse ms
 
 mutateNodes :: Tree -> Subst -> Tree
 mutateNodes tree sub = M.foldrWithKey (\k d t -> mutateNode t k d) tree sub
