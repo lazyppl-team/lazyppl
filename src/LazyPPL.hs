@@ -230,7 +230,7 @@ mutateNodes :: Tree -> Subst -> Tree
 mutateNodes tree sub = M.foldrWithKey (\k d t -> mutateNode t k d) tree sub
 
 randomElement :: RandomGen g => g -> [a] -> (g, a)
-randomElement g xs = (g', xs !! n)
+randomElement g xs = if (length xs == 0) then error "0d sample space" else (g', xs !! n)
   where (n, g') = randomR (0, length xs - 1) g
                -- ^^^^^^^ In the old version of the `random` package that
                -- we are using, the function is called randomR. In newer
@@ -243,7 +243,7 @@ mh1 n (Meas m) = do
     let (gTree,g') = split g
     let tree = randomTree gTree
     let (x0, w0) = runProb (runWriterT m) tree
-    x0 `seq` return ()
+    w0 `seq` return ()
     p <- trunc tree
     samples <- map (\(_,_,_,_,s) -> s) <$> iterateNM n step (gTree, g', M.empty, p, (x0, w0))
     return samples
@@ -256,9 +256,9 @@ mh1 n (Meas m) = do
                let (newNode :: Double, seed1'') = random seed1'
                let (u :: Double, _) = random seed1'' -- the 'u' from Luke's notes
                let sub' = M.insert randSite newNode sub
-               let t' = mutateNodes (randomTree treeSeed) sub'
+               let t' = mutateNodes (randomTree treeSeed) sub'               
                let (x',w') = runProb (runWriterT m) t'
-               x' `seq` return ()
+               w' `seq` return ()
                ptree' <- trunc t'
                let sites' = flatten ptree'
                let alpha = (fromIntegral (length sites) / fromIntegral (length sites'))
