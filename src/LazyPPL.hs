@@ -177,54 +177,52 @@ mutateTrees p g (t:ts) = let (g1,g2) = split g in (mutateTree p g1 t) : (mutateT
 -- random tree.
 data PTree = PTree (Maybe Double) [Maybe PTree] deriving Show
 
-flatten :: PTree -> [[Int]]
-flatten pt = go1 0 [] pt
-  where
-    go1 :: Int -> [Int] -> PTree -> [[Int]]
-    go1 n path (PTree (Just x) xs) = (n:path) : (go2 n (n:path) xs) 
-    go1 n path (PTree Nothing xs) = go2 n (n:path) xs
-
-    go2 :: Int -> [Int] -> [Maybe PTree] -> [[Int]]
-    go2 n path [] = []
-    go2 n path ((Just t):ts) = (go1 n path t) ++ go2 (n+1) path ts
-    go2 n path (Nothing:ts) = go2 (n+1) path ts
-
-{-
-Example of `flatten` working:
-
-pt = PTree Nothing
-           [ Just (PTree (Just 0.346)
-                         [ Just (PTree Nothing
-                                       [ Nothing
-                                       , Just (PTree (Just 0.5)
-                                                     []
-                                              )
-                                       ]
-                                )
-                         ]
-                  )
-           , Nothing
-           , Just (PTree (Just 0.487)
-                         []
-                  )
-           ]
-
-> flatten pt
-[[0,0],[1,0,0,0],[2,0]]
-
-The paths are in reverse (e.g. 0.487 is found by taking the 0th node, and then going to
-its 2nd child).
--}
-
 type Site = [Int]
 type Subst = M.Map Site Double
 
--- you need to provide the Site in reverse order
+getSites :: PTree -> [Site]
+getSites p = map fst $ getSites' p ([],Nothing)
+
+getSites' :: PTree -> (Site, Maybe Double)  -> [(Site, Maybe Double)]
+getSites' (PTree (Just v) ts) (site,_) = (site, Just v) : concat [ getSites' t (n:site, Just v)  | (n, Just t) <- zip [0..] ts ]
+getSites' (PTree Nothing  ts) (site,_) = concat [ getSites' t (n:site, Nothing) | (n, Just t) <- zip [0..] ts ]
+
+{-
+Example of `getSites` working:
+
+pt = PTree (Just 0.1) [ Just ( PTree (Just 0.3) [ Just ( PTree Nothing [ Nothing
+                                                                       , Just ( PTree (Just 0.5) [ Nothing
+                                                                                                 , Just ( PTree (Just 0.2) []
+                                                                                                        )
+                                                                                                 ]
+                                                                              )
+                                                                       , Just ( PTree (Just 0.6) []
+                                                                              )
+                                                                       ]
+                                                       )
+                                                ]
+                             )
+                      , Nothing
+                      , Just ( PTree (Just 0.4) []
+                             )
+                      , Just ( PTree Nothing [ Nothing
+                                             , Nothing
+                                             , Nothing
+                                             , Just ( PTree (Just 0.8) []
+                                                    )
+                                             ]
+                             )
+                      ]
+
+> getSites pt
+[[],[0],[1,0,0],[1,1,0,0],[2,0,0],[2],[3,3]]
+
+The sites (paths to nodes) are in reverse order.
+-}
+
 mutateNode :: Tree -> Site -> Double -> Tree
-mutateNode t [] d = t
-mutateNode (Tree x ts) [0] d = Tree d ts
-mutateNode (Tree x ts) ms d = Tree x ((take n ts) ++ [mutateNode (ts!!n) ns d] ++ (drop (n+1) ts))
-  where n:ns = reverse ms
+mutateNode (Tree _ ts) []     d = Tree d ts
+mutateNode (Tree v ts) (n:ns) d = Tree v $ (take n ts) ++ (mutateNode (ts!!n) ns d) : (drop (n+1) ts)
 
 mutateNodes :: Tree -> Subst -> Tree
 mutateNodes tree sub = M.foldrWithKey (\k d t -> mutateNode t k d) tree sub
@@ -243,7 +241,8 @@ mh1 n (Meas m) = do
     let (gTree,g') = split g
     let tree = randomTree gTree
     let (x0, w0) = runProb (runWriterT m) tree
-    w0 `seq` return ()
+    -- w0 `seq` return ()
+    x0 `seq` return ()
     p <- trunc tree
     samples <- map (\(_,_,_,_,s) -> s) <$> iterateNM n step (gTree, g', M.empty, p, (x0, w0))
     return samples
@@ -251,16 +250,21 @@ mh1 n (Meas m) = do
                             IO (g, g, Subst, PTree, (a, Product (Log Double)))
         step (treeSeed, seed, sub, ptree, (x,w)) =
             do let (seed1, seed2) = split seed
-               let sites = flatten ptree
-               let (seed1', randSite) = randomElement seed1 sites
+               let sites = getSites ptree
+               let (seed1', randSite) = (\(x,y) -> (x, reverse y)) $ randomElement seed1 sites
                let (newNode :: Double, seed1'') = random seed1'
                let (u :: Double, _) = random seed1'' -- the 'u' from Luke's notes
                let sub' = M.insert randSite newNode sub
                let t' = mutateNodes (randomTree treeSeed) sub'               
                let (x',w') = runProb (runWriterT m) t'
-               w' `seq` return ()
+               -- w' `seq` return ()
+               x' `seq` return ()
                ptree' <- trunc t'
-               let sites' = flatten ptree'
+               putStrLn $ show ptree
+               putStrLn $ show ptree'
+               putStrLn $ show randSite
+               putStrLn "---"
+               let sites' = getSites ptree'
                let alpha = (fromIntegral (length sites) / fromIntegral (length sites'))
                          * (exp $ ln $ ((getProduct w') / (getProduct w)))
                if u <= alpha
@@ -291,7 +295,7 @@ protoMh1 p = do newStdGen
                x `seq` return ()
                ptree <- trunc t
                -- We select a random site as well as its new value.
-               let (seed1', randSite) = randomElement seed1 (flatten ptree)
+               let (seed1', randSite) = randomElement seed1 (getSites ptree)
                let (newNode :: Double, seed1'') = random seed1'
                putStrLn "Start tree:"
                trunc t >>= \s -> putStrLn $ show s
@@ -301,7 +305,7 @@ protoMh1 p = do newStdGen
                let t' = mutateNodes (randomTree treeSeed) sub'
                (runProb p t') `seq` return () 
                -- Debug information to show all the sites we consider.
-               putStrLn $  "All sites: " ++ show (map reverse $ flatten ptree)
+               putStrLn $  "All sites: " ++ show (map reverse $ getSites ptree)
                putStrLn $  "Picking site: " ++ show (reverse randSite)
                putStrLn "Modified tree:"
                trunc t' >>= \s -> putStrLn $ show s
@@ -525,6 +529,18 @@ uniformC = ProbCtx $
          then return $ ctx M.! r
          else return r
 
+{-- Useful function which thins out a list. --}
+every :: Int -> [a] -> [a]
+every n xs = case drop (n-1) xs of
+              (y:ys) -> y : every n ys
+              [] -> []
+
+iterateNM :: Int -> (a -> IO a) -> a -> IO [a]
+iterateNM 0 f a = return []
+iterateNM n f a = do a' <- f a
+                     as <- iterateNM (n-1) f a'
+                     return $ a : as
+
 -- An example probability distribution.
 exampleProb :: Prob Double
 exampleProb = do 
@@ -538,16 +554,4 @@ exampleProb = do
                1 -> return x  
                2 -> return y  
                3 -> return z  
-
-{-- Useful function which thins out a list. --}
-every :: Int -> [a] -> [a]
-every n xs = case drop (n-1) xs of
-              (y:ys) -> y : every n ys
-              [] -> []
-
-iterateNM :: Int -> (a -> IO a) -> a -> IO [a]
-iterateNM 0 f a = return []
-iterateNM n f a = do a' <- f a
-                     as <- iterateNM (n-1) f a'
-                     return $ a : as
 
