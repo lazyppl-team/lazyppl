@@ -241,7 +241,7 @@ mh1 n (Meas m) = do
     let (gTree,g') = split g
     let tree = randomTree gTree
     let (x0, w0) = runProb (runWriterT m) tree
-    -- w0 `seq` return ()
+    w0 `seq` return ()
     x0 `seq` return ()
     p <- trunc tree
     samples <- map (\(_,_,_,_,s) -> s) <$> iterateNM n step (gTree, g', M.empty, p, (x0, w0))
@@ -257,13 +257,13 @@ mh1 n (Meas m) = do
                let sub' = M.insert randSite newNode sub
                let t' = mutateNodes (randomTree treeSeed) sub'               
                let (x',w') = runProb (runWriterT m) t'
-               -- w' `seq` return ()
+               w' `seq` return ()
                x' `seq` return ()
                ptree' <- trunc t'
-               putStrLn $ show ptree
-               putStrLn $ show ptree'
-               putStrLn $ show randSite
-               putStrLn "---"
+               -- putStrLn $ show ptree
+               -- putStrLn $ show ptree'
+               -- putStrLn $ show randSite
+               -- putStrLn "---"
                let sites' = getSites ptree'
                let alpha = (fromIntegral (length sites) / fromIntegral (length sites'))
                          * (exp $ ln $ ((getProduct w') / (getProduct w)))

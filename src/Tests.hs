@@ -22,6 +22,6 @@ bins xs n = [ length [x | x <- xs
                         , (fromIntegral $ k-1)/(fromIntegral n) < x
                         , x <= (fromIntegral k)/(fromIntegral n) ] | k <- [1..n] ]
 
-test1 = do fs' <- mh1 10 $ sample exampleProb
-           let fs = map fst $ take 10 $ fs'
-           putStrLn $ show $ L.nub $ L.sort fs 
+test1 = do fs' <- mh1 1000 $ sample exampleProb
+           let fs = map fst $ fs'
+           putStrLn $ show $ bins fs 10

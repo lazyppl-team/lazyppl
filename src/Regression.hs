@@ -72,6 +72,11 @@ testPiecewiseRegressionLWIS =
     let fs = take 500 $ fs'
     plot_funs "piecewise-regLWIS.svg" dataset fs
 
+testPiecewiseRegressionMH1 =
+  do
+    fs' <- mh1 510000 (regress 0.1 (splice (poissonPP 0 0.1) linear) dataset)
+    let fs = map fst $ take 500 $ every 1000 $ drop 10000 $ fs'
+    plot_funs "piecewise-regMH1.svg" dataset fs
 
 
 {-- GRAPHING ROUTINES --}
@@ -118,4 +123,12 @@ plot_funs filename dataset funs =
 
 
 main :: IO ()
-main = do { testPiecewiseRegression } 
+main = do
+        fs' <- mh 0.2 $ regress 1 linear dataset
+        let fs = map fst $ take 500 $ every 1000 $ drop 10000 $ fs'
+        plot_funs "linreg-mh.svg" dataset fs
+
+        fs' <- mh1 510000 $ regress 1 linear dataset
+        let fs = map fst $ take 500 $ every 1000 $ drop 10000 $ fs'
+        plot_funs "linreg-mh1.svg" dataset fs
+
