@@ -181,11 +181,18 @@ type Site = [Int]
 type Subst = M.Map Site Double
 
 getSites :: PTree -> [Site]
-getSites p = map fst $ getSites' p ([],Nothing)
+getSites p = getSites' p []
 
-getSites' :: PTree -> (Site, Maybe Double)  -> [(Site, Maybe Double)]
-getSites' (PTree (Just v) ts) (site,_) = (site, Just v) : concat [ getSites' t (n:site, Just v)  | (n, Just t) <- zip [0..] ts ]
-getSites' (PTree Nothing  ts) (site,_) = concat [ getSites' t (n:site, Nothing) | (n, Just t) <- zip [0..] ts ]
+getSites' :: PTree -> Site  -> [Site]
+getSites' (PTree (Just v) ts) site = site : concat [ getSites' t (n:site)  | (n, Just t) <- zip [0..] ts ]
+getSites' (PTree Nothing  ts) site = concat [ getSites' t (n:site) | (n, Just t) <- zip [0..] ts ]
+
+-- getSites :: PTree -> [Site]
+-- getSites p = map fst $ getSites' p ([],Nothing)
+
+-- getSites' :: PTree -> (Site, Maybe Double)  -> [(Site, Maybe Double)]
+-- getSites' (PTree (Just v) ts) (site,_) = (site, Just v) : concat [ getSites' t (n:site, Just v)  | (n, Just t) <- zip [0..] ts ]
+-- getSites' (PTree Nothing  ts) (site,_) = concat [ getSites' t (n:site, Nothing) | (n, Just t) <- zip [0..] ts ]
 
 {-
 Example of `getSites` working:
@@ -271,168 +278,6 @@ mh1 n (Meas m) = do
                then return (treeSeed, seed2, sub', ptree', (x',w'))
                else return (treeSeed, seed2, sub,  ptree,  (x,w))
 
-protoMh1 :: (Show a) => Prob a -> IO ()
-protoMh1 p = do newStdGen
-                g <- getStdGen
-                let (g1,g2) = split g
-                let t = randomTree g1
-                let x = runProb p t
-                x `seq` return () -- evaluates x to whnf 
-                putStrLn "Initial random tree:"
-                trunc t >>= \s -> putStrLn $ show s
-                putStrLn "Initial value:"
-                putStrLn $ show x
-                putStrLn "-----"
-                iterateNM 10 step (g1, g2, M.empty)
-                return ()
-  where step :: RandomGen g => (g, g, Subst) -> IO (g, g, Subst)
-        step (treeSeed, seed, sub) =
-            do let (seed1, seed2) = split seed
-               -- `t` is the original tree, along with whatever mutations that
-               -- have been made so far.
-               let t = mutateNodes (randomTree treeSeed) sub
-               let x = runProb p t
-               x `seq` return ()
-               ptree <- trunc t
-               -- We select a random site as well as its new value.
-               let (seed1', randSite) = randomElement seed1 (getSites ptree)
-               let (newNode :: Double, seed1'') = random seed1'
-               putStrLn "Start tree:"
-               trunc t >>= \s -> putStrLn $ show s
-               -- `sub'` is the updated list of mutations/substitutions.
-               let sub' = M.insert randSite newNode sub
-               -- `t'` is the new tree under these substitutions.
-               let t' = mutateNodes (randomTree treeSeed) sub'
-               (runProb p t') `seq` return () 
-               -- Debug information to show all the sites we consider.
-               putStrLn $  "All sites: " ++ show (map reverse $ getSites ptree)
-               putStrLn $  "Picking site: " ++ show (reverse randSite)
-               putStrLn "Modified tree:"
-               trunc t' >>= \s -> putStrLn $ show s
-               putStrLn "\n*****\n"
-               -- For the next iteration pass the same original seed, which uniquely
-               -- determines the original tree, along with a new seed for doing the
-               -- random calculations, and the updated key-value store of the mutations
-               -- we make to the tree.
-               return (treeSeed, seed2, sub')
-
--- Swaraj: Apologies for all the comments below. It is scrap work + previous iterations
--- of my single-site MH stuff. Keeping it here for now just to be able to go back to it
--- when needed; will properly document/archive later. This is the private dev branch after all...
-
-  --                        ptree <- trunc t
-  --                        let (g1', randPath) = randomElement g1 (flatten ptree)
-  --                        let (newNode :: Double, g1'') = random g1'
-  --                        putStrLn "Start tree:"
-  --                        trunc t >>= \s -> putStrLn $ show s
-  --                        -- performGC
-  --                        let t' = mutateNode t randPath newNode
-  --                        -- performGC
-  --                        (runProb p t') `seq` return () 
-  --                        putStrLn $  "All paths: " ++ show (map reverse $ flatten ptree)
-  --                        putStrLn $  "Picking path: " ++ show (reverse randPath)
-  --                        putStrLn "Modified tree:"
-  --                        trunc t' >>= \s -> putStrLn $ show s
-  --                        putStrLn "\n*****\n"
-  --                        return (g2, t')
-
--- test :: IO ( )
--- test = do newStdGen
---           g <- getStdGen
---           let t = randomTree g
---           iterateNM 4 step (g,3,-1)
---           iterateNM 4 step (g,0,1)
---           return ()
---   where step :: RandomGen g => (g,Int,Int) -> IO (g,Int,Int)
---         step (g,n,inc) = do let t' = randomTree g
---                             let x' = runProb (four n) t'
---                             x' `seq` return ()
---                             trunc t' >>= \s -> putStrLn $ show s
---                             return $ (g, n + inc, inc)
-
--- four n = do x <- uniform
---             y <- uniform
---             z <- uniform
---             w <- uniform
---             return $ [x,y,z,w] !! n
-
--- mh1 :: (Show a) => Prob a -> IO ()
--- mh1 p = do newStdGen
---            g <- getStdGen
---            let (g1,g2) = split g
---            let t = randomTree g1
---            let x = runProb p t
---            x `seq` return () -- evaluates x to whnf 
---            putStrLn "Initial random tree:"
---            trunc t >>= \s -> putStrLn $ show s
---            putStrLn "Initial value:"
---            putStrLn $ show x
---            putStrLn "-----"
---            iterateNM 10 step (g2, t)
---            return ()
---   where step :: RandomGen g => (g, Tree) -> IO (g, Tree)
---         step (g, t) = do let (g1,g2) = split g
---                          -- (runProb p t) `seq` return () 
---                          ptree <- trunc t
---                          let (g1', randPath) = randomElement g1 (flatten ptree)
---                          let (newNode :: Double, g1'') = random g1'
---                          putStrLn "Start tree:"
---                          trunc t >>= \s -> putStrLn $ show s
---                          -- performGC
---                          let t' = mutateNode t randPath newNode
---                          -- performGC
---                          (runProb p t') `seq` return () 
---                          putStrLn $  "All paths: " ++ show (map reverse $ flatten ptree)
---                          putStrLn $  "Picking path: " ++ show (reverse randPath)
---                          putStrLn "Modified tree:"
---                          trunc t' >>= \s -> putStrLn $ show s
---                          putStrLn "\n*****\n"
---                          return (g2, t')
-
--- mh1 :: forall a. (Show a) => ProbCtx a -> IO ()
--- mh1 pc = do
---     newStdGen
---     g <- getStdGen
---     let (g1,g2) = split g
---     let t = randomTree g1
---     let x = runProbCtx pc (M.fromList [], t)
---     putStrLn $ "Initial sample: " ++ show x -- we need this line to force evaluation of the line above
---     trunc t >>= \s -> putStrLn $ "Initial tree: " ++ show s
---     putStrLn "==="
---     iterateNM 10 step (x,t,M.fromList [],g2)
---     return ()
---     where step :: RandomGen g => (a, Tree, M.Map Double Double, g) -> IO (a, Tree, M.Map Double Double, g)
---           step (a,t,ctx,r) = do ptree <- trunc t
---                                 let plist = flatten ptree
---                                 let (r1,r2) = split r
---                                 let (i :: Double, r') = random r1 -- a random node from the evaluated nodes
---                                 let (v' :: Double, _) = random r2 -- the newly generated random node
---                                 let v = plist !! (floor $ i * (fromIntegral $ length plist))
---                                 let ctx' = M.alter (\_ -> Just v') v ctx
---                                 let a' = runProbCtx pc (ctx', t)
---                                 putStrLn $ show $ subst ctx ptree
---                                 putStrLn $ "Context: " ++ show ctx
---                                 putStrLn $ "Replacee: " ++ show (M.findWithDefault v v ctx)
---                                 putStrLn $ "Replacer: " ++ show v'
---                                 putStrLn $ "Sample: " ++ show a
---                                 putStrLn "---"
---                                 return (a',t,ctx',r2)
-
--- test :: IO ()
--- test = do
---   newStdGen
---   g <- getStdGen
---   let t = randomTree g
---   let x = runProb exampleProb t
---   putStrLn $ show x 
---   trunc t >>= \s -> putStrLn $ show s
---   putStrLn "==="
---   let g = mutateNode t [0,0] 0.9
---   let x = runProb exampleProb g
---   putStrLn $ show x
---   trunc g >>= \s -> putStrLn $ show s
---   return ()
-
 -- Functions for truncating a tree.
 getGCClosureData b = do c <- getBoxedClosureData b
                         case c of 
@@ -490,44 +335,6 @@ helperB b = do
 
 trunc :: Tree -> IO PTree
 trunc t = helperT $ asBox t
-
--- Applying substitutions to a PTree from a Map.
-subst :: M.Map Double Double -> PTree -> PTree
-subst ctx (PTree (Just x) xs) = PTree (Just $ M.findWithDefault x x ctx) (map (fmap (subst ctx)) xs)
-subst ctx (PTree Nothing xs)  = PTree Nothing (map (fmap (subst ctx)) xs)
-
--- ProbCtx carries around a Map of node replacements in addition to the Tree from Prob.
-newtype ProbCtx a = ProbCtx (State (M.Map Double Double,Tree) a)
-
-instance Monad ProbCtx where
-  return a = ProbCtx $ return a
-  (ProbCtx m) >>= f = ProbCtx $
-                        do (ctx,t) <- get
-                           let (t1,t2) = splitTree t
-                           put (ctx,t1)
-                           x <- m
-                           put (ctx,t2)
-                           let (ProbCtx m') = f x
-                           m'
-instance Functor ProbCtx where fmap = liftM
-instance Applicative ProbCtx where {pure = return ; (<*>) = ap}
-
-
--- runProbCtx runs a probability deterministically, given a source of randomness
--- and a "substition context/environment" which takes care of modifying specific
--- nodes when needed. 
-runProbCtx :: ProbCtx a -> (M.Map Double Double, Tree) -> a
-runProbCtx (ProbCtx a) (ctx,rs) = fst $ runState a (ctx,rs)
-
--- Defining the uniform distribution for ProbCtx. Slightly annoying that there's no 
--- seemingly easy way to describe it as a function of `uniform`.
-uniformC :: ProbCtx Double
-uniformC = ProbCtx $
-      do (ctx,~(Tree r (t:ts))) <- get
-         put (ctx,t)
-         if M.member r ctx
-         then return $ ctx M.! r
-         else return r
 
 {-- Useful function which thins out a list. --}
 every :: Int -> [a] -> [a]
