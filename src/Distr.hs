@@ -96,21 +96,18 @@ categorical xs = do
     If it is countably infinite, there probably also are implementation tricks.
 --}
 memoize :: Ord a => (a -> Prob b) -> Prob (a -> b)
-memoize f =  Prob $ do g <- get
-                       let ( (Tree _ gs), g2) = splitTree g
-                       put g2
-                       return $ unsafePerformIO $ do
-                                ref <- newIORef Data.Map.empty
-                                return $ \x -> unsafePerformIO $ do
-                                          m <- liftM (Data.Map.lookup x) (readIORef ref)
-                                          case m of
-                                              Just y -> return y
-                                              Nothing -> do
-                                                            let (Prob k) = f x
-                                                            n <- readIORef ref
-                                                            let (y,_) = runState k (gs !! (1 + size n))
-                                                            modifyIORef' ref (Data.Map.insert x y)
-                                                            return y
+memoize f =  Prob $ \(Tree _ gs) -> 
+                    unsafePerformIO $ do
+                             ref <- newIORef Data.Map.empty
+                             return $ \x -> unsafePerformIO $ do
+                                      m <- liftM (Data.Map.lookup x) (readIORef ref)
+                                      case m of
+                                           Just y -> return y
+                                           Nothing -> do
+                                                        n <- readIORef ref
+                                                        let y = runProb (f x) (gs !! (1 + size n))
+                                                        modifyIORef' ref (Data.Map.insert x y)
+                                                        return y
 
 
 
@@ -125,11 +122,8 @@ memoize f =  Prob $ do g <- get
 --}
 memrec :: Ord a => Show a => ((a -> b) -> (a -> Prob b)) -> Prob (a -> b)
 memrec f =
-   Prob $ do
-    g <- get
-    let ( (Tree _ gs), g2) = splitTree g
-    put g2
-    return $ unsafePerformIO $ do
+   Prob $ \(Tree _ gs) -> 
+          unsafePerformIO $ do
                   ref <- newIORef Data.Map.empty
                   let memoized_fixpoint = \x -> unsafePerformIO $ do
                                 m <- liftM (Data.Map.lookup x) (readIORef ref)
@@ -138,8 +132,7 @@ memrec f =
                                       Nothing -> do
                                                   n <- readIORef ref
                                                   let fix = f memoized_fixpoint
-                                                  let Prob k = fix x
-                                                  let (y, _) = runState k (gs !! (1 + size n))
+                                                  let y = runProb (fix x) (gs !! (1 + size n))
                                                   modifyIORef' ref (Data.Map.insert x y)
                                                   return y
                   return memoized_fixpoint

@@ -33,9 +33,9 @@ import qualified Data.Map as M
 data Tree = Tree Double [Tree]
 
 -- A probability distribution over a is a state transformer over trees
--- ie a function Tree -> (a , Tree)
+-- ie a function Tree -> a
 -- The idea is that it uses up bits of the tree as it runs
-newtype Prob a = Prob (State Tree a)
+newtype Prob a = Prob (Tree -> a)
 
 -- Two key things to do with trees:
 -- Split tree splits a tree in two (bijectively)
@@ -44,10 +44,7 @@ splitTree :: Tree -> (Tree , Tree)
 splitTree (Tree r (t : ts)) = (t , Tree r ts)
 
 uniform :: Prob Double
-uniform = Prob $
-      do  ~(Tree r (t:ts)) <- get
-          put t
-          return r
+uniform = Prob $ \(Tree r _) -> r 
 
 
 -- Probabilities for a monad.
@@ -55,14 +52,10 @@ uniform = Prob $
 -- and using different bits for different computations.
 instance Monad Prob where
   return a = Prob $ return a
-  (Prob m) >>= f = Prob $
-                        do g <- get
-                           let (g1,g2) = splitTree g
-                           put g1
-                           x <- m
-                           put g2
-                           let (Prob m') = f x
-                           m'
+  (Prob m) >>= f = Prob $ \g ->
+                          let (g1,g2) = splitTree g
+                              (Prob m') = f (m g1)
+                          in m' g2
 instance Functor Prob where fmap = liftM
 instance Applicative Prob where {pure = return ; (<*>) = ap}
 
@@ -89,7 +82,7 @@ randomTrees g = let (g1,g2) = split g in (randomTree g1) : (randomTrees g2)
 
 {-- Run prob runs a probability deterministically, given a source of randomness --}
 runProb :: Prob a -> Tree -> a
-runProb (Prob a) rs = fst $ runState a rs
+runProb (Prob a) rs = a rs
 
 {-- weightedsamples runs a probability measure and gets out a stream of (result,weight) pairs --}
 weightedsamples :: forall a. Meas a -> IO [(a,Log Double)]

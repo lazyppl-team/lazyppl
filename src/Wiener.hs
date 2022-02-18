@@ -45,10 +45,8 @@ testWienerRegression =
 
 {-- Random Wiener function (Brownian motion), defined using hidden state and a "Brownian bridge" --} 
 wiener :: Prob (Double -> Double)
-wiener = Prob $ do g <- get
-                   let ( (Tree r gs) , g2) = splitTree g
-                   put g2
-                   return $ unsafePerformIO $ do
+wiener = Prob $ \(Tree r gs) ->
+                   unsafePerformIO $ do
                                  ref <- newIORef Data.Map.empty
                                  return $ \x -> unsafePerformIO $ do
                                         table <- readIORef ref
