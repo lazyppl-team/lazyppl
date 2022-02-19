@@ -293,7 +293,8 @@ helperT b = do
            (ThunkClosure {}, ConstrClosure {name = ":"}) -> 
              do l'' <- helperB l
                 return $ PTree Nothing l'' 
-           (ConstrClosure {}, ThunkClosure {}) -> undefined
+           (ConstrClosure {dataArgs = [d], name = "D#"}, ThunkClosure {}) -> 
+             do return $ PTree (Just $ unsafeCoerce d) [] 
            (ThunkClosure {}, ThunkClosure {}) -> undefined
            (SelectorClosure {}, ThunkClosure {}) ->
              return $ PTree Nothing [] 
