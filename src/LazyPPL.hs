@@ -10,7 +10,7 @@ import System.Random hiding (uniform)
 import qualified System.Random as R
 import Control.Monad
 import Control.Monad.Extra
-import Control.Monad.State.Lazy (State, state , put, get, runState, runStateT, StateT)
+import Control.Monad.State.Lazy (State, state , put, get, runState)
 import Numeric.Log
 
 import GHC.Exts.Heap
