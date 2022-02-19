@@ -64,8 +64,9 @@ plot_coords filename xycs =
 --  let my_areas = map (\((_,_),c,(x,y,sigma)) -> let rgb = hsv (c * 360) 0.2 1 in toPlot $ plot_points_style .~ filledCircles (sigma*70) (opaque $ sRGB (channelRed rgb) (channelGreen rgb) (channelBlue rgb))
 --                      $ plot_points_values .~ [(x,y)]
 --                      $ def) xycs in
-  let my_areas = map (\((_,_),c,(x,y,sigma)) -> let rgb = hsv (c * 360) 0.2 1 in toPlot $ plot_fillbetween_style .~ solidFillStyle (opaque $ sRGB (channelRed rgb) (channelGreen rgb) (channelBlue rgb))
-                      $ plot_fillbetween_values .~ [(x-sigma,(y-sigma,y+sigma)) , (x+sigma,(y-sigma,y+sigma))]
+  let circle x y r = [ ((- r) * cos (a * 2 * pi /360 ) + x ,(r * sin (a*2 * pi / 360) + y,(- r) * sin (a*2 * pi / 360) + y)) | a <- [0,0.5..180::Double] ] in 
+  let my_areas = map (\((_,_),c,(x,y,sigma)) -> let rgb = hsv (c * 360) 0.15 1 in toPlot $ plot_fillbetween_style .~ solidFillStyle (opaque $ sRGB (channelRed rgb) (channelGreen rgb) (channelBlue rgb))
+                      $ plot_fillbetween_values .~ (circle x y (2 * sigma))
                       $ def) xycs in
   let my_dots = map (\((x,y),c,_) -> let rgb = hsv (c * 360) 1 1 in toPlot $ plot_points_style .~ filledCircles 4 (opaque $ sRGB (channelRed rgb) (channelGreen rgb) (channelBlue rgb))
                       $ plot_points_values .~ [(x,y)]
