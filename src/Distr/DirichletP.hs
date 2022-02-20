@@ -34,7 +34,7 @@ stickBreaking :: Double -> Double -> Prob [Double]
 stickBreaking alpha lower =
   do r <- beta 1 alpha
      let v = r * (1 - lower)
-     vs <- stickBreaking alpha v
+     vs <- stickBreaking alpha (lower + v)
      return (v : vs)
 
 {-- We can then define the Dirichlet Process --}
