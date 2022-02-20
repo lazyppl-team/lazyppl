@@ -1,21 +1,25 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module IrmTest where
 
 import LazyPPL
 import Distr
 import Distr.DirichletP
 
+type Person = String
 
 -- Simple Infinite Relational Model Example from Web Church / Prob Mods
 -- A Chinese Restaurant, where tables are social groups
-example = do r <- sample $ newRestaurant 1.0
+example :: Meas(Bool,Bool)
+example = do r :: Restaurant <- sample $ newRestaurant 1.0
              -- Chance of people at tableA talking to people at tableB
-             near <- sample $ memoize $ \(tableA,tableB) -> beta 0.5 0.5
+             near :: ((Table,Table) -> Double) <- sample $ memoize $ \(tableA,tableB) -> beta 0.5 0.5
              -- Assign a table to each person
-             table <- sample $ memoize $ \person -> newCustomer r
+             table :: (Person -> Table) <- sample $ memoize $ \person -> newCustomer r
              -- function to observe that personA talks to person B
-             let talks (personA,personB) = score $ near ((table personA),(table personB))
+             let talks :: (Person,Person) -> Meas () = \(personA,personB) -> score $ near ((table personA),(table personB))
              -- function to observe that personA doesn't talk to person B
-             let nottalks (personA,personB) = score $ 1 - (near ((table personA),(table personB)))
+             let nottalks :: (Person,Person) -> Meas () = \(personA,personB) -> score $ 1 - (near ((table personA),(table personB)))
              -- Data set
              mapM talks $ [("tom","fred"),("tom","jim"),("jim","fred"),("mary","sue"),("mary","ann"),("ann","sue")]
              mapM nottalks $ [("mary","fred"),("mary","jim"),("sue","fred"),("sue","tom"),("ann","jim"),("ann","tom")]
