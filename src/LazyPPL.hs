@@ -10,7 +10,7 @@ import System.Random hiding (uniform)
 import qualified System.Random as R
 import Control.Monad
 import Control.Monad.Extra
-import Control.Monad.State.Lazy (State, state , put, get, runState, runStateT, StateT)
+import Control.Monad.State.Lazy (State, state , put, get, runState)
 import Numeric.Log
 
 import GHC.Exts.Heap
@@ -293,8 +293,8 @@ helperT b = do
            (ThunkClosure {}, ConstrClosure {name = ":"}) -> 
              do l'' <- helperB l
                 return $ PTree Nothing l'' 
-           (ConstrClosure {dataArgs = [d], name = "D#"}, ThunkClosure {}) -> 
-             do return $ PTree (Just $ unsafeCoerce d) [] 
+           (ConstrClosure {dataArgs = [d], name = "D#"}, ThunkClosure {}) ->
+                return $ PTree (Just $ unsafeCoerce d) []
            (ThunkClosure {}, ThunkClosure {}) -> undefined
            (SelectorClosure {}, ThunkClosure {}) ->
              return $ PTree Nothing [] 
