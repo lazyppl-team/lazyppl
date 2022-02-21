@@ -2,6 +2,7 @@ module Clustering where
 import LazyPPL
 import Distr
 import Distr.DirichletP
+import Distr.Memoization
 
 import Graphics.Rendering.Chart
 import Graphics.Rendering.Chart.Backend.Diagrams
@@ -25,7 +26,7 @@ import Numeric.Log
     Tags each point with a colour describing the cluster it is in --}
 cluster :: [a] -> (Prob b) -> (b -> a -> Double) -> Meas [(a,Double,b)]
 cluster xs pparam like =
-        do rest <- sample $ newRestaurant 1
+        do rest <- sample $ newRestaurant 0.3
            param    <- sample $ memoize $ \i -> pparam
            color    <- sample $ memoize $ \i -> uniform
            mapM (\x -> do 

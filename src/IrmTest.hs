@@ -1,10 +1,16 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module IrmTest where
 
 import LazyPPL
 import Distr
 import Distr.DirichletP
+import Distr.Memoization
+instance (MonadMemo Prob String) where memoize = generalmemoize
+
 
 type Person = String
 

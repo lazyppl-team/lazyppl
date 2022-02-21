@@ -1,6 +1,9 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Distr.DirichletP (Restaurant, Table, newCustomer,newRestaurant, dp) where
 import LazyPPL
 import Distr
+import Distr.Memoization
 
 import Data.List
 import Data.Maybe
@@ -13,8 +16,8 @@ Exchangeable random process and data abstraction.
 Workshop on probabilistic programming semantics (PPS 2017).
 --}
 
-data Restaurant = R [Double]
-data Table = T Int deriving (Eq,Ord,Show)
+newtype Restaurant = R [Double]
+newtype Table = T Int deriving (Eq,Ord,Show,MonadMemo Prob)
 
 newCustomer :: Restaurant -> Prob Table 
 newCustomer (R restaurant) =

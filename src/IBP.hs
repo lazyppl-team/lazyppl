@@ -3,6 +3,7 @@ module IBP where
 import LazyPPL
 import Distr
 import Distr.IBP
+import Distr.Memoization
 
 import Data.List
 import Data.Monoid

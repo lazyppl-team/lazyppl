@@ -1,9 +1,11 @@
 {-# LANGUAGE RecursiveDo #-} 
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module TestMemRec where
 import LazyPPL
 import Distr
+import Distr.Memoization -- (generalmemoize,memrec)
 import Control.Monad.Fix
-
 
 -- Implementing a Poisson point process as a function random Int -> Double
 -- by writing a memoized recursive program
@@ -16,6 +18,7 @@ import Control.Monad.Fix
 -- First attempt. 
 -- Very naive, doesn't work.
 -- When we run it, we sometimes get f(n)<f(n-1)...
+test1 :: Prob (Int -> Double)
 test1 = do f <- memoize $ \x -> if x == 0 then return 0 else
                                          helper x
            return f                                        
@@ -29,11 +32,13 @@ test1 = do f <- memoize $ \x -> if x == 0 then return 0 else
 
 -- We might hope that the canonical lazy mfix does the trick, but it doesn't
 mfixlazy f = fix (>>= f)
+test3 :: Prob (Int -> Double)
 test3 = mfixlazy (\f -> memoize $ \x -> if x == 0 then return 0 else
                                      do r <- exponential 1.0
                                         return $ f (x-1) + r)
 
 -- With Hugo's memrec, it works. 
+test4 :: Prob (Int -> Double)
 test4 = memrec $ \f -> \x -> if x == 0 then return 0 else
                                      do r <- exponential 1.0
                                         return $ f (x-1) + r        
@@ -41,6 +46,7 @@ test4 = memrec $ \f -> \x -> if x == 0 then return 0 else
 -- Works with altmfix too.
 altmfix f = Prob $ \w -> fix (\x -> runProb (f x) w)
 
+test5 :: Prob (Int -> Double)
 test5 = altmfix (\f -> memoize $ \x -> if x == 0 then return 0 else
                                      do r <- exponential 1.0
                                         return $ f (x-1) + r)
@@ -49,7 +55,8 @@ test5 = altmfix (\f -> memoize $ \x -> if x == 0 then return 0 else
 instance MonadFix Prob where mfix f = altmfix f
 
 -- And then this works as we might expect
-test6 = mdo f <- memoize $ \x -> if x == 0 then return 0 else
+test6 :: Prob [Double]
+test6 = mdo f <- memoize $ \(x::Int) -> if x == 0 then return 0 else
                                      do r <- exponential 1.0
                                         return $ f (x-1) + r
             return $ map f [0..9]
@@ -57,6 +64,7 @@ test6 = mdo f <- memoize $ \x -> if x == 0 then return 0 else
 -- do { fs<-weightedsamples (sample test7) ; return $ fst (head fs)}
 
 -- Checking how this mfix/mdo works with recursively defined lists. 
+test7 :: Prob [Double]
 test7 = mdo xs <- do { r <- normal 0 1  ; return $ r : ys}
             ys <- do { r <- normal 10 1 ; return $ r : xs}
             return $ take 10 xs
@@ -71,6 +79,7 @@ test7 = mdo xs <- do { r <- normal 0 1  ; return $ r : ys}
 -- The following returns a list of random numbers,
 -- alternating between big and small.
 -- I think this is the behaviour we'd get with mfixlazy.
+test8 :: Prob [Double]
 test8 = do let xsprob = do { r <- normal 0 1  ; ys <- ysprob ; return $ r : ys}
                ysprob = do { r <- normal 10 1 ; xs <- xsprob ; return $ r : xs}
            xs <- xsprob
@@ -78,7 +87,8 @@ test8 = do let xsprob = do { r <- normal 0 1  ; ys <- ysprob ; return $ r : ys}
 
 -- Just as we can define the undesirable memoized recursion
 -- (where the memoization happens after the recursive definition). 
-test9 = do let fprob = memoize $ \x -> if x == 0 then return 0 else
+test9 :: Prob [Double]
+test9 = do let fprob = memoize $ \(x::Int) -> if x == 0 then return 0 else
                                      do r <- exponential 1.0
                                         f <- fprob
                                         return $ f (x-1) + r
