@@ -61,6 +61,35 @@ randoptions =
       [Var , Constt constr , Add adde1 adde2 , Mult multe1 multe2 ,
       IfLess ifr ife1 ife2]
 
+-- This version is how you would do it eagerly, (ok, you would write it with case)
+-- but it is really inefficient:
+-- the seeds are reused when you switch branches. 
+randexpralt :: Prob Expr
+randexpralt = do
+  i <- categorical [0.3,0.3,0.18,0.18,0.04]
+  e <- [return Var ,
+        do { n <- normal 0 5 ; return $ Constt n },
+        do { e1 <- randexpralt ; e2 <- randexpralt ; return $ Add e1 e2},
+        do { e1 <- randexpralt ; e2 <- randexpralt ; return $ Mult e1 e2},
+        do { r <- normal 0 5 ; e1 <- randexpralt ; e2 <- randexpralt ; return $ IfLess r e1 e2}]
+       !! i        
+  return e
+
+-- If I'm getting it right, this small change works much better.
+-- But it only makes sense when lazy,
+-- because es is an infinite thing.
+randexpraltbetter :: Prob Expr
+randexpraltbetter = do
+  i <- categorical [0.3,0.3,0.18,0.18,0.04]
+  es <- sequence
+     [return Var ,
+     do { n <- normal 0 5 ; return $ Constt n },
+     do { e1 <- randexpraltbetter ; e2 <- randexpraltbetter ; return $ Add e1 e2},
+     do { e1 <- randexpraltbetter ; e2 <- randexpraltbetter ; return $ Mult e1 e2},
+     do { r <- normal 0 5 ; e1 <- randexpraltbetter ; e2 <- randexpraltbetter ; return $ IfLess r e1 e2}]
+  return $ es !! i
+
+
 randfun :: Prob (Double -> Double,String)
 randfun = do
   e <- randexpr
