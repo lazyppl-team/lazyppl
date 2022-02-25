@@ -36,8 +36,8 @@ newRestaurant alpha = do sticks <- stickBreaking alpha 0
 stickBreaking :: Double -> Double -> Prob [Double]
 stickBreaking alpha lower =
   do r <- beta 1 alpha
-     let v = r * (1 - lower)
-     vs <- stickBreaking alpha (lower + v)
+     let v = lower + (r * (1 - lower))
+     vs <- stickBreaking alpha v
      return (v : vs)
 
 {-- We can then define the Dirichlet Process --}
