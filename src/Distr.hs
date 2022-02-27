@@ -85,8 +85,9 @@ uniformdiscrete n =
 categorical :: [Double] -> Prob Int
 categorical xs = do 
   r <- uniform
-  let (Just i) = findIndex (>r) $ tail $ scanl (+) 0 xs
-  return i
+  case findIndex (>r) $ tail $ scanl (+) 0 xs of
+    Just i -> return i
+    Nothing -> error "categorical: probabilities do not sum to 1"
 
 
 

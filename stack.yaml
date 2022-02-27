@@ -46,6 +46,8 @@ extra-deps:
 - converge-0.1.0.1
 - math-functions-0.3.4.2
 - Histogram-0.1.0.2
+- matplotlib-0.7.5
+
 
 # Override default flag values for local packages and extra-deps
 # flags: {}
