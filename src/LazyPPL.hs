@@ -51,7 +51,7 @@ uniform = Prob $ \(Tree r _) -> r
 -- Sequencing is done by splitting the tree
 -- and using different bits for different computations.
 instance Monad Prob where
-  return a = Prob $ return a
+  return a = Prob $ const a
   (Prob m) >>= f = Prob $ \g ->
                           let (g1,g2) = splitTree g
                               (Prob m') = f (m g1)

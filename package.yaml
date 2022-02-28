@@ -42,6 +42,7 @@ dependencies:
 - Histogram
 - ghc-heap
 - monad-loops
+- matplotlib
 
 library:
   source-dirs: src

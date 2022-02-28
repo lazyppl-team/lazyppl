@@ -11,7 +11,7 @@ import Data.Maybe
 {--
 Abstract types for the CRP. 
 e.g. 
-S. Staton, H. Yang, N. L.. Ackerman, C. Freer, D. Roy. 
+S. Staton, H. Yang, N. L. Ackerman, C. Freer, D. Roy. 
 Exchangeable random process and data abstraction. 
 Workshop on probabilistic programming semantics (PPS 2017).
 --}
