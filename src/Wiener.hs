@@ -48,6 +48,7 @@ wiener :: Prob (Double -> Double)
 wiener = Prob $ \(Tree r gs) ->
                    unsafePerformIO $ do
                                  ref <- newIORef Data.Map.empty
+                                 modifyIORef' ref (Data.Map.insert 0 0)
                                  return $ \x -> unsafePerformIO $ do
                                         table <- readIORef ref
                                         case Data.Map.lookup x table of
@@ -62,7 +63,8 @@ wiener = Prob $ \(Tree r gs) ->
                                                            return y
 
 bridge :: Maybe (Double,Double) -> Double -> Maybe (Double,Double) -> Prob Double
-bridge Nothing y Nothing = if y==0 then return 0 else normal 0 (sqrt y)
+-- not needed since the table is always initialized with (0, 0)
+-- bridge Nothing y Nothing = if y==0 then return 0 else normal 0 (sqrt y) 
 bridge (Just (x,x')) y Nothing = normal x' (sqrt (y-x))
 bridge Nothing y (Just (z,z')) = normal z' (sqrt (z-y))
 bridge (Just (x,x')) y (Just (z,z')) = normal (x' + ((y-x)*(z'-x')/(z-x))) (sqrt ((z-y)*(y-x)/(z-x)))
