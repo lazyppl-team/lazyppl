@@ -46,8 +46,8 @@ beta a b = do
 poisson :: Double -> Prob Integer
 poisson lambda = do
   x <- uniform
-  let cmf = scanl1 (+) $ map (probability $ Poisson.poisson lambda) $ [0,1..]
-  let (Just n) = findIndex (\r -> r > x) cmf
+  let cmf = scanl1 (+) $ map (probability $ Poisson.poisson lambda) [0,1..]
+  let (Just n) = findIndex (> x) cmf
   return $ fromIntegral n
 
 poissonPdf :: Double -> Integer -> Double

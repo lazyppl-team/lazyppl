@@ -1,4 +1,4 @@
-{-# LANGUAGE ExtendedDefaultRules, ScopedTypeVariables #-}
+{-# LANGUAGE ExtendedDefaultRules, ScopedTypeVariables, BangPatterns #-}
 
 module Distr.Mondrian where
 
@@ -77,9 +77,11 @@ applyOnBiaisFromMondrian2D :: Mondrian Double -> Double -> Double -> (Double -> 
 applyOnBiaisFromMondrian2D mondrian r c f = do
   case mondrian of
     Block p _ -> f p
-    Partition dim cut _ left right -> applyOnBiaisFromMondrian2D ([right, left] !! i) r c f
-      where i = fromEnum $ ([c, r] !! dim) < cut
-
+    Partition !dim !cut _ left right -> 
+      let !cr = case dim of {0 -> c; _ -> r}
+          !cond = cr < cut
+          !lr = if cond then left else right in
+      applyOnBiaisFromMondrian2D lr r c f
 
 -- | Given a Mondrian tree and two data points, sample an 'edge'.
 sampleFromMondrian2D :: Mondrian Double -> Double -> Double -> Prob Bool
@@ -87,7 +89,9 @@ sampleFromMondrian2D mondrian r c = applyOnBiaisFromMondrian2D mondrian r c bern
 
 -- | Probability of getting a given truth value 'val' at a (r, c) pair from a Mondrian. 
 likelihoodFromMondrian2D :: Mondrian Double -> Double -> Double -> Bool -> Double
-likelihoodFromMondrian2D mondrian r c val = applyOnBiaisFromMondrian2D mondrian r c (\p -> if val then p else 1-p)
+likelihoodFromMondrian2D mondrian r c val = 
+  let !f = if val then id else (1-) in 
+    applyOnBiaisFromMondrian2D mondrian r c f
 
 iid :: Prob a -> Prob [a]
 iid p = do r <- p; rs <- iid p; return $ r : rs
@@ -167,7 +171,7 @@ plotRelation :: Matplotlib -> Map (Double, Double) Bool -> Matplotlib
 plotRelation mp rel =
   readData (xs, ys, m, c)
   % mp # newDefScatter
-  # "mscatter(data[0], data[1], ax=ax, s=60, linewidths=2, m=data[2], c=data[3], alpha=0.8)"
+  # "mscatter(data[0], data[1], ax=ax, s=60, linewidths=2, m=data[2], c=data[3], alpha=0.8, zorder=2)"
   where
   ks = keys rel
   (xs, ys) = unzip ks
@@ -177,7 +181,7 @@ plotRelation mp rel =
   -- custom definition of `scatter` to support a list of markers
   -- credit: https://github.com/matplotlib/matplotlib/issues/11155#issuecomment-385939618
   newDefScatter = "\n\
-\def mscatter(x,y,ax=None, m=None, **kw):\n\
+\def mscatter(x, y, ax=None, m=None, **kw):\n\
 \  import matplotlib.markers as mmarkers\n\
 \  if not ax: ax=plt.gca()\n\
 \  sc = ax.scatter(x,y,**kw)\n\
@@ -261,8 +265,8 @@ plotPietMondrian = plotMondrian2D paintingPietMondrian1921
 
 datasetRelations :: IO [Map (Double, Double) Bool]
 datasetRelations = do
-  rels' <- mh 1000 $ sample (sampleFiniteRelationFromMondrian2D paintingPietMondrian1921 20)
-  let rels = map fst $ take 100 $ every 10 rels'
+  rels' <- mh 300 $ sample (sampleFiniteRelationFromMondrian2D paintingPietMondrian1921 20)
+  let rels = map fst $ take 20 $ every 10 rels'
   return rels
 
 plotPietPlusRelation :: Matplotlib
@@ -286,14 +290,21 @@ inferMondrian dataset base budget intervals = do
 
 testInference :: IO Matplotlib
 testInference = do
-  let dataset = unsafePerformIO datasetRelations
-  monds' <- mh 7000 $ inferMondrian dataset uniform 4 [(0, 1), (0, 1)]
-  -- let mws = take 100 $ every 100 $ drop 1000 monds'
-  let mws = drop 1000 monds'
+  dataset <- datasetRelations
+  monds' <- mh 0.2 $ inferMondrian dataset uniform 2 [(0, 1), (0, 1)]
+  let mws = take 500 $ every 1000 $ drop 1000 monds'
   let maxw = maximum $ map snd mws
   let (Just m) = Data.List.lookup maxw $ map (\(m,w) -> (w,m)) mws
   return $ plotMondrian2D m
 
-{-# NOINLINE testResult #-}
 testResult :: Matplotlib
 testResult = unsafePerformIO testInference
+
+main :: IO ()
+main = do
+  putStrLn "Plotting..."
+  dataRel <- datasetRelations
+  file "pietMondrian-plus-relation.svg" $ plotRelation plotPietMondrian $ head dataRel
+  testInf <- testInference
+  file "mondrian-relation.svg" testInf
+  putStrLn "Done."
