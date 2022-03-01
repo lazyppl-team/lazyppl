@@ -1,49 +1,49 @@
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module IrmTest where
 
-import LazyPPL
 import Distr
 import Distr.DirichletP
 import Distr.Memoization
-instance (MonadMemo Prob String) where memoize = generalmemoize
+import LazyPPL
 
+instance (MonadMemo Prob String) where memoize = generalmemoize
 
 type Person = String
 
--- Simple Infinite Relational Model Example from Web Church / Prob Mods
--- A Chinese Restaurant, where tables are social groups
-example :: Meas(Bool,Bool)
-example = do r :: Restaurant <- sample $ newRestaurant 1.0
-             -- Chance of people at tableA talking to people at tableB
-             near :: ((Table,Table) -> Double) <- sample $ memoize $ \(tableA,tableB) -> beta 0.5 0.5
-             -- Assign a table to each person
-             table :: (Person -> Table) <- sample $ memoize $ \person -> newCustomer r
-             -- function to observe that personA talks to person B
-             let talks :: (Person,Person) -> Meas () = \(personA,personB) -> score $ near ((table personA),(table personB))
-             -- function to observe that personA doesn't talk to person B
-             let nottalks :: (Person,Person) -> Meas () = \(personA,personB) -> score $ 1 - (near ((table personA),(table personB)))
-             -- Data set
-             mapM talks $ [("tom","fred"),("tom","jim"),("jim","fred"),("mary","sue"),("mary","ann"),("ann","sue")]
-             mapM nottalks $ [("mary","fred"),("mary","jim"),("sue","fred"),("sue","tom"),("ann","jim"),("ann","tom")]
-             -- We want to know whether Tom and Fred are at the same table,
-             -- and whether Tom and Mary are at the same table. 
-             return ((table "tom" == table "fred"),(table "tom" == table "mary"))
-             
-test = do bcws <- mh 0.2 example
-          let bcs = map fst $ take 100 . every 1000 . drop 10000 $ bcws
-          putStrLn $ show $ (fromIntegral $ length $ filter fst bcs) / (fromIntegral $ length bcs)
-          putStrLn $ show $ (fromIntegral $ length $ filter snd bcs) / (fromIntegral $ length bcs)
-          
+-- | Simple Infinite Relational Model Example from Web Church / Prob Mods
+-- | A Chinese Restaurant, where tables are social groups
+example :: Meas (Bool, Bool)
+example = do
+  r :: Restaurant <- sample $ newRestaurant 1.0
+  -- | Chance of people at 'tableA' talking to people at 'tableB'
+  near :: ((Table, Table) -> Double) <- sample $ memoize $ \(tableA, tableB) -> beta 0.5 0.5
+  -- | Assign a table to each person
+  table :: (Person -> Table) <- sample $ memoize $ \person -> newCustomer r
+  -- | function to observe that personA talks to person B
+  let talks :: (Person, Person) -> Meas () = \(personA, personB) -> score $ near (table personA, table personB)
+  -- | function to observe that personA doesn't talk to person B
+  let nottalks :: (Person, Person) -> Meas () = \(personA, personB) -> score $ 1 - near (table personA, table personB)
+  -- | Data set
+  mapM talks $ [("tom", "fred"), ("tom", "jim"), ("jim", "fred"), ("mary", "sue"), ("mary", "ann"), ("ann", "sue")]
+  mapM nottalks $ [("mary", "fred"), ("mary", "jim"), ("sue", "fred"), ("sue", "tom"), ("ann", "jim"), ("ann", "tom")]
+  -- | We want to know whether Tom and Fred are at the same table,
+  -- | and whether Tom and Mary are at the same table.
+  return (table "tom" == table "fred", table "tom" == table "mary")
+
+test = do
+  bcws <- mh 0.2 example
+  let bcs = map fst $ take 100 . every 1000 . drop 10000 $ bcws
+  print $ fromIntegral (length $ filter fst bcs) / fromIntegral (length bcs)
+  print $ fromIntegral (length $ filter snd bcs) / fromIntegral (length bcs)
 
 main = test
 
-
 {-- Web Church Program from http://v1.probmods.org/non-parametric-models.html#example-the-infinite-relational-model
-Returns the wrong result: Says ~35% chance of Tom and Mary in the same group. 
+Returns the wrong result: Says ~35% chance of Tom and Mary in the same group.
 
 (define samples
   (mh-query
@@ -80,9 +80,7 @@ Returns the wrong result: Says ~35% chance of Tom and Mary in the same group.
 (hist (map first samples) "tom and fred in same group?")
 (hist (map second samples) "tom and mary in same group?")
 
-
-
---} 
+--}
 
 {-- Rejection sampler in Web Church for validation
     This returns the same results as LazyPPL mh.
@@ -121,4 +119,4 @@ Returns the wrong result: Says ~35% chance of Tom and Mary in the same group.
 (hist (map first (repeat 200 samples)) "tom and mary in same group?")
 (hist (map second (repeat 200 samples)) "tom and mary in same group?")
 
---} 
+--}

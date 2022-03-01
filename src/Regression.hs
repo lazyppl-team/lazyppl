@@ -69,18 +69,18 @@ testPiecewiseRegression =
 testPiecewiseRegressionLWIS =
   do
     fs' <- lwis 100000 $ regress 0.1 (splice (poissonPP 0 0.1) linear ) dataset
-    let fs = take 500 $ fs'
+    let fs = take 500 fs'
     plot_funs "piecewise-regLWIS.svg" dataset fs
 
 testPiecewiseRegressionMH1 =
   do
     fs' <- mh1 510000 (regress 0.1 (splice (poissonPP 0 0.1) linear) dataset)
-    let fs = map fst $ take 500 $ every 1000 $ drop 10000 $ fs'
+    let fs = map fst $ take 500 $ every 1000 $ drop 10000 fs'
     plot_funs "piecewise-regMH1.svg" dataset fs
 
 
 {-- GRAPHING ROUTINES --}
- 
+
 
 -- Plot the points drawn from weighted samples
 -- More graphing routines
