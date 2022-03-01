@@ -1,4 +1,4 @@
-module IBP where
+module AdditiveClustering where
 
 import LazyPPL
 import Distr
@@ -34,8 +34,6 @@ print_feature_groups features names = do
         [0..(length fs-1)];
 
 
-
-
 {--
 An example application.
 Additive clustering is a method for assigning features to a set of 
@@ -67,7 +65,6 @@ countries_dataset =
 countries_names = ["China ", "Cuba ", "Germany ", "Indonesia ", "Iraq ", "Italy ", "Jamaica ", "Japan ", "Libya ", "Nigeria ", "Philippines ", "Russia ", "Spain ", "United States ", "Vietnam ", "Zimbabwe "]
 
 
-
 additive_clustering :: Double -> Double -> Double -> [[Double]] -> Meas [[Dish]]
 additive_clustering alpha lambda1 lambda2 similarityData = do
     restaurant <- sample $ newRestaurant alpha 
@@ -80,16 +77,81 @@ additive_clustering alpha lambda1 lambda2 similarityData = do
     return features
 
 
+countList :: Eq a => [a] -> a -> Int 
+countList [] y = 0
+countList (x:xs) y = (if (x == y) then 1 else 0) + countList xs y   
+
+
+-- turn a list of countries into a 16-bit vector 
+mtranscountries :: [Int] -> [Bool]
+mtranscountries v = (map (\i -> elem i v) [0..15])
+
+-- turns a list of dishes into a boolean vector
+mtransdish :: [Dish] -> [Bool]
+mtransdish v = (map (\i -> elem (D i) v) [0..(k-1)]) ++ [True]
+    where 
+        D k = maximum v 
+
+-- given a group of countries (just the list of indices) 
+-- return whether they are a "feature" in matrix
+-- idea is to represent the matrix as an actual Boolean matrix, make it a square matr 
+hasFeature :: [Int] -> [[Dish]] -> Bool
+hasFeature group matrix = 
+    elem (mtranscountries group) $ transpose $ completeLines (map mtransdish matrix) 
+      
+
+completeLines :: [[Bool]] -> [[Bool]]
+completeLines m = 
+    map (\l -> l ++ (take (maxLengthRow - (length l)) $ repeat False)) m  
+    where 
+        maxLengthRow = maximum $ map length m
+
+
+
+calculateFeatureProbs = do 
+    stream <- mh 0.2 (additive_clustering 2 2 0.5 countries_dataset)
+    let samples = take 300 $ every 200 $ drop 2000 $ map fst stream 
+    let featuresADCLUS = [[2, 5, 12], [14, 0, 7, 10, 3], [2, 11, 13, 0, 7], [9, 15], 
+                            [9, 15, 1, 6, 4, 8], 
+                            [4, 8], [9, 15, 4,8], 
+                            [10, 3]]
+    -- indices for nig and zim 
+    mapM_ (\f -> do  
+        let haveFeature = filter (\s -> hasFeature f s) samples
+        print $ "Prossh -i ~/lazyppl2022.pem archlinux@ec2-35-176-102-180.eu-west-2.compute.amazonaws.com portion of samples with feature " ++ show f ++ ":"
+        print $ (fromIntegral $ length haveFeature) / (fromIntegral $ length samples)
+        print "--") featuresADCLUS
+    -- take many samples from posterior 
+    -- take groups of countries that come up a lot
+    -- calculate the proportionls
+
+examplematrix = [[D 0,D 1],[D 0],[D 1,D 2],[D 0,D 1],[D 0,D 3,D 4],[D 2,D 5],[D 0,D 6,D 7],[D 0,D 1],[D 0,D 3],[D 3,D 6,D 8],[D 0,D 1],[D 1,D 5],[D 0,D 2,D 5],[D 1,D 5],[D 0,D 1],[D 0,D 8]]
 
 
 main :: IO () 
-main = do 
-    everything <- mh 0.03 (additive_clustering 3 2 0.5 countries_dataset)
-    let samples = take 20000 $ everything
-    let maxw = (maximum $ map snd samples :: Product (Numeric.Log.Log Double))
-    let (Just xyc) = Data.List.lookup maxw $ map (\(z,w) -> (w,z)) samples
-    print xyc
-    print_feature_groups xyc countries_names  
+main = do { calculateFeatureProbs }
+    -- print $ makesquare (map mtransdish examplematrix)
+    -- print $ map mtransdish examplematrix
+    -- putStrLn ""
+    -- print $ completeLines $ map mtransdish examplematrix
+    -- putStrLn "" 
+    -- print $ hasFeature [9, 15] examplematrix 
+
+
+oldmain =  
+    do 
+        -- print $ mtrans $ map D [1, 4, 5 ,6, 0] 
+        let matrix = [[1],[2], [3], [4]]
+        everything <- mh 0.2 (additive_clustering 3 2 0.5 countries_dataset)
+        let samples = take 10 $ every 200 $ everything
+        -- histogram of the number of features 
+        let featureCounts = map (\l -> maximum (map (\c -> if c == [] then D 0 else maximum c) l)) (map fst samples)  
+        let histogram = map (\i -> countList featureCounts i) (map D [1, 2..13])
+        print histogram
+        let maxw = (maximum $ map snd samples :: Product (Numeric.Log.Log Double))
+        let (Just xyc) = Data.List.lookup maxw $ map (\(z,w) -> (w,z)) samples
+        print xyc
+        print_feature_groups xyc countries_names  
 
 {-- Prints something like:
 Group 1: Iraq Libya 
