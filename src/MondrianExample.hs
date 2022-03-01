@@ -3,6 +3,10 @@ module MondrianExample where
 import Distr
 import Distr.Mondrian
 import LazyPPL
+import Graphics.Matplotlib
+import Data.Map (Map,empty,lookup,insert,size,keys,findWithDefault,fromList,(!))
+import qualified Data.List
+import System.IO.Unsafe
 
 -- | __Mondrian Process examples:__
 mond :: Prob (Mondrian Double)
@@ -130,14 +134,14 @@ mhInference = do
   let (Just m) = Data.List.lookup maxw $ map (\(m, w) -> (w, m)) mws
   return $ plotMondrian2D m
 
-mh1Inference :: IO Matplotlib
-mh1Inference = do
-  dataset <- datasetRelations
-  mws' <- mh1 $ inferMondrian dataset uniform 4 [(0, 1), (0, 1)]
-  let mws = take 500 $ every 1000 $ drop 10000 mws'
-  let maxw = maximum $ map snd mws
-  let (Just m) = Data.List.lookup maxw $ map (\(m, w) -> (w, m)) mws
-  return $ plotMondrian2D m
+-- mh1Inference :: IO Matplotlib
+-- mh1Inference = do
+--   dataset <- datasetRelations
+--   mws' <- mh1 $ inferMondrian dataset uniform 4 [(0, 1), (0, 1)]
+--   let mws = take 500 $ every 1000 $ drop 10000 mws'
+--   let maxw = maximum $ map snd mws
+--   let (Just m) = Data.List.lookup maxw $ map (\(m, w) -> (w, m)) mws
+--   return $ plotMondrian2D m
 
 lwisInference :: IO Matplotlib
 lwisInference = do

@@ -101,7 +101,7 @@ weightedsamples (Meas m) =
     g <- getStdGen
     let rs = randomTree g
     let xws = runProb helper rs
-    return $ map (Data.Bifunctor.second getProduct) xws
+    return $ map (\(x,w) -> (x, getProduct w)) xws
 
 {- | Likelihood weighted importance sampling first draws n weighted samples,
     and then samples a stream of results from that regarded as an empirical distribution -}
@@ -257,7 +257,7 @@ mh1 (Meas m) = do
         step (treeSeed, seed, sub, ptree, (x,w)) =
             let (seed1, seed2) = split seed
                 sites = getSites ptree
-                (seed1', randSite) = (Data.Bifunctor.second reverse) $ randomElement seed1 sites
+                (seed1', randSite) = (\(x,y) -> (x, reverse y)) $ randomElement seed1 sites
                 (newNode :: Double, seed1'') = random seed1'
                 (u :: Double, _) = random seed1'' -- the 'u' from Luke's notes
                 sub' = M.insert randSite newNode sub
