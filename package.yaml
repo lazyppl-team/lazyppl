@@ -43,6 +43,7 @@ dependencies:
 - ghc-heap
 - monad-loops
 - matplotlib
+- deepseq
 
 library:
   source-dirs: src
