@@ -1,6 +1,8 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Distr.IBP (Restaurant,Dish,newCustomer,newRestaurant) where
+-- module Distr.IBP (Restaurant,Dish,newCustomer,newRestaurant) where
+module Distr.IBP where
+
 
 import LazyPPL
 import Distr
