@@ -13,6 +13,11 @@ import Control.Monad.Extra
 import Control.Monad.State.Lazy (State, state , put, get, runState)
 import Numeric.Log
 
+import Control.DeepSeq
+import Control.Exception (evaluate)
+
+import System.IO.Unsafe
+
 import GHC.Exts.Heap
 import System.Mem
 import Unsafe.Coerce
@@ -234,42 +239,34 @@ randomElement g xs = if (length xs == 0) then error "0d sample space" else (g', 
                -- we are using, the function is called randomR. In newer
                -- versions it is called uniformR.
 
-mh1 :: forall a. Int -> Meas a -> IO [(a, Product (Log Double))]
-mh1 n (Meas m) = do
+mh1 :: forall a. NFData a => Meas a -> IO [(a, Product (Log Double))]
+mh1 (Meas m) = do
     newStdGen
     g <- getStdGen
     let (gTree,g') = split g
-    let tree = randomTree gTree
-    let (x0, w0) = runProb (runWriterT m) tree
-    w0 `seq` return ()
-    x0 `seq` return ()
-    p <- trunc tree
-    samples <- map (\(_,_,_,_,s) -> s) <$> iterateNM n step (gTree, g', M.empty, p, (x0, w0))
+        tree = randomTree gTree
+        (x0, w0) = runProb (runWriterT m) tree
+        p = unsafePerformIO $ do { evaluate (rnf x0); evaluate (rnf w0) ; trunc tree }
+        samples = map (\(_,_,_,_,s) -> s) $ iterate step (gTree, g', M.empty, p, (x0, w0))
     return samples
   where step :: RandomGen g => (g, g, Subst, PTree, (a, Product (Log Double))) ->
-                            IO (g, g, Subst, PTree, (a, Product (Log Double)))
+                               (g, g, Subst, PTree, (a, Product (Log Double)))
         step (treeSeed, seed, sub, ptree, (x,w)) =
-            do let (seed1, seed2) = split seed
-               let sites = getSites ptree
-               let (seed1', randSite) = (\(x,y) -> (x, reverse y)) $ randomElement seed1 sites
-               let (newNode :: Double, seed1'') = random seed1'
-               let (u :: Double, _) = random seed1'' -- the 'u' from Luke's notes
-               let sub' = M.insert randSite newNode sub
-               let t' = mutateNodes (randomTree treeSeed) sub'               
-               let (x',w') = runProb (runWriterT m) t'
-               w' `seq` return ()
-               x' `seq` return ()
-               ptree' <- trunc t'
-               -- putStrLn $ show ptree
-               -- putStrLn $ show ptree'
-               -- putStrLn $ show randSite
-               -- putStrLn "---"
-               let sites' = getSites ptree'
-               let alpha = (fromIntegral (length sites) / fromIntegral (length sites'))
-                         * (exp $ ln $ ((getProduct w') / (getProduct w)))
-               if u <= alpha
-               then return (treeSeed, seed2, sub', ptree', (x',w'))
-               else return (treeSeed, seed2, sub,  ptree,  (x,w))
+            let (seed1, seed2) = split seed
+                sites = getSites ptree
+                (seed1', randSite) = (\(x,y) -> (x, reverse y)) $ randomElement seed1 sites
+                (newNode :: Double, seed1'') = random seed1'
+                (u :: Double, _) = random seed1'' -- the 'u' from Luke's notes
+                sub' = M.insert randSite newNode sub
+                t' = mutateNodes (randomTree treeSeed) sub'               
+                (x',w') = runProb (runWriterT m) t'
+                ptree' = unsafePerformIO $ do { evaluate (rnf x'); evaluate (rnf w'); trunc t' }
+                sites' = getSites ptree'
+                alpha = (fromIntegral (length sites) / fromIntegral (length sites'))
+                      * (exp $ ln $ ((getProduct w') / (getProduct w)))
+            in if u <= alpha
+               then (treeSeed, seed2, sub', ptree', (x',w'))
+               else (treeSeed, seed2, sub,  ptree,  (x,w))
 
 -- Functions for truncating a tree.
 getGCClosureData b = do c <- getBoxedClosureData b

@@ -62,7 +62,7 @@ dataset = [(0,0.6), (1, 0.7), (2,1.2), (3,3.2), (4,6.8), (5, 8.2), (6,8.4)]
 testPiecewiseRegression =
   do
     fs' <- mh 0.2 (regress 0.1 (splice (poissonPP 0 0.1) linear) dataset)
-    let fs = map fst $ take 500 $ every 1000 $ drop 10000 $ fs'
+    let fs = map fst $ take 1000 $ every 1000 $ drop 10000 $ fs'
     plot_funs "piecewise-reg.svg" dataset fs
 
 -- similar, but using likelihood weighted importance sampling
@@ -74,8 +74,8 @@ testPiecewiseRegressionLWIS =
 
 testPiecewiseRegressionMH1 =
   do
-    fs' <- mh1 510000 (regress 0.1 (splice (poissonPP 0 0.1) linear) dataset)
-    let fs = map fst $ take 500 $ every 1000 $ drop 10000 $ fs'
+    fs' <- mh1 (regress 0.1 (splice (poissonPP 0 0.1) linear) dataset)
+    let fs = map fst $ take 1500 $ every 1000 $ drop 10000 $ fs'
     plot_funs "piecewise-regMH1.svg" dataset fs
 
 
@@ -124,11 +124,15 @@ plot_funs filename dataset funs =
 
 main :: IO ()
 main = do
-        fs' <- mh 0.2 $ regress 1 linear dataset
-        let fs = map fst $ take 500 $ every 1000 $ drop 10000 $ fs'
-        plot_funs "linreg-mh.svg" dataset fs
+          testPiecewiseRegressionMH1
+          -- testPiecewiseRegression
+          -- testPiecewiseRegressionLWIS
+-- main = do
+--         fs' <- mh 0.2 $ regress 1 linear dataset
+--         let fs = map fst $ take 500 $ every 1000 $ drop 10000 $ fs'
+--         plot_funs "linreg-mh.svg" dataset fs
 
-        fs' <- mh1 510000 $ regress 1 linear dataset
-        let fs = map fst $ take 500 $ every 1000 $ drop 10000 $ fs'
-        plot_funs "linreg-mh1.svg" dataset fs
+--         fs' <- mh1 510000 $ regress 1 linear dataset
+--         let fs = map fst $ take 500 $ every 1000 $ drop 10000 $ fs'
+--         plot_funs "linreg-mh1.svg" dataset fs
 
