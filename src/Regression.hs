@@ -50,11 +50,12 @@ linear =
 {- | Regression: a random function "prior", and some input/output observations "dataset", 
     which are assumed to be noisy according to "sigma", 
     return a conditioned random linear function (unnormalized) -}
-regress :: Double -> Prob (a -> Double) -> [(a,Double)] -> Meas (a -> Double)
+regress :: Double -> Prob (a -> Double) -> [(a, Double)] -> Meas (a -> Double)
 regress sigma prior dataset =
-  do f <- sample prior
-     mapM (\(x,y) -> score $ normalPdf (f x) sigma y) dataset
-     return f
+  do
+    f <- sample prior
+    mapM (\(x, y) -> score $ normalPdf (f x) sigma y) dataset
+    return f
 
 
 {- | A sample dataset -}
