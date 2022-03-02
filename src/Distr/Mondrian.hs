@@ -7,15 +7,30 @@ import Data.Colour.RGBSpace.HSV
 import Data.Colour.SRGB
     ( RGB(channelBlue, channelGreen, channelRed) )
 import Data.IORef
-import Debug.Trace
+-- import Debug.Trace
 import Distr
 import Distr.Counter
 import Graphics.Matplotlib
+    ( subplots,
+      text,
+      xlim,
+      ylim,
+      (#),
+      (##),
+      (%),
+      (@@),
+      lit,
+      mp,
+      o2,
+      readData,
+      Matplotlib )
 import System.IO.Unsafe
 import Data.Map (Map,empty,lookup,insert,size,keys,findWithDefault,fromList,(!))
 -- import Text.RawString.QQ
 -- import qualified Data.List
 import qualified Text.Printf
+-- import Control.DeepSeq
+
 
 -- | From Roy-Teh "The Mondrian Process", NIPS 2009
 
@@ -35,8 +50,9 @@ oneDimMondrian budget (low, high) = do
 -- | Some data types. Intuitively, Matrix is a type of 2D exchangeable arrays, and 'Mondrian Double' would be the type of block-structured graphons.
 
 data Mondrian a
-  = Block a [(Double, Double)] -- ^ args: atomName and intervals making up the block
-  | Partition Int Double [(Double, Double)] (Mondrian a) (Mondrian a) -- ^ args: dimension cutPosition intervals (hypercube over which the Mondrian is defined) subtree1 subtree2
+  = Block a [(Double, Double)] -- ^ args:  and intervals making up the block
+  | Partition Int Double [(Double, Double)] (Mondrian a) (Mondrian a) -- ^ args: dimension cutPosition intervals (hypercube over which the Mondrian is defined) subtree1 
+  deriving (Eq, Show)
 
 newtype Row = Row Int -- ^ in [0, 1]
 
@@ -62,36 +78,38 @@ randomMondrian base budget abs = do
   let sumLengths = sum lengths
   cutCost <- exponential sumLengths
   if budget < cutCost
-    then do x <- base; return $ Block x abs
+    then do p <- base; return $ Block p abs
     else do
       let remaining = budget - cutCost
-      dim <- categorical $ map (/sumLengths) lengths -- if dim is true then cut is perpendicular to (a0, b0)
-      let (a0, b0) = abs !! dim
-      cut <- uniformbounded a0 b0
-      leftMondrian <- randomMondrian base remaining $ zipWith (\ab i -> if i == dim then (a0, cut) else ab) abs [0 ..]
-      rightMondrian <- randomMondrian base remaining $ zipWith (\ab i -> if i == dim then (cut, b0) else ab) abs [0 ..]
+      dim <- categorical $ map (/sumLengths) lengths -- ^ if dim is true then cut is perpendicular to (a_d, b_d)
+      let (a_d, b_d) = abs !! dim
+      cut <- uniformbounded a_d b_d
+      leftMondrian <- randomMondrian base remaining 
+        $ zipWith (\ab i -> if i == dim then (a_d, cut) else ab) abs [0 ..]
+      rightMondrian <- randomMondrian base remaining 
+        $ zipWith (\ab i -> if i == dim then (cut, b_d) else ab) abs [0 ..]
       return $ Partition dim cut abs leftMondrian rightMondrian
 
 -- | Given a Mondrian tree and two data points, apply a function on the biais of the corresponding block. 
 applyOnBiaisFromMondrian2D :: Mondrian Double -> Double -> Double -> (Double -> a) -> a
-applyOnBiaisFromMondrian2D mondrian r c f = do
+applyOnBiaisFromMondrian2D mondrian x y f = do
   case mondrian of
     Block p _ -> f p
     Partition !dim !cut _ left right -> 
-      let !cr = case dim of {0 -> c; _ -> r}
-          !cond = cr < cut
+      let !xy = case dim of {0 -> x; _ -> y}
+          !cond = xy < cut
           !lr = if cond then left else right in
-      applyOnBiaisFromMondrian2D lr r c f
+      applyOnBiaisFromMondrian2D lr x y f
 
 -- | Given a Mondrian tree and two data points, sample an 'edge'.
 sampleFromMondrian2D :: Mondrian Double -> Double -> Double -> Prob Bool
-sampleFromMondrian2D mondrian r c = applyOnBiaisFromMondrian2D mondrian r c bernoulli
+sampleFromMondrian2D mondrian x y = applyOnBiaisFromMondrian2D mondrian x y bernoulli
 
 -- | Probability of getting a given truth value 'val' at a (r, c) pair from a Mondrian. 
 likelihoodFromMondrian2D :: Mondrian Double -> Double -> Double -> Bool -> Double
-likelihoodFromMondrian2D mondrian r c val = 
+likelihoodFromMondrian2D mondrian x y val = 
   let !f = if val then id else (1-) in 
-    applyOnBiaisFromMondrian2D mondrian r c f
+    applyOnBiaisFromMondrian2D mondrian x y f
 
 iid :: Prob a -> Prob [a]
 iid p = do r <- p; rs <- iid p; return $ r : rs

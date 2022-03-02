@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 module MondrianExample where
 
 import Distr
@@ -7,6 +8,17 @@ import Graphics.Matplotlib
 import Data.Map (Map,empty,lookup,insert,size,keys,findWithDefault,fromList,(!))
 import qualified Data.List
 import System.IO.Unsafe
+
+takeWithProgress :: Int -> [a] -> IO [a]
+takeWithProgress n = helper n n
+  where
+    helper :: Int -> Int -> [a] -> IO [a]
+    helper _ i _ | i <= 0 = return []
+    helper _ _ []        = return []
+    helper n i ((!x):xs)    = do
+      putStrLn $ "Progress: " ++ show (fromIntegral (100*(n-i)) / fromIntegral n) ++ "%"
+      xs' <- helper n (i-1) xs
+      return $ x : xs'
 
 -- | __Mondrian Process examples:__
 mond :: Prob (Mondrian Double)
@@ -128,8 +140,9 @@ inferMondrian dataset base budget intervals = do
 mhInference :: IO Matplotlib
 mhInference = do
   dataset <- datasetRelations
-  mws' <- mh 0.2 $ inferMondrian dataset uniform 4 [(0, 1), (0, 1)]
-  let mws = take 1000 $ every 100 $ drop 100 mws'
+  mws' <- mh 0.2 $ inferMondrian dataset uniform 3 [(0, 1), (0, 1)]
+  -- let mws = take 1000 $ every 100 $ drop 100 mws'
+  mws <- takeWithProgress 5000 $ every 100 $ drop 100 mws'
   let maxw = maximum $ map snd mws
   let (Just m) = Data.List.lookup maxw $ map (\(m, w) -> (w, m)) mws
   return $ plotMondrian2D m
