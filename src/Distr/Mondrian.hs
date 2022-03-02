@@ -132,11 +132,11 @@ sampleRelationFromMondrian2D mondrian = do
 
 sampleMapRelationFromMondrian2D :: Mondrian Double -> Int -> Prob (Map (Double, Double) Bool)
 sampleMapRelationFromMondrian2D mondrian size = do
-  rs <- iid uniform
-  cs <- iid uniform
-  matrix <- mapM (\r ->
-    mapM (\c -> (do b <- sampleFromMondrian2D mondrian r c; return ((r, c), b))) (take size cs))
-    (take size rs)
+  xs <- iid uniform
+  ys <- iid uniform
+  matrix <- mapM (\x ->
+    mapM (\y -> (do b <- sampleFromMondrian2D mondrian x y; return ((x, y), b))) (take size xs))
+    (take size ys)
   return $ fromList $ concat matrix
 
 sampleMatrixRelationFromMondrian2D :: Mondrian Double -> Prob Matrix

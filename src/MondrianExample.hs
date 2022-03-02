@@ -127,8 +127,8 @@ datasetMatrixRelations = do
   let rels = map fst $ take 100 $ every 10 rels'
   return rels
 
--- | Statistical model: infers the hyperparameters of a Mondrian by observing
--- relations generated from it.
+-- | Statistical model 1: infers the hyperparameters of a Mondrian by observing
+-- Map relations generated from it.
 inferMondrianMap ::
   Foldable t =>
   t (Map (Double, Double) Bool) ->
@@ -145,10 +145,39 @@ inferMondrianMap dataset base budget intervals = do
   mapM_ scoreRel dataset
   return mondrian
 
-mhInference :: IO Matplotlib
-mhInference = do
+
+-- | Statistical model 2: infers the hyperparameters of a Mondrian by observing 
+-- Boolean matrices (relations) generated from it.
+inferMondrianMatrix :: Foldable t => t Matrix 
+  -> Prob Double -> Double -> [(Double, Double)]
+  -> Meas (Mondrian Double)
+inferMondrianMatrix dataset base budget intervals = do
+  mondrian <- sample $ randomMondrian base budget intervals
+  rs <- sample $ iid uniform
+  cs <- sample $ iid uniform
+  let xrs = zip rs [0 ..]
+  let ycs = zip cs [0 ..]
+  let scoreRel (Matrix rel) =
+        mapM (\(x, r) ->
+          mapM (\(y, c) -> score 
+            (likelihoodFromMondrian2D mondrian x y (rel !! r !! c))
+        ) ycs) xrs
+  mapM_ scoreRel dataset
+  return mondrian
+
+mhInferenceMap :: IO Matplotlib
+mhInferenceMap = do
   dataset <- datasetMapRelations
   mws' <- mh 0.2 $ inferMondrianMap dataset uniform 3 [(0, 1), (0, 1)]
+  mws <- takeWithProgress 5000 $ every 100 $ drop 100 mws'
+  let maxw = maximum $ map snd mws
+  let (Just m) = Data.List.lookup maxw $ map (\(m, w) -> (w, m)) mws
+  return $ plotMondrian2D m
+
+mhInferenceMatrix :: IO Matplotlib
+mhInferenceMatrix = do
+  dataset <- datasetMatrixRelations
+  mws' <- mh 0.2 $ inferMondrianMatrix dataset uniform 3 [(0, 1), (0, 1)]
   mws <- takeWithProgress 5000 $ every 100 $ drop 100 mws'
   let maxw = maximum $ map snd mws
   let (Just m) = Data.List.lookup maxw $ map (\(m, w) -> (w, m)) mws
@@ -173,14 +202,23 @@ lwisInference = do
   return $ plotMondrian2D m
 
 mhResultMap :: Matplotlib
-mhResultMap = unsafePerformIO mhInference
+mhResultMap = unsafePerformIO mhInferenceMap
 
 main :: IO ()
 main = do
   putStrLn "Plotting..."
-  dataRel <- datasetMapRelations
-  file "pietMondrian-plus-relation.svg" $ plotMapRelation plotPietMondrian $ head dataRel
-  testInf <- mhInference
-  -- testInf <- lwisInference
-  file "mondrian-relation.svg" testInf
+  -- -- Map relations inference
+  -- dataRel <- datasetMapRelations
+  -- file "pietMondrian-plus-relation.svg" $ plotMapRelation plotPietMondrian $ head dataRel
+  -- testInf <- mhInferenceMap
+  --  -- testInf <- lwisInference
+  -- file "mondrian-relation-map.svg" testInf
+
+
+  -- Matrix relations inference
+  dataRel <- datasetMatrixRelations
+  file "pietMondrian.svg" plotPietMondrian
+  testInf <- mhInferenceMatrix
+  file "mondrian-relation-matrix.svg" testInf
+  
   putStrLn "Done."
