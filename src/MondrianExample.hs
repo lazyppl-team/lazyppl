@@ -110,25 +110,33 @@ paintingPietMondrian1921 =
 plotPietMondrian :: Matplotlib
 plotPietMondrian = plotMondrian2D paintingPietMondrian1921
 
-datasetRelations :: IO [Map (Double, Double) Bool]
-datasetRelations = do
-  rels' <- mh 0.2 $ sample (sampleFiniteRelationFromMondrian2D paintingPietMondrian1921 20)
+datasetMapRelations :: IO [Map (Double, Double) Bool]
+datasetMapRelations = do
+  rels' <- mh 0.2 $ sample 
+    $ sampleMapRelationFromMondrian2D paintingPietMondrian1921 20
   let rels = map fst $ take 100 $ every 10 rels'
   return rels
 
-plotPietPlusRelation :: Matplotlib
-plotPietPlusRelation = plotRelation plotPietMondrian (head $ unsafePerformIO datasetRelations)
+-- plotPietPlusRelation :: Matplotlib
+-- plotPietPlusRelation = plotMapRelation plotPietMondrian (head $ unsafePerformIO datasetMapRelations)
+
+datasetMatrixRelations :: IO [Matrix]
+datasetMatrixRelations = do
+  rels' <- mh 0.2 $ sample 
+    $ sampleMatrixRelationFromMondrian2D paintingPietMondrian1921
+  let rels = map fst $ take 100 $ every 10 rels'
+  return rels
 
 -- | Statistical model: infers the hyperparameters of a Mondrian by observing
 -- relations generated from it.
-inferMondrian ::
+inferMondrianMap ::
   Foldable t =>
   t (Map (Double, Double) Bool) ->
   Prob Double ->
   Double ->
   [(Double, Double)] ->
   Meas (Mondrian Double)
-inferMondrian dataset base budget intervals = do
+inferMondrianMap dataset base budget intervals = do
   mondrian <- sample $ randomMondrian base budget intervals
   let scoreRel rel =
         mapM
@@ -139,9 +147,8 @@ inferMondrian dataset base budget intervals = do
 
 mhInference :: IO Matplotlib
 mhInference = do
-  dataset <- datasetRelations
-  mws' <- mh 0.2 $ inferMondrian dataset uniform 3 [(0, 1), (0, 1)]
-  -- let mws = take 1000 $ every 100 $ drop 100 mws'
+  dataset <- datasetMapRelations
+  mws' <- mh 0.2 $ inferMondrianMap dataset uniform 3 [(0, 1), (0, 1)]
   mws <- takeWithProgress 5000 $ every 100 $ drop 100 mws'
   let maxw = maximum $ map snd mws
   let (Just m) = Data.List.lookup maxw $ map (\(m, w) -> (w, m)) mws
@@ -158,21 +165,21 @@ mhInference = do
 
 lwisInference :: IO Matplotlib
 lwisInference = do
-  dataset <- datasetRelations
-  mws' <- weightedsamples $ inferMondrian dataset uniform 4 [(0, 1), (0, 1)]
+  dataset <- datasetMapRelations
+  mws' <- weightedsamples $ inferMondrianMap dataset uniform 4 [(0, 1), (0, 1)]
   let mws = take 1000 mws'
   let maxw = maximum $ map snd mws
   let (Just m) = Data.List.lookup maxw $ map (\(m, w) -> (w, m)) mws
   return $ plotMondrian2D m
 
-mhResult :: Matplotlib
-mhResult = unsafePerformIO mhInference
+mhResultMap :: Matplotlib
+mhResultMap = unsafePerformIO mhInference
 
 main :: IO ()
 main = do
   putStrLn "Plotting..."
-  dataRel <- datasetRelations
-  file "pietMondrian-plus-relation.svg" $ plotRelation plotPietMondrian $ head dataRel
+  dataRel <- datasetMapRelations
+  file "pietMondrian-plus-relation.svg" $ plotMapRelation plotPietMondrian $ head dataRel
   testInf <- mhInference
   -- testInf <- lwisInference
   file "mondrian-relation.svg" testInf
