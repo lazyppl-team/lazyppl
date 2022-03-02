@@ -66,7 +66,7 @@ dataset = [(0,0.6), (1, 0.7), (2,1.2), (3,3.2), (4,6.8), (5, 8.2), (6,8.4)]
 testPiecewiseRegression =
   do
     fs' <- mh 0.2 (regress 0.1 (splice (poissonPP 0 0.1) linear) dataset)
-    let fs = map fst $ take 1000 $ every 1000 $ drop 10000 $ fs'
+    let fs = map fst $ take 1000 $ every 1000 $ drop 10000 fs'
     plot_funs "piecewise-reg.svg" dataset fs
 
 -- | similar, but using likelihood weighted importance sampling
