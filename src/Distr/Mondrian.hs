@@ -1,4 +1,6 @@
 {-# LANGUAGE ExtendedDefaultRules, ScopedTypeVariables, BangPatterns #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use newtype instead of data" #-}
 
 module Distr.Mondrian where
 
@@ -58,16 +60,18 @@ newtype Row = Row Int -- ^ in [0, 1]
 
 newtype Col = Col Int
 
-data Matrix = Matrix Counter Counter [[Bool]]
+data MatrixIO = MatrixIO Counter Counter [[Bool]]
 
-lookup :: Matrix -> Row -> Col -> Bool
-lookup (Matrix _ _ matrix) (Row r) (Col c) = matrix !! r !! c
+lookup :: MatrixIO -> Row -> Col -> Bool
+lookup (MatrixIO _ _ matrix) (Row r) (Col c) = matrix !! r !! c
 
-newRow :: Matrix -> Prob Row
-newRow (Matrix c _ _) = readAndIncrement c >>= (return . Row)
+newRow :: MatrixIO -> Prob Row
+newRow (MatrixIO c _ _) = readAndIncrement c >>= (return . Row)
 
-newCol :: Matrix -> Prob Col
-newCol (Matrix _ c _) = readAndIncrement c >>= (return . Col)
+newCol :: MatrixIO -> Prob Col
+newCol (MatrixIO _ c _) = readAndIncrement c >>= (return . Col)
+
+data Matrix = Matrix [[Bool]]
 
 {- | Generates a random Mondrian tree: a random block partition of the rectangle [a1, b1] × ⋯ × [an, bn]
 where each block has an associated random draw from the base distribution.
@@ -84,9 +88,9 @@ randomMondrian base budget abs = do
       dim <- categorical $ map (/sumLengths) lengths -- ^ if dim is true then cut is perpendicular to (a_d, b_d)
       let (a_d, b_d) = abs !! dim
       cut <- uniformbounded a_d b_d
-      leftMondrian <- randomMondrian base remaining 
+      leftMondrian <- randomMondrian base remaining
         $ zipWith (\ab i -> if i == dim then (a_d, cut) else ab) abs [0 ..]
-      rightMondrian <- randomMondrian base remaining 
+      rightMondrian <- randomMondrian base remaining
         $ zipWith (\ab i -> if i == dim then (cut, b_d) else ab) abs [0 ..]
       return $ Partition dim cut abs leftMondrian rightMondrian
 
@@ -95,7 +99,7 @@ applyOnBiaisFromMondrian2D :: Mondrian Double -> Double -> Double -> (Double -> 
 applyOnBiaisFromMondrian2D mondrian x y f = do
   case mondrian of
     Block p _ -> f p
-    Partition !dim !cut _ left right -> 
+    Partition !dim !cut _ left right ->
       let !xy = case dim of {0 -> x; _ -> y}
           !cond = xy < cut
           !lr = if cond then left else right in
@@ -107,12 +111,9 @@ sampleFromMondrian2D mondrian x y = applyOnBiaisFromMondrian2D mondrian x y bern
 
 -- | Probability of getting a given truth value 'val' at a (r, c) pair from a Mondrian. 
 likelihoodFromMondrian2D :: Mondrian Double -> Double -> Double -> Bool -> Double
-likelihoodFromMondrian2D mondrian x y val = 
-  let !f = if val then id else (1-) in 
+likelihoodFromMondrian2D mondrian x y val =
+  let !f = if val then id else (1-) in
     applyOnBiaisFromMondrian2D mondrian x y f
-
-iid :: Prob a -> Prob [a]
-iid p = do r <- p; rs <- iid p; return $ r : rs
 
 {- | Sample a block structure over [0, 1]^2 from the Mondrian process,
 and use it to generate an infinite exchangeable array.
@@ -127,12 +128,10 @@ sampleRelationFromMondrian2D mondrian = do
   rs <- iid uniform
   cs <- iid uniform
   matrix <- mapM (\r -> mapM (sampleFromMondrian2D mondrian r) cs) rs
-  rowCounter <- newCounter
-  colCounter <- newCounter
-  return $ Matrix rowCounter colCounter matrix
+  return $ Matrix matrix
 
-sampleFiniteRelationFromMondrian2D :: Mondrian Double -> Int -> Prob (Map (Double, Double) Bool)
-sampleFiniteRelationFromMondrian2D mondrian size = do
+sampleMapRelationFromMondrian2D :: Mondrian Double -> Int -> Prob (Map (Double, Double) Bool)
+sampleMapRelationFromMondrian2D mondrian size = do
   rs <- iid uniform
   cs <- iid uniform
   matrix <- mapM (\r ->
@@ -140,7 +139,13 @@ sampleFiniteRelationFromMondrian2D mondrian size = do
     (take size rs)
   return $ fromList $ concat matrix
 
-
+sampleMatrixRelationFromMondrian2D :: Mondrian Double -> Prob Matrix
+sampleMatrixRelationFromMondrian2D mondrian = do
+  rs <- iid uniform
+  cs <- iid uniform
+  matrix <- mapM (\r ->
+    mapM (sampleFromMondrian2D mondrian r) cs) rs
+  return $ Matrix matrix
 
 plotMondrian2D :: Mondrian Double -> Matplotlib
 plotMondrian2D mondrian = case mondrian of
@@ -185,8 +190,8 @@ mondrianFromCuts abs dcs biais defaultBiais =
         (a0, b0) = abs !! dim
 
 {- | Display dots corresponding to the pairs (ξ_i , η_j) of a finite relation in the plot -}
-plotRelation :: Matplotlib -> Map (Double, Double) Bool -> Matplotlib
-plotRelation mp rel =
+plotMapRelation :: Matplotlib -> Map (Double, Double) Bool -> Matplotlib
+plotMapRelation mp rel =
   readData (xs, ys, m, c)
   % mp # newDefScatter
   # "mscatter(data[0], data[1], ax=ax, s=60, linewidths=2, m=data[2], c=data[3], alpha=0.8, zorder=2)"

@@ -41,8 +41,6 @@ stickBreaking alpha lower =
     return (v : vs)
 
 {- | We can then define the Dirichlet Process --}
-iid :: Prob a -> Prob [a]
-iid p = do r <- p; rs <- iid p; return $ r : rs
 
 dp :: Double -> Prob a -> Prob (Prob a)
 dp alpha p = do

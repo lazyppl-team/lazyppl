@@ -90,6 +90,5 @@ categorical xs = do
     Nothing -> error "categorical: probabilities do not sum to 1"
 
 
-
-
-
+iid :: Prob a -> Prob [a]
+iid p = do r <- p; rs <- iid p; return $ r : rs
