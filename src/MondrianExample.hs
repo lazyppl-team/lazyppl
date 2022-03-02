@@ -148,15 +148,15 @@ inferMondrianMap dataset base budget intervals = do
 
 -- | Statistical model 2: infers the hyperparameters of a Mondrian by observing 
 -- Boolean matrices (relations) generated from it.
-inferMondrianMatrix :: Foldable t => t Matrix 
+inferMondrianMatrix :: Foldable t => Int -> t Matrix 
   -> Prob Double -> Double -> [(Double, Double)]
   -> Meas (Mondrian Double)
-inferMondrianMatrix dataset base budget intervals = do
+inferMondrianMatrix size dataset base budget intervals = do
   mondrian <- sample $ randomMondrian base budget intervals
   rs <- sample $ iid uniform
   cs <- sample $ iid uniform
-  let xrs = zip rs [0 ..]
-  let ycs = zip cs [0 ..]
+  let xrs = zip rs [0 .. size]
+  let ycs = zip cs [0 .. size]
   let scoreRel (Matrix rel) =
         mapM (\(x, r) ->
           mapM (\(y, c) -> score 
@@ -174,10 +174,10 @@ mhInferenceMap = do
   let (Just m) = Data.List.lookup maxw $ map (\(m, w) -> (w, m)) mws
   return $ plotMondrian2D m
 
-mhInferenceMatrix :: IO Matplotlib
-mhInferenceMatrix = do
+mhInferenceMatrix :: Int -> IO Matplotlib
+mhInferenceMatrix size = do
   dataset <- datasetMatrixRelations
-  mws' <- mh 0.2 $ inferMondrianMatrix dataset uniform 3 [(0, 1), (0, 1)]
+  mws' <- mh 0.2 $ inferMondrianMatrix size dataset uniform 3 [(0, 1), (0, 1)]
   mws <- takeWithProgress 5000 $ every 100 $ drop 100 mws'
   let maxw = maximum $ map snd mws
   let (Just m) = Data.List.lookup maxw $ map (\(m, w) -> (w, m)) mws
@@ -218,7 +218,7 @@ main = do
   -- Matrix relations inference
   dataRel <- datasetMatrixRelations
   file "pietMondrian.svg" plotPietMondrian
-  testInf <- mhInferenceMatrix
+  testInf <- mhInferenceMatrix 20
   file "mondrian-relation-matrix.svg" testInf
   
   putStrLn "Done."
