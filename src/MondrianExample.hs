@@ -177,7 +177,7 @@ mhInferenceMap = do
 mhInferenceMatrix :: Int -> IO Matplotlib
 mhInferenceMatrix size = do
   dataset <- datasetMatrixRelations
-  mws' <- mh 0.2 $ inferMondrianMatrix size dataset uniform 3 [(0, 1), (0, 1)]
+  mws' <- mh (1/400) $ inferMondrianMatrix size dataset uniform 3 [(0, 1), (0, 1)]
   mws <- takeWithProgress 5000 $ every 100 $ drop 100 mws'
   let maxw = maximum $ map snd mws
   let (Just m) = Data.List.lookup maxw $ map (\(m, w) -> (w, m)) mws
