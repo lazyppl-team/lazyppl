@@ -75,7 +75,8 @@ randexpralt = do
        !! i        
   return e
 
--- If I'm getting it right, this small change works much better.
+-- This small change works much better,
+-- and matches randexpr.
 -- But it only makes sense when lazy,
 -- because es is an infinite thing.
 randexpraltbetter :: Prob Expr

@@ -27,7 +27,9 @@ import qualified Data.Map as M
 
 {- | This file defines
     1. Two monads: 'Prob' (for probabilities) and 'Meas' (for unnormalized probabilities)
-    2. Two inference methods: 'lwis' and 'mh'
+    2. Three inference methods: 'lwis' (likelihood weighted importance sampling)
+    3. 'mh' (Metropolis-Hastings algorithm based on lazily mutating parts of the tree at random)
+    3. 'mh1' (Single-site Metropolis-Hastings algorithm, akin to Wingate et al. It is only this that uses GHC.Exts.Heap and System.IO.Unsafe.)
 -}
 
 -- | A 'Tree' is a lazy, infinitely wide and infinitely deep tree, labelled by Doubles
@@ -36,8 +38,8 @@ import qualified Data.Map as M
 -- | But a tree allows us to be lazy about how far we are going all the time.
 data Tree = Tree Double [Tree]
 
--- | A probability distribution over a is a state transformer over trees
--- | ie a function 'Tree -> a'
+-- | A probability distribution over a is 
+-- | a function 'Tree -> a'
 -- | The idea is that it uses up bits of the tree as it runs
 newtype Prob a = Prob (Tree -> a)
 
@@ -172,6 +174,12 @@ mutateTree p g (Tree a ts) =
   Tree (if a'<p then a'' else a) (mutateTrees p g'' ts)
 mutateTrees :: RandomGen g => Double -> g -> [Tree] -> [Tree]
 mutateTrees p g (t:ts) = let (g1,g2) = split g in mutateTree p g1 t : mutateTrees p g2 ts
+
+
+
+
+
+
 
 {-- | Single-site Metropolis-Hastings --}
 
