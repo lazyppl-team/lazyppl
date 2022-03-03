@@ -130,11 +130,8 @@ datasetMatrixRelations = do
 -- | Statistical model 1: infers the hyperparameters of a Mondrian by observing
 -- Map relations generated from it.
 inferMondrianMap ::
-  Foldable t =>
-  t (Map (Double, Double) Bool) ->
-  Prob Double ->
-  Double ->
-  [(Double, Double)] ->
+  Foldable t => t (Map (Double, Double) Bool) ->
+  Prob Double -> Double -> [(Double, Double)] ->
   Meas (Mondrian Double)
 inferMondrianMap dataset base budget intervals = do
   mondrian <- sample $ randomMondrian base budget intervals
@@ -177,8 +174,8 @@ mhInferenceMap = do
 mhInferenceMatrix :: Int -> IO Matplotlib
 mhInferenceMatrix size = do
   dataset <- datasetMatrixRelations
-  mws' <- mh (1/400) $ inferMondrianMatrix size dataset uniform 3 [(0, 1), (0, 1)]
-  mws <- takeWithProgress 5000 $ every 100 $ drop 100 mws'
+  mws' <- mh (1/40) $ inferMondrianMatrix size dataset uniform 3 [(0, 1), (0, 1)]
+  mws <- takeWithProgress 5000 $ every 1000 $ drop 1000 mws'
   let maxw = maximum $ map snd mws
   let (Just m) = Data.List.lookup maxw $ map (\(m, w) -> (w, m)) mws
   return $ plotMondrian2D m
