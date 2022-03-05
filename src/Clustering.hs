@@ -21,7 +21,7 @@ import Numeric.Log
     Takes pparam :: Prob b, a distribution on parameters
           like :: b -> a -> Double, parameterized likelihood function \
     Tags each point with a colour describing the cluster it is in --}
-cluster :: [a] -> (Prob b) -> (b -> a -> Double) -> Meas [(a, Double, b)]
+cluster :: [a] -> Prob b -> (b -> a -> Double) -> Meas [(a, Double, b)]
 cluster xs pparam like =
   do
     rest <- sample $ newRestaurant 0.3

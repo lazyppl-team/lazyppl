@@ -1,6 +1,6 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, 
+    ScopedTypeVariables,
+    RankNTypes, BangPatterns #-}
 module LazyPPL where
 
 import Control.Monad.Trans.Writer
@@ -381,7 +381,7 @@ helperB b = do
 trunc :: Tree -> IO PTree
 trunc t = helperT $ asBox t
 
-{-- Useful function which thins out a list. --}
+{-- | Useful function which thins out a list. --}
 every :: Int -> [a] -> [a]
 every n xs = case drop (n -1) xs of
   (y : ys) -> y : every n ys
@@ -394,7 +394,19 @@ iterateNM n f a = do
   as <- iterateNM (n -1) f a'
   return $ a : as
 
--- An example probability distribution.
+-- | Take eagerly from a list and print the current progress. 
+takeWithProgress :: Int -> [a] -> IO [a]
+takeWithProgress n = helper n n
+  where
+    helper :: Int -> Int -> [a] -> IO [a]
+    helper _ i _ | i <= 0 = return []
+    helper _ _ []        = return []
+    helper n i ((!x):xs)    = do
+      putStrLn $ "Progress: " ++ show (fromIntegral (100*(n-i)) / fromIntegral n) ++ "%"
+      xs' <- helper n (i-1) xs
+      return $ x : xs'
+
+-- | An example probability distribution.
 exampleProb :: Prob Double
 exampleProb = do
   choice <- uniform

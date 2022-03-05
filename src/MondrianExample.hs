@@ -9,17 +9,6 @@ import Data.Map (Map,empty,lookup,insert,size,keys,findWithDefault,fromList,(!))
 import qualified Data.List
 import System.IO.Unsafe
 
-takeWithProgress :: Int -> [a] -> IO [a]
-takeWithProgress n = helper n n
-  where
-    helper :: Int -> Int -> [a] -> IO [a]
-    helper _ i _ | i <= 0 = return []
-    helper _ _ []        = return []
-    helper n i ((!x):xs)    = do
-      putStrLn $ "Progress: " ++ show (fromIntegral (100*(n-i)) / fromIntegral n) ++ "%"
-      xs' <- helper n (i-1) xs
-      return $ x : xs'
-
 -- | __Mondrian Process examples:__
 mond :: Prob (Mondrian Double)
 mond = randomMondrian uniform 5 [(0, 1), (0, 1)]
