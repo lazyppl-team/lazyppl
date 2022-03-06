@@ -71,8 +71,8 @@ encodeMessage s m = map (\c -> Map.findWithDefault c c m) s
 -}
 decodeMessage :: Map.Map (Char, Char) Double -> [Char] -> String -> Meas String
 decodeMessage tMap inAlphabet codedMsg = do
-  let setCodedMsg = Set.fromList $ map toLower codedMsg
-  (decodedLetters, _, _) <- foldrM (\c (m, a, n) -> 
+  let setCodedMsg = Set.fromList codedMsg
+  (decodedLetters, _, _) <- foldlM (\(m, a, n) c -> 
     if Data.Char.isLetter c
       then do 
         i <- sample $ uniformdiscrete n
@@ -92,8 +92,9 @@ inferenceMessage tMapJson msg subst = do
   let inAlphabet = delete ' ' $ nub $ 
         concatMap (\(c1, c2) -> [c1, c2]) $ Map.keys tMap
   putStrLn $ "Input alphabet: " ++ show inAlphabet
-  mws' <- mh (1/88) $ decodeMessage tMap inAlphabet codedMsg
-  mws <- takeWithProgress 5000 $ every 100 $ drop 100 mws'
+  -- mws' <- mh (1/80) $ decodeMessage tMap inAlphabet codedMsg
+  mws' <- mh1 $ decodeMessage tMap inAlphabet codedMsg
+  mws <- takeWithProgress 2000 $ every 100 $ drop 100 mws'
   let maxw = maximum $ map snd mws
   let (Just m) = Data.List.lookup maxw $ map (\(m, w) -> (w, m)) mws
   putStrLn $ "Initial message: " ++ msg
@@ -137,7 +138,7 @@ randomSubstitution msg outAlphabet = do
 
 main :: IO ()
 main = do
-  -- saveTransitionMapEng
+  saveTransitionMapEng
   let outAlphabet = ['a'..'z']
   subst <- randomSubstitution exampleHume1 outAlphabet
   inferenceMessage "../english-words.json" exampleHume1 subst
