@@ -141,7 +141,7 @@ mh p (Meas m) = do
     -- | Now run step over and over to get a stream of (tree,result,weight)s.
     let (samples,_) = runState (iterateM step (t,x,w)) g2
     -- | The stream of seeds is used to produce a stream of result/weight pairs.
-    return $ map (\(t,x,w) -> (x,w)) samples
+    return $ map (\(_,x,w) -> (x,w)) samples
     {- | NB There are three kinds of randomness in the step function.
     1. The start tree 't', which is the source of randomness for simulating the
     program m to start with. This is sort-of the point in the "state space".

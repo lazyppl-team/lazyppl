@@ -81,9 +81,16 @@ decodeMessage tMap inAlphabet codedMsg = do
       else do return (m, a, n))
     (Map.empty, inAlphabet, length inAlphabet) setCodedMsg
   let decodedMsg = map (\c -> Map.findWithDefault c c decodedLetters) codedMsg
-  mapM_ (\cs -> score $ Map.findWithDefault 0 cs tMap)
+  mapM_ (\cs -> let (c1', c2') = replaceSpecialChar cs in 
+    if c1' == ' ' && c2' == ' ' then return () 
+    else score $ Map.findWithDefault 0 (c1', c2') tMap)
     $ zip decodedMsg (tail decodedMsg)
   return decodedMsg
+  where
+    replaceSpecialChar (c1, c2) = 
+      let c1' = if Data.Char.isLetter c1 then c1 else ' '
+          c2' = if Data.Char.isLetter c2 then c2 else ' ' in
+      (c1', c2')
 
 inferenceMessage :: String -> String -> Map.Map Char Char -> IO ()
 inferenceMessage tMapJson msg subst = do
@@ -140,5 +147,6 @@ main :: IO ()
 main = do
   saveTransitionMapEng
   let outAlphabet = ['a'..'z']
-  subst <- randomSubstitution exampleHume1 outAlphabet
-  inferenceMessage "../english-words.json" exampleHume1 subst
+  let msg = exampleHume2
+  subst <- randomSubstitution msg outAlphabet
+  inferenceMessage "../english-words.json" msg subst
