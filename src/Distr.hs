@@ -26,9 +26,9 @@ normalPdf :: Double -> Double -> Double -> Double
 normalPdf m s = density $ normalDistr m s
 
 exponential :: Double -> Prob Double
-exponential rate =
-  do x <- uniform
-     return $ - (log x / rate)
+exponential rate = do 
+  x <- uniform
+  return $ - (log x / rate)
 
 expPdf :: Double -> Double -> Double
 expPdf rate x = exp (-rate*x) * rate
@@ -71,7 +71,7 @@ bernoulli r = do
   return $ x < r
 
 {-
- uniform distribution on [0, ..., n-1]
+  uniform distribution on [0, ..., n-1]
 -}
 uniformdiscrete :: Int -> Prob Int
 uniformdiscrete n =
