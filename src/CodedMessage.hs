@@ -36,9 +36,9 @@ transitionMap file = do
   -- let keysGroupedByFirstLetter = Data.List.groupBy (\a b -> fst a == fst b) $ keys unnormalisedMap
   let normalisedMap =
         Set.foldl (\m c ->
-          let sumOccurences = sum $ Map.elems $ Map.filterWithKey (\k _ -> fst k == c) unnormalisedMap
+          let sumOccurrences = sum $ Map.elems $ Map.filterWithKey (\k _ -> fst k == c) unnormalisedMap
           in Map.mapWithKey 
-          (\(c1, c2) count -> if c1 == c then count / sumOccurences else count) m)
+          (\(c1, c2) count -> if c1 == c then count / sumOccurrences else count) m)
           unnormalisedMap 
           $ Map.keysSet $ Map.mapKeys fst unnormalisedMap
   return normalisedMap
@@ -47,13 +47,13 @@ transitionMap file = do
     updateMap m s =
       foldl (\m' (c1, c2) ->
         let count = Map.findWithDefault 0 (c1, c2) m'
-        in Map.insert (c1, c2) (count + 1) m)
-        m $ zip s (tail s)
+        in Map.insert (c1, c2) (count + 1) m')
+        m $ zip (' ' : s) (s ++ [' '])
 
 saveTransitionMap :: String -> IO ()
 saveTransitionMap file = do
   tMap' <- transitionMap file
-  encodeFile file tMap'
+  encodeFile (take (length file - 3) file ++ "json") tMap'
 
 loadTransitionMap :: String -> IO (Map.Map (Char, Char) Double)
 loadTransitionMap file = do
@@ -71,22 +71,23 @@ encodeMessage s m = map (\c -> Map.findWithDefault c c m) s
 -}
 decodeMessage :: Map.Map (Char, Char) Double -> [Char] -> String -> Meas String
 decodeMessage tMap inAlphabet codedMsg = do
-  decodedMsg <- foldrM (\c l -> 
-    if Data.Char.isLetter c 
+  let setCodedMsg = Set.fromList $ map toLower codedMsg
+  decodedLetters <- foldrM (\c m -> 
+    if Data.Char.isLetter c
       then do 
         i <- sample $ uniformdiscrete n
-        return $ inAlphabet !! i : l
-      else do return $ c : l)
-    [] $ Set.fromList $ map toLower codedMsg
+        return $ Map.insert c (inAlphabet !! i) m
+      else do return m)
+    Map.empty setCodedMsg
+  let decodedMsg = map (\c -> Map.findWithDefault c c decodedLetters) codedMsg
   mapM_ (\cs -> score $ Map.findWithDefault 0 cs tMap) 
     $ zip decodedMsg (tail decodedMsg)
   return decodedMsg
   where
     n = length inAlphabet
 
-
 inferenceMessage :: String -> String -> Map.Map Char Char -> IO ()
-inferenceMessage tMapJson msg subst  = do
+inferenceMessage tMapJson msg subst = do
   let codedMsg = encodeMessage msg subst
   tMap <- loadTransitionMap tMapJson
   let inAlphabet = nub $ concatMap (\(c1, c2) -> [c1, c2]) $ Map.keys tMap
@@ -103,10 +104,10 @@ inferenceMessage tMapJson msg subst  = do
 
 -- English corpus: https://github.com/first20hours/google-10000-english/blob/master/google-10000-english.txt
 tMapEng :: IO (Map.Map (Char, Char) Double)
-tMapEng = transitionMap "../english-words-10000.txt"
+tMapEng = transitionMap "../english-words.txt"
 
 saveTransitionMapEng :: IO ()
-saveTransitionMapEng = saveTransitionMap "../english-transition-map.json"
+saveTransitionMapEng = saveTransitionMap "../english-words.txt"
 
 exampleHume1 :: String
 exampleHume1 = "But the life of a man is of no greater importance to the universe than that of an oyster."
@@ -123,8 +124,11 @@ exampleGrothendieck1 = "Craindre l'erreur et craindre la vérité est une seule 
 randomSubstitution :: String -> [Char] -> IO (Map.Map Char Char)
 randomSubstitution msg outAlphabet = do
   foldlM (\m c -> do
-    i <- getStdRandom $ randomR (0, n-1)
-    return $ Map.insert c (outAlphabet !! i) m)
+    if Data.Char.isLetter c 
+      then do 
+        i <- getStdRandom $ randomR (0, n-1)
+        return $ Map.insert c (outAlphabet !! i) m
+      else do return m)
     Map.empty $ Set.fromList msg
   where
     n = length outAlphabet
@@ -132,6 +136,7 @@ randomSubstitution msg outAlphabet = do
 
 main :: IO ()
 main = do
+  -- saveTransitionMapEng
   let outAlphabet = ['a'..'z']
   subst <- randomSubstitution exampleHume1 outAlphabet
-  inferenceMessage "../english-transition-map.json" exampleHume1 subst
+  inferenceMessage "../english-words.json" exampleHume1 subst
