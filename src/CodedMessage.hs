@@ -72,26 +72,27 @@ encodeMessage s m = map (\c -> Map.findWithDefault c c m) s
 decodeMessage :: Map.Map (Char, Char) Double -> [Char] -> String -> Meas String
 decodeMessage tMap inAlphabet codedMsg = do
   let setCodedMsg = Set.fromList $ map toLower codedMsg
-  decodedLetters <- foldrM (\c m -> 
+  (decodedLetters, _, _) <- foldrM (\c (m, a, n) -> 
     if Data.Char.isLetter c
       then do 
         i <- sample $ uniformdiscrete n
-        return $ Map.insert c (inAlphabet !! i) m
-      else do return m)
-    Map.empty setCodedMsg
+        let c' = a !! i
+        return (Map.insert c c' m, delete c' a, n-1)
+      else do return (m, a, n))
+    (Map.empty, inAlphabet, length inAlphabet) setCodedMsg
   let decodedMsg = map (\c -> Map.findWithDefault c c decodedLetters) codedMsg
-  mapM_ (\cs -> score $ Map.findWithDefault 0 cs tMap) 
+  mapM_ (\cs -> score $ Map.findWithDefault 0 cs tMap)
     $ zip decodedMsg (tail decodedMsg)
   return decodedMsg
-  where
-    n = length inAlphabet
 
 inferenceMessage :: String -> String -> Map.Map Char Char -> IO ()
 inferenceMessage tMapJson msg subst = do
   let codedMsg = encodeMessage msg subst
   tMap <- loadTransitionMap tMapJson
-  let inAlphabet = nub $ concatMap (\(c1, c2) -> [c1, c2]) $ Map.keys tMap
-  mws' <- mh 0.2 $ decodeMessage tMap inAlphabet codedMsg
+  let inAlphabet = delete ' ' $ nub $ 
+        concatMap (\(c1, c2) -> [c1, c2]) $ Map.keys tMap
+  putStrLn $ "Input alphabet: " ++ show inAlphabet
+  mws' <- mh (1/88) $ decodeMessage tMap inAlphabet codedMsg
   mws <- takeWithProgress 5000 $ every 100 $ drop 100 mws'
   let maxw = maximum $ map snd mws
   let (Just m) = Data.List.lookup maxw $ map (\(m, w) -> (w, m)) mws
@@ -110,7 +111,7 @@ saveTransitionMapEng :: IO ()
 saveTransitionMapEng = saveTransitionMap "../english-words.txt"
 
 exampleHume1 :: String
-exampleHume1 = "But the life of a man is of no greater importance to the universe than that of an oyster."
+exampleHume1 = "But the life of a man is of no greater importance to the universe than that of an oyster"
 
 exampleHume2 :: String
 exampleHume2 = "The sweetest and most inoffensive path of life leads through the avenues of science and learning; and whoever can either remove any obstructions in this way, or open up any new prospect, ought so far to be esteemed a benefactor to mankind."
@@ -123,15 +124,15 @@ exampleGrothendieck1 = "Craindre l'erreur et craindre la vérité est une seule 
 
 randomSubstitution :: String -> [Char] -> IO (Map.Map Char Char)
 randomSubstitution msg outAlphabet = do
-  foldlM (\m c -> do
+  (m, _, _) <- foldlM (\(m, a, n) c -> do
     if Data.Char.isLetter c 
       then do 
-        i <- getStdRandom $ randomR (0, n-1)
-        return $ Map.insert c (outAlphabet !! i) m
-      else do return m)
-    Map.empty $ Set.fromList msg
-  where
-    n = length outAlphabet
+        i <- getStdRandom $ randomR (0, n - 1)
+        let c' = a !! i
+        return (Map.insert c c' m, delete c' a, n-1)
+      else do return (m, a, n))
+    (Map.empty, outAlphabet, length outAlphabet) $ Set.fromList msg
+  return m
 
 
 main :: IO ()
