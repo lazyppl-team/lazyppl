@@ -64,13 +64,29 @@ loadTransitionMap file = do
 encodeMessage :: String -> Map.Map Char Char -> String
 encodeMessage s m = map (\c -> Map.findWithDefault c c m) s
 
-{- | Decode a coded message 'codedMsg' based on a transition map 'tMap' 
+{- | Generate a random substitution mapping each letter of 'msg' 
+  to a letter of the output (coding) Alphabet 'outAlphabet'. -}
+randomSubstitution :: String -> [Char] -> IO (Map.Map Char Char)
+randomSubstitution msg outAlphabet = do
+  (m, _, _) <- foldlM (\(m, a, n) c -> do
+    if Data.Char.isLetter c 
+      then do 
+        i <- getStdRandom $ randomR (0, n - 1)
+        let c' = a !! i
+        return (Map.insert c c' m, delete c' a, n-1)
+      else do return (m, a, n))
+    (Map.empty, outAlphabet, length outAlphabet) $ Set.fromList msg
+  return m
+
+{- | Statistical model 1: Decode a coded message 'codedMsg' from scratch 
+  (guess the cipher substitution)
+  based on a transition map 'tMap' 
   from an input alphabet 'inAlphabet' 
   (to the output alphabet in which codedMsg' is written),  
-  where a letter in a 'inAlphabet' corresponds to a unique output letter.
+  where a letter in a 'inAlphabet' corresponds to a unique output letter. 
 -}
-decodeMessage :: Map.Map (Char, Char) Double -> [Char] -> String -> Meas String
-decodeMessage tMap inAlphabet codedMsg = do
+decodeMessageScratch :: Map.Map (Char, Char) Double -> [Char] -> String -> Meas String
+decodeMessageScratch tMap inAlphabet codedMsg = do
   let setCodedMsg = Set.fromList codedMsg
   (decodedLetters, _, _) <- foldlM (\(m, a, n) c -> 
     if Data.Char.isLetter c
@@ -92,6 +108,37 @@ decodeMessage tMap inAlphabet codedMsg = do
           c2' = if Data.Char.isLetter c2 then c2 else ' ' in
       (c1', c2')
 
+
+{- | Statistical model 2: Decode a coded message 'codedMsg' by making transpositions 
+  of the values of given a cipher substitution 'subst'
+  based on a transition map 'tMap' 
+  from an input alphabet 'inAlphabet' 
+  (to the output alphabet in which codedMsg' is written),  
+  where a letter in a 'inAlphabet' corresponds to a unique output letter. 
+-}
+decodeMessageTranspose :: Map.Map (Char, Char) Double -> Map.Map Char Char 
+  -> String -> Meas String
+decodeMessageTranspose tMap subst codedMsg = do
+  let keysSubst = Map.keys subst
+  let n = length keysSubst
+  i <- sample $ uniformdiscrete n
+  j <- sample $ uniformdiscrete (n-1)
+  let c1 = keysSubst !! i
+      c2 = delete c1 keysSubst !! j
+  let newSubst = Map.insert c1 (fromJust $ Map.lookup c2 subst) 
+        $ Map.insert c2 (fromJust $ Map.lookup c1 subst) subst
+  let decodedMsg = map (\c -> Map.findWithDefault c c newSubst) codedMsg
+  mapM_ (\cs -> let (c1', c2') = replaceSpecialChar cs in 
+    if c1' == ' ' && c2' == ' ' then return () 
+    else score $ Map.findWithDefault 0 (c1', c2') tMap)
+    $ zip decodedMsg (tail decodedMsg)
+  return decodedMsg
+  where
+    replaceSpecialChar (c1, c2) = 
+      let c1' = if Data.Char.isLetter c1 then c1 else ' '
+          c2' = if Data.Char.isLetter c2 then c2 else ' ' in
+      (c1', c2')
+
 inferenceMessage :: String -> String -> Map.Map Char Char -> IO ()
 inferenceMessage tMapJson msg subst = do
   let codedMsg = encodeMessage msg subst
@@ -99,9 +146,15 @@ inferenceMessage tMapJson msg subst = do
   let inAlphabet = delete ' ' $ nub $ 
         concatMap (\(c1, c2) -> [c1, c2]) $ Map.keys tMap
   putStrLn $ "Input alphabet: " ++ show inAlphabet
-  -- mws' <- mh (1/80) $ decodeMessage tMap inAlphabet codedMsg
-  mws' <- mh1 $ decodeMessage tMap inAlphabet codedMsg
-  mws <- takeWithProgress 2000 $ every 100 $ drop 100 mws'
+
+  -- mws' <- mh (1/80) $ decodeMessageScratch tMap inAlphabet codedMsg
+  mws' <- mh1 $ decodeMessageScratch tMap inAlphabet codedMsg
+
+  -- subst <- randomSubstitution codedMsg inAlphabet
+  -- mws' <- mh 0.5 $ decodeMessageTranspose tMap subst codedMsg
+  -- -- mws' <- mh1 $ decodeMessageTranspose tMap subst codedMsg
+
+  mws <- takeWithProgress 10000 $ every 100 $ drop 100 mws'
   let maxw = maximum $ map snd mws
   let (Just m) = Data.List.lookup maxw $ map (\(m, w) -> (w, m)) mws
   putStrLn $ "Initial message: " ++ msg
@@ -129,18 +182,6 @@ exampleFeynman1 = "I can live with doubt, and uncertainty, and not knowing. I th
 
 exampleGrothendieck1 :: String
 exampleGrothendieck1 = "Craindre l'erreur et craindre la vérité est une seule et même chose. Celui qui craint de se tromper est impuissant à découvrir. C'est quand nous craignons de nous tromper que l'erreur qui est en nous se fait immuable comme un roc. Car dans notre peur, nous nous accrochons à ce que nous avons décrété 'vrai' un jour, ou à ce qui depuis toujours nous a été présenté comme tel. Quand nous sommes mûs, non par la peur de voir s'évanouir une illusoire sécurité, mais par une soif de connaître, alors l'erreur, comme la souffrance ou la tristesse, nous traverse sans se ﬁger jamais, et la trace de son passage est une connaissance renouvelée."
-
-randomSubstitution :: String -> [Char] -> IO (Map.Map Char Char)
-randomSubstitution msg outAlphabet = do
-  (m, _, _) <- foldlM (\(m, a, n) c -> do
-    if Data.Char.isLetter c 
-      then do 
-        i <- getStdRandom $ randomR (0, n - 1)
-        let c' = a !! i
-        return (Map.insert c c' m, delete c' a, n-1)
-      else do return (m, a, n))
-    (Map.empty, outAlphabet, length outAlphabet) $ Set.fromList msg
-  return m
 
 
 main :: IO ()
