@@ -1,6 +1,6 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, 
+    ScopedTypeVariables,
+    RankNTypes, BangPatterns #-}
 module LazyPPL where
 
 import Control.Monad.Trans.Writer
@@ -141,7 +141,7 @@ mh p (Meas m) = do
     -- | Now run step over and over to get a stream of (tree,result,weight)s.
     let (samples,_) = runState (iterateM step (t,x,w)) g2
     -- | The stream of seeds is used to produce a stream of result/weight pairs.
-    return $ map (\(t,x,w) -> (x,w)) samples
+    return $ map (\(_,x,w) -> (x,w)) samples
     {- | NB There are three kinds of randomness in the step function.
     1. The start tree 't', which is the source of randomness for simulating the
     program m to start with. This is sort-of the point in the "state space".
@@ -381,7 +381,7 @@ helperB b = do
 trunc :: Tree -> IO PTree
 trunc t = helperT $ asBox t
 
-{-- Useful function which thins out a list. --}
+{-- | Useful function which thins out a list. --}
 every :: Int -> [a] -> [a]
 every n xs = case drop (n -1) xs of
   (y : ys) -> y : every n ys
@@ -394,7 +394,19 @@ iterateNM n f a = do
   as <- iterateNM (n -1) f a'
   return $ a : as
 
--- An example probability distribution.
+-- | Take eagerly from a list and print the current progress. 
+takeWithProgress :: Int -> [a] -> IO [a]
+takeWithProgress n = helper n n
+  where
+    helper :: Int -> Int -> [a] -> IO [a]
+    helper _ i _ | i <= 0 = return []
+    helper _ _ []        = return []
+    helper n i ((!x):xs)    = do
+      putStrLn $ "Progress: " ++ show (fromIntegral (100*(n-i)) / fromIntegral n) ++ "%"
+      xs' <- helper n (i-1) xs
+      return $ x : xs'
+
+-- | An example probability distribution.
 exampleProb :: Prob Double
 exampleProb = do
   choice <- uniform

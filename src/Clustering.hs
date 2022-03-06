@@ -17,11 +17,11 @@ import Graphics.Rendering.Chart.State
 import LazyPPL
 import Numeric.Log
 
-{-- A generic Chinese-Restaurant clustering program
+{- | A generic Chinese-Restaurant clustering program
     Takes pparam :: Prob b, a distribution on parameters
           like :: b -> a -> Double, parameterized likelihood function \
-    Tags each point with a colour describing the cluster it is in --}
-cluster :: [a] -> (Prob b) -> (b -> a -> Double) -> Meas [(a, Double, b)]
+    Tags each point with a colour describing the cluster it is in -}
+cluster :: [a] -> Prob b -> (b -> a -> Double) -> Meas [(a, Double, b)]
 cluster xs pparam like =
   do
     rest <- sample $ newRestaurant 0.3
@@ -35,17 +35,17 @@ cluster xs pparam like =
       )
       xs
 
--- Example 2d data set
+-- | Example 2d data set
 dataset = [(7.7936387, 7.469271), (5.3105156, 7.891521), (5.4320135, 5.135559), (7.3844196, 7.478719), (6.7382938, 7.476735), (0.6663453, 4.460257), (3.2001898, 2.653919), (2.1231227, 3.758051), (3.3734472, 2.420528), (0.4699408, 1.835277)]
 
--- nnormal is a normal distribution but it uses two seeds,
--- so perhaps it moves around a little more
--- and it takes up more time in the single-site MH.
+-- | 'nnormal' is a normal distribution but it uses two seeds,
+-- | so perhaps it moves around a little more
+-- | and it takes up more time in the single-site MH.
 nnormal x s = do x1 <- normal x ((sqrt 15 * s * s) / 4); x2 <- normal 0 (s / 4); return $ x1 + x2
 
-{-- Example of using the clustering program.
+{- | Example of using the clustering program.
     Here the parameters are the x and y coordinates
-    and standard deviation of the cluster --}
+    and standard deviation of the cluster -}
 example :: Meas [((Double, Double), Double, (Double, Double, Double))]
 example =
   cluster
