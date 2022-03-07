@@ -22,6 +22,9 @@ import Data.Char (toLower, isLetter)
 
 import System.Random
 
+import Control.Monad.Extra (iterateM)
+import qualified Numeric.Log as Log
+import Data.Monoid ( Product(Product) )
 
 {- | Decoding a coded message (substitution cipher)
     Inpired from https://math.uchicago.edu/~shmuel/Network-course-readings/MCMCRev.pdf -}
@@ -116,9 +119,9 @@ decodeMessageScratch tMap inAlphabet codedMsg = do
   (to the output alphabet in which codedMsg' is written),  
   where a letter in a 'inAlphabet' corresponds to a unique output letter. 
 -}
-decodeMessageTranspose :: Map.Map (Char, Char) Double -> Map.Map Char Char 
-  -> String -> Meas String
-decodeMessageTranspose tMap subst codedMsg = do
+substTranspose :: Map.Map (Char, Char) Double -> 
+  Map.Map Char Char -> String -> Meas (Map.Map Char Char, String)
+substTranspose tMap subst codedMsg = do
   let keysSubst = Map.keys subst
   let n = length keysSubst
   i <- sample $ uniformdiscrete n
@@ -132,12 +135,29 @@ decodeMessageTranspose tMap subst codedMsg = do
     if c1' == ' ' && c2' == ' ' then return () 
     else score $ Map.findWithDefault 0 (c1', c2') tMap)
     $ zip decodedMsg (tail decodedMsg)
-  return decodedMsg
+  return (newSubst, decodedMsg)
   where
     replaceSpecialChar (c1, c2) = 
       let c1' = if Data.Char.isLetter c1 then c1 else ' '
           c2' = if Data.Char.isLetter c2 then c2 else ' ' in
       (c1', c2')
+
+-- decodeMessageTranspose :: Map.Map (Char, Char) Double -> [Char] 
+--  -> String -> Meas String
+getBestMessageTranspose :: Map.Map (Char, Char) Double -> [Char] -> String -> IO String
+getBestMessageTranspose tMap inAlphabet codedMsg = do
+  subst <- randomSubstitution codedMsg inAlphabet
+  -- mws' <- mh 0.5 $ decodeMessageTranspose tMap subst codedMsg
+  scs' <- takeWithProgress 100 $ iterate (>>= substMsgMax) $ return ((subst, codedMsg),  Product $ (Log.Exp . log) 1)
+  putStrLn "Done."
+  scs <- sequence scs'
+  return $ snd $ maxWeightElement scs
+  where
+    substMsgMax ((subst', codedMsg'), _) = do
+      scs <- mh 0.2 $ substTranspose tMap subst' codedMsg'
+      let scs' = takeEveryDrop 100 10 10 scs
+      return $ maxWeightPair scs'
+
 
 inferenceMessage :: String -> String -> Map.Map Char Char -> IO ()
 inferenceMessage tMapJson msg subst = do
@@ -148,18 +168,22 @@ inferenceMessage tMapJson msg subst = do
   putStrLn $ "Input alphabet: " ++ show inAlphabet
 
   -- mws' <- mh (1/80) $ decodeMessageScratch tMap inAlphabet codedMsg
-  mws' <- mh1 $ decodeMessageScratch tMap inAlphabet codedMsg
+  -- -- mws' <- mh1 $ decodeMessageScratch tMap inAlphabet codedMsg
+  -- mws <- takeProgressEveryDrop 10000 100 100 mws'
+  -- maxMsg = maxWeightElement mws
+
 
   -- subst <- randomSubstitution codedMsg inAlphabet
   -- mws' <- mh 0.5 $ decodeMessageTranspose tMap subst codedMsg
   -- -- mws' <- mh1 $ decodeMessageTranspose tMap subst codedMsg
+  -- mws <- takeProgressEveryDrop 10000 100 100 mws'
+  -- maxMsg = maxWeightElement mws
 
-  mws <- takeWithProgress 10000 $ every 100 $ drop 100 mws'
-  let maxw = maximum $ map snd mws
-  let (Just m) = Data.List.lookup maxw $ map (\(m, w) -> (w, m)) mws
+
+  maxMsg <- getBestMessageTranspose tMap inAlphabet codedMsg
   putStrLn $ "Initial message: " ++ msg
   putStrLn $ "Coded message (to decipher): " ++ codedMsg
-  putStrLn $ "Decoded message: " ++ m
+  putStrLn $ "Decoded message: " ++ maxMsg
 
 
 -- | Examples

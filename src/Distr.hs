@@ -19,8 +19,9 @@ import Debug.Trace
 
 
 normal :: Double -> Double -> Prob Double
-normal m s = do x <- uniform
-                return $ quantile (normalDistr m s) x
+normal m s = do 
+  x <- uniform
+  return $ quantile (normalDistr m s) x
 
 normalPdf :: Double -> Double -> Double -> Double
 normalPdf m s = density $ normalDistr m s

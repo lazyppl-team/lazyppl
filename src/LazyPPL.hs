@@ -24,6 +24,7 @@ import Unsafe.Coerce
 import Data.Maybe
 
 import qualified Data.Map as M
+import qualified Data.List as L (lookup)
 
 {- | This file defines
     1. Two monads: 'Prob' (for probabilities) and 'Meas' (for unnormalized probabilities)
@@ -405,6 +406,26 @@ takeWithProgress n = helper n n
       putStrLn $ "Progress: " ++ show (fromIntegral (100*(n-i)) / fromIntegral n) ++ "%"
       xs' <- helper n (i-1) xs
       return $ x : xs'
+
+takeEveryDrop :: Int -> Int -> Int -> [a] -> [a]
+takeEveryDrop nTake nEvery nDrop stream = 
+  take nTake $ every nEvery $ drop nDrop stream
+
+takeProgressEveryDrop :: Int -> Int -> Int -> [a] -> IO [a]
+takeProgressEveryDrop nTake nEvery nDrop stream = 
+  takeWithProgress nTake $ every nEvery $ drop nDrop stream
+
+maxWeightElement :: Ord w => [(a, w)] -> a
+maxWeightElement mws =
+  let maxw = maximum $ map snd mws
+      (Just x) = L.lookup maxw $ map (\(m, w) -> (w, m)) mws in
+  x
+
+maxWeightPair :: Ord w => [(a, w)] -> (a, w)
+maxWeightPair mws =
+  let maxw = maximum $ map snd mws
+      (Just x) = L.lookup maxw $ map (\(m, w) -> (w, m)) mws in
+  (x, maxw)
 
 -- | An example probability distribution.
 exampleProb :: Prob Double
