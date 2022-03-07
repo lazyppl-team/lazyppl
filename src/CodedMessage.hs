@@ -119,35 +119,44 @@ randomSubstitution msg outAlphabet = do
   (to the output alphabet in which codedMsg' is written),  
   where each input letter is coded as a unique output letter. 
 -}
-decodeMessageScratch :: Map.Map (Char, Char) Double -> [(Char, Double)]
+decodeMessageScratch :: Map.Map (Char, Char) Double -> Map.Map Char Double
   -> Set.Set String -> String -> Meas String
-decodeMessageScratch tMap fMapList corpus codedMsg = do
+decodeMessageScratch tMap fMap corpus codedMsg = do
   let codedLettersOccurrences = map fst
         $ sortOn (\(_, n) -> -n) $ Map.toList
         $ Map.fromListWith (+) [(c, 1) | c <- codedMsg]
   (decodedLetters, _) <- foldlM (\(m, a) c ->
     if Data.Char.isLetter c
       then do
-        i <- sample $ categorical $ map snd a
-        let cf@(c', _) = a !! i
-        return (Map.insert c c' m, renormalise $ delete cf a)
+        let frequencies = Map.elems a
+        i <- sample $ categorical frequencies
+        let c' = getKey (frequencies !! i) a
+        return (Map.insert c c' m, renormalise $ Map.delete c' a)
       else do return (m, a))
-    (Map.empty, fMapList) codedLettersOccurrences
+    (Map.empty, fMap) codedLettersOccurrences
   let decodedMsg = map (\c -> Map.findWithDefault c c decodedLetters) codedMsg
   mapM_ (\cs -> let (c1', c2') = replaceSpecialChar cs in
     if c1' == ' ' && c2' == ' ' then return ()
     else score $ Map.findWithDefault 0 (c1', c2') tMap)
-    $ zip decodedMsg (tail decodedMsg)
-  score $ fromIntegral (length [w | w <- words decodedMsg, Set.member w corpus]) / fromIntegral (length decodedMsg)
+    $ zip (' ' : decodedMsg) (decodedMsg ++ [' '])
+  score $ foldl (\count w -> if Set.member w corpus then count+1 else count) 0 (words decodedMsg)
+      / fromIntegral (length decodedMsg)
   return decodedMsg
   where
+    replaceSpecialChar :: (Char, Char) -> (Char, Char)
     replaceSpecialChar (c1, c2) =
       let c1' = if Data.Char.isLetter c1 then c1 else ' '
           c2' = if Data.Char.isLetter c2 then c2 else ' ' in
       (c1', c2')
+    renormalise :: Map.Map k Double -> Map.Map k Double
     renormalise a =
-      let sumOccurrences = sum $ map snd a 
-      in map (\(c, f) -> (c, f / sumOccurrences)) a
+      let sumOccurrences = sum $ Map.elems a
+      in Map.map (/ sumOccurrences) a
+    getKey :: Double -> Map.Map Char Double -> Char
+    getKey val m = fromJust $ Map.foldlWithKey lookupKey Nothing m
+      where
+        lookupKey Nothing k v = if val == v then Just k else Nothing
+        lookupKey (Just k) _ _ = Just k
 
 
 {- | Statistical model 2: Decode a coded message 'codedMsg' by making transpositions 
@@ -207,19 +216,18 @@ getBestMessageTranspose tMap inAlphabet codedMsg = do
           as <- helper n (i-1) f a
           return $ a' : as
 
-inferenceMessage :: String -> String -> Set.Set String 
+inferenceMessage :: String -> String -> Set.Set String
   -> String -> Map.Map Char Char -> IO ()
 inferenceMessage tMapJson fMapJson corpus msg subst = do
   let codedMsg = encodeMessage msg subst
   tMap <- loadJSONFile tMapJson
   fMap <- loadJSONFile fMapJson
-  let fMapList = Map.toList fMap
 
-  putStrLn $ "Input alphabet: " ++ show fMapList
+  putStrLn $ "Input alphabet: " ++ show fMap
 
-  mws' <- mh 0.3 $ decodeMessageScratch tMap fMapList corpus codedMsg
+  mws' <- mh 0.2 $ decodeMessageScratch tMap fMap corpus codedMsg
   -- -- mws' <- mh1 $ decodeMessageScratch tMap inAlphabet codedMsg
-  mws <- takeProgressEveryDrop 5000 100 100 mws'
+  mws <- takeProgressEveryDrop 10000 100 100 mws'
   let maxMsg = maxWeightElement mws
 
 
