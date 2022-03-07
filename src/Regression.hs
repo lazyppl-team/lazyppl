@@ -4,10 +4,7 @@ import Distr
 import Data.Colour
 import Data.Colour.Names
 
-import Data.Default.Class
-import Control.Lens
-import Data.Monoid
-
+import Graphics.Matplotlib hiding (density)
 
 
 {- | Poisson process starting with given start point and rate.
@@ -62,69 +59,55 @@ dataset = [(0,0.6), (1, 0.7), (2,1.2), (3,3.2), (4,6.8), (5, 8.2), (6,8.4)]
 -- | plot the results of piecewise linear regression, using Metropolis Hastings
 testPiecewiseRegression =
   do
-    fs' <- mh 0.2 (regress 0.1 (splice (poissonPP 0 0.1) linear) dataset)
+    fs' <- mhirreducible 0.2 0.1 (regress 0.1 (splice (poissonPP 0 0.1) linear) dataset)
     let fs = map fst $ take 1000 $ every 1000 $ drop 10000 fs'
-    plot_funs "piecewise-reg.svg" dataset fs
+    plotFuns "piecewise-reg.svg" dataset fs
 
 -- | similar, but using likelihood weighted importance sampling
 testPiecewiseRegressionLWIS =
   do
     fs' <- lwis 100000 $ regress 0.1 (splice (poissonPP 0 0.1) linear ) dataset
     let fs = take 500 fs'
-    plot_funs "piecewise-regLWIS.svg" dataset fs
+    plotFuns "piecewise-regLWIS.svg" dataset fs
 
 testPiecewiseRegressionMH1 =
   do
     fs' <- mh1 (regress 0.1 (splice (poissonPP 0 0.1) linear) dataset)
-    let fs = map fst $ take 1500 $ every 1000 $ drop 10000 fs'
-    plot_funs "piecewise-regMH1.svg" dataset fs
+    let fs = map fst $ take 1000 $ every 1000 $ drop 10000 fs'
+    plotFuns "piecewise-regMH1.svg" dataset fs
 
 
 {-- GRAPHING ROUTINES --}
 
 
 -- Plot the points drawn from weighted samples
--- More graphing routines
 -- epsilon: smallest y axis difference to worry about
 -- delta: smallest x axis difference to worry about
-interesting_points :: (Double -> Double) -> Double -> Double -> Double -> Double -> [Double] -> [Double]
-interesting_points f lower upper epsilon delta acc =
+interestingPoints :: (Double -> Double) -> Double -> Double -> Double -> Double -> [Double] -> [Double]
+interestingPoints f lower upper epsilon delta acc =
   if abs(upper - lower) < delta then acc
   else
     let mid = (upper - lower) / 2 + lower in
     if abs((f(upper) - f(lower)) / 2 + f(lower) - f(mid)) < epsilon
     then acc
-    else interesting_points f lower mid epsilon delta (mid : (interesting_points f mid upper epsilon delta acc))
+    else interestingPoints f lower mid epsilon delta (mid : (interestingPoints f mid upper epsilon delta acc))
 
-sample_fun f =
+sampleFun f =
 --  [ (x, f x) | x <- [(-0.25),(-0.25+0.1)..6.2]]
-  let xs = ((-0.25) : (interesting_points f (-0.25) 6.2 0.3 0.001 [6.2])) in
+  let xs = ((-0.25) : (interestingPoints f (-0.25) 6.2 0.3 0.001 [6.2])) in
   map (\x -> (x,f x)) xs
 
-plot_funs :: String -> [(Double,Double)] -> [Double -> Double] -> IO ()
-plot_funs filename dataset funs = undefined
-  -- let graphs  = map sample_fun funs in
-  -- let my_lines  = plot_lines_style . line_color .~ blue `withOpacity` 0.01
-  --               $ plot_lines_values .~ graphs $ def in
-  -- let my_dots = plot_points_style .~ filledCircles 4 (opaque black)
-  --             $ plot_points_values .~ dataset
-  --             $ def in
-  -- let my_layout = layout_plots .~ [toPlot my_lines , toPlot my_dots]
-  --               $ layout_x_axis .
-  --                 laxis_generate .~ scaledAxis def (0,6)
-  --               $ layout_y_axis . laxis_generate .~ scaledAxis def (-2,10)
-  --               $ def in
-  -- let graphic =  toRenderable my_layout in
-  -- do
-  --    putStr ("Generating " ++ filename ++ "...")
-  --    renderableToFile def filename graphic;
-  --    putStrLn (" Done!")
-  --    return ()
 
+plotFuns :: String -> [(Double,Double)] -> [Double -> Double] -> IO ()
+plotFuns filename dataset funs = 
+    do  putStrLn $ "Plotting " ++ filename ++ "..."
+        file filename $ foldl (\a f -> let xfs = sampleFun f in a % plot (map fst xfs) (map snd xfs) @@ [o1 "go-", o2 "linewidth" (0.5 :: Double), o2 "alpha" (0.01 :: Double), o2 "ms" (0 :: Int)]) (scatter (map fst dataset) (map snd dataset) @@ [o2 "c" "black"] % xlim (0 :: Int) (6 :: Int) % ylim (-2 :: Int) (10 :: Int)) funs
+        putStrLn "Done."
+        return ()
 
 
 main :: IO ()
 main = do
-          testPiecewiseRegressionMH1
-          -- testPiecewiseRegression
+          testPiecewiseRegression
+          -- testPiecewiseRegressionMH1
           -- testPiecewiseRegressionLWIS
