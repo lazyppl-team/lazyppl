@@ -11,9 +11,6 @@ import Data.Monoid
 import Distr
 import Distr.DirichletP
 import Distr.Memoization
-import Graphics.Rendering.Chart
-import Graphics.Rendering.Chart.Backend.Diagrams
-import Graphics.Rendering.Chart.State
 import LazyPPL
 import Numeric.Log
 
@@ -63,44 +60,45 @@ test =
 
 {-- GRAPHING ROUTINES --}
 plot_coords :: String -> [((Double, Double), Double, (Double, Double, Double))] -> IO ()
-plot_coords filename xycs =
+plot_coords filename xycs = undefined
   --  let my_areas = map (\((_,_),c,(x,y,sigma)) -> let rgb = hsv (c * 360) 0.2 1 in toPlot $ plot_points_style .~ filledCircles (sigma*70) (opaque $ sRGB (channelRed rgb) (channelGreen rgb) (channelBlue rgb))
   --                      $ plot_points_values .~ [(x,y)]
   --                      $ def) xycs in
-  let circle x y r = [((- r) * cos (a * 2 * pi / 360) + x, (r * sin (a * 2 * pi / 360) + y, (- r) * sin (a * 2 * pi / 360) + y)) | a <- [0, 0.5 .. 180 :: Double]]
-   in let my_areas =
-            map
-              ( \((_, _), c, (x, y, sigma)) ->
-                  let rgb = hsv (c * 360) 0.15 1
-                   in toPlot $
-                        plot_fillbetween_style .~ solidFillStyle (opaque $ sRGB (channelRed rgb) (channelGreen rgb) (channelBlue rgb)) $
-                          plot_fillbetween_values .~ (circle x y (2 * sigma)) $
-                            def
-              )
-              xycs
-       in let my_dots =
-                map
-                  ( \((x, y), c, _) ->
-                      let rgb = hsv (c * 360) 1 1
-                       in toPlot $
-                            plot_points_style .~ filledCircles 4 (opaque $ sRGB (channelRed rgb) (channelGreen rgb) (channelBlue rgb)) $
-                              plot_points_values .~ [(x, y)] $
-                                def
-                  )
-                  xycs
-           in let my_layout =
-                    layout_plots .~ (my_areas ++ my_dots) $
-                      layout_x_axis
-                        . laxis_generate
-                        .~ scaledAxis def (0, 10)
-                        $ layout_y_axis . laxis_generate .~ scaledAxis def (-2, 10) $
-                          def
-               in let graphic = toRenderable my_layout
-                   in do
-                        putStr ("Generating " ++ filename ++ "...")
-                        renderableToFile def filename graphic
-                        putStrLn (" Done!")
-                        return ()
+
+  -- let circle x y r = [((- r) * cos (a * 2 * pi / 360) + x, (r * sin (a * 2 * pi / 360) + y, (- r) * sin (a * 2 * pi / 360) + y)) | a <- [0, 0.5 .. 180 :: Double]]
+  --  in let my_areas =
+  --           map
+  --             ( \((_, _), c, (x, y, sigma)) ->
+  --                 let rgb = hsv (c * 360) 0.15 1
+  --                  in toPlot $
+  --                       plot_fillbetween_style .~ solidFillStyle (opaque $ sRGB (channelRed rgb) (channelGreen rgb) (channelBlue rgb)) $
+  --                         plot_fillbetween_values .~ (circle x y (2 * sigma)) $
+  --                           def
+  --             )
+  --             xycs
+  --      in let my_dots =
+  --               map
+  --                 ( \((x, y), c, _) ->
+  --                     let rgb = hsv (c * 360) 1 1
+  --                      in toPlot $
+  --                           plot_points_style .~ filledCircles 4 (opaque $ sRGB (channelRed rgb) (channelGreen rgb) (channelBlue rgb)) $
+  --                             plot_points_values .~ [(x, y)] $
+  --                               def
+  --                 )
+  --                 xycs
+  --          in let my_layout =
+  --                   layout_plots .~ (my_areas ++ my_dots) $
+  --                     layout_x_axis
+  --                       . laxis_generate
+  --                       .~ scaledAxis def (0, 10)
+  --                       $ layout_y_axis . laxis_generate .~ scaledAxis def (-2, 10) $
+  --                         def
+  --              in let graphic = toRenderable my_layout
+  --                  in do
+  --                       putStr ("Generating " ++ filename ++ "...")
+  --                       renderableToFile def filename graphic
+  --                       putStrLn (" Done!")
+  --                       return ()
 
 main :: IO ()
 main = do test

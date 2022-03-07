@@ -290,10 +290,10 @@ mutateNodes = M.foldrWithKey (\k d t -> mutateNode t k d)
 
 randomElement :: RandomGen g => g -> [a] -> (g, a)
 randomElement g xs = if null xs then error "0d sample space" else (g', xs !! n)
-  where (n, g') = randomR (0, length xs - 1) g
-              -- ^^^^^^^ In the old version of the `random` package that
-              -- we are using, the function is called randomR. In newer
-              -- versions it is called uniformR.
+  where (n, g') = uniformR (0, length xs - 1) g
+               -- ^^^^^^^^ 
+               -- Depending on the version of `random` this can be either
+               -- uniformR or randomR (but randomR is slowly being deprecated).
 
 mh1 :: forall a. NFData a => Meas a -> IO [(a, Product (Log Double))]
 mh1 (Meas m) = do

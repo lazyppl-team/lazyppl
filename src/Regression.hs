@@ -1,9 +1,6 @@
 module Regression where
 import LazyPPL
 import Distr
-import Graphics.Rendering.Chart
-import Graphics.Rendering.Chart.Backend.Diagrams
-import Graphics.Rendering.Chart.State
 import Data.Colour
 import Data.Colour.Names
 
@@ -105,24 +102,24 @@ sample_fun f =
   map (\x -> (x,f x)) xs
 
 plot_funs :: String -> [(Double,Double)] -> [Double -> Double] -> IO ()
-plot_funs filename dataset funs =
-  let graphs  = map sample_fun funs                 in
-  let my_lines  = plot_lines_style . line_color .~ blue `withOpacity` 0.01
-                $ plot_lines_values .~ graphs $ def in
-  let my_dots = plot_points_style .~ filledCircles 4 (opaque black)
-              $ plot_points_values .~ dataset
-              $ def in
-  let my_layout = layout_plots .~ [toPlot my_lines , toPlot my_dots]
-                $ layout_x_axis .
-                  laxis_generate .~ scaledAxis def (0,6)
-                $ layout_y_axis . laxis_generate .~ scaledAxis def (-2,10)
-                $ def in
-  let graphic =  toRenderable my_layout in
-  do
-     putStr ("Generating " ++ filename ++ "...")
-     renderableToFile def filename graphic;
-     putStrLn (" Done!")
-     return ()
+plot_funs filename dataset funs = undefined
+  -- let graphs  = map sample_fun funs in
+  -- let my_lines  = plot_lines_style . line_color .~ blue `withOpacity` 0.01
+  --               $ plot_lines_values .~ graphs $ def in
+  -- let my_dots = plot_points_style .~ filledCircles 4 (opaque black)
+  --             $ plot_points_values .~ dataset
+  --             $ def in
+  -- let my_layout = layout_plots .~ [toPlot my_lines , toPlot my_dots]
+  --               $ layout_x_axis .
+  --                 laxis_generate .~ scaledAxis def (0,6)
+  --               $ layout_y_axis . laxis_generate .~ scaledAxis def (-2,10)
+  --               $ def in
+  -- let graphic =  toRenderable my_layout in
+  -- do
+  --    putStr ("Generating " ++ filename ++ "...")
+  --    renderableToFile def filename graphic;
+  --    putStrLn (" Done!")
+  --    return ()
 
 
 
@@ -131,12 +128,3 @@ main = do
           testPiecewiseRegressionMH1
           -- testPiecewiseRegression
           -- testPiecewiseRegressionLWIS
--- main = do
---         fs' <- mh 0.2 $ regress 1 linear dataset
---         let fs = map fst $ take 500 $ every 1000 $ drop 10000 $ fs'
---         plot_funs "linreg-mh.svg" dataset fs
-
---         fs' <- mh1 510000 $ regress 1 linear dataset
---         let fs = map fst $ take 500 $ every 1000 $ drop 10000 $ fs'
---         plot_funs "linreg-mh1.svg" dataset fs
-

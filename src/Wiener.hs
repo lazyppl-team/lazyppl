@@ -1,11 +1,6 @@
 module Wiener where
 import LazyPPL
 import Distr
-import Graphics.Rendering.Chart
-import Graphics.Rendering.Chart.Backend.Diagrams
-import Graphics.Rendering.Chart.State
-import Data.Colour
-import Data.Colour.Names
 
 import Data.List
 import Control.Monad
@@ -79,24 +74,24 @@ findMaxLower d (x:xs) = let y = findMaxLower d xs in
 
 {-- GRAPHING ROUTINES --}
 plot_coords :: String -> [(Double,Double)] -> [[(Double,Double)]] -> IO ()
-plot_coords filename dataset xys =
-  let graphs  = xys                 in
-  let my_lines  = plot_lines_style . line_color .~ blue `withOpacity` 0.1
-                $ plot_lines_values .~ graphs $ def in
-  let my_dots = plot_points_style .~ filledCircles 4 (opaque black)
-              $ plot_points_values .~ dataset
-              $ def in               
-  let my_layout = layout_plots .~ [toPlot my_lines , toPlot my_dots]
-                $ layout_x_axis .
-                  laxis_generate .~ scaledAxis def (0,6)
-                $ layout_y_axis . laxis_generate .~ scaledAxis def (-2,10)
-                $ def in
-  let graphic =  toRenderable my_layout in
-  do
-     putStr ("Generating " ++ filename ++ "...")
-     renderableToFile def filename graphic;
-     putStrLn (" Done!")
-     return ()
+plot_coords filename dataset xys = undefined
+  -- let graphs  = xys                 in
+  -- let my_lines  = plot_lines_style . line_color .~ blue `withOpacity` 0.1
+  --               $ plot_lines_values .~ graphs $ def in
+  -- let my_dots = plot_points_style .~ filledCircles 4 (opaque black)
+  --             $ plot_points_values .~ dataset
+  --             $ def in               
+  -- let my_layout = layout_plots .~ [toPlot my_lines , toPlot my_dots]
+  --               $ layout_x_axis .
+  --                 laxis_generate .~ scaledAxis def (0,6)
+  --               $ layout_y_axis . laxis_generate .~ scaledAxis def (-2,10)
+  --               $ def in
+  -- let graphic =  toRenderable my_layout in
+  -- do
+  --    putStr ("Generating " ++ filename ++ "...")
+  --    renderableToFile def filename graphic;
+  --    putStrLn (" Done!")
+  --    return ()
     
 
 

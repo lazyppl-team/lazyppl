@@ -29,13 +29,11 @@ dependencies:
 - cassava
 - gamma
 - log-domain
-- Chart
-- Chart-diagrams
 - colour
 - containers
 - data-default-class
 - lens
-- debug
+# - debug
 - monad-extras
 - lazyio
 - spoon

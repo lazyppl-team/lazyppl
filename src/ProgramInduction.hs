@@ -7,14 +7,6 @@ module ProgramInduction where
 import LazyPPL
 import Distr
 
-import Graphics.Rendering.Chart
-import Graphics.Rendering.Chart.Backend.Diagrams
-import Graphics.Rendering.Chart.State
-import Data.Colour
-import Data.Colour.Names
-import Data.Default.Class
-import Control.Lens
-
 -- A little programming language for arithmetic expressions and if-then-else
 
 -- A datatype of expressions in one variable
@@ -150,52 +142,52 @@ sample_fun f =
   map (\x -> (x,f x)) xs 
 
 plot_funs :: String -> [(Double,Double)] -> [(Double -> Double,String)] -> IO ()
-plot_funs filename dataset funs =
-  let my_dots = plot_points_style .~ filledCircles 4 (opaque black)
-              $ plot_points_values .~ dataset
-              $ def in
-  let fes = map (\(f,e) -> (sample_fun f,e)) funs in
-  let red_lines  = plot_lines_style . line_color .~ red `withOpacity` 1 
-                $ plot_lines_style . line_width .~ 2
-                $ plot_lines_values .~ [(fst $ fes !! 0)] $ def in
-  let red_font = font_size .~ 15
-              $ font_color .~ red `withOpacity` 1
-              $ def in
-  let red_legend = plot_annotation_hanchor .~ HTA_Left
-              $ plot_annotation_values .~ [(1,-0.5,snd $ fes !! 0)]
-              $ plot_annotation_style .~ red_font
-              $ def in
-  let blue_lines  = plot_lines_style . line_color .~ blue `withOpacity` 1 
-                $ plot_lines_style . line_width .~ 2
-                $ plot_lines_values .~ [(fst $ fes !! 1)] $ def in
-  let blue_font = font_size .~ 15
-              $ font_color .~ blue `withOpacity` 1
-              $ def in
-  let blue_legend = plot_annotation_hanchor .~ HTA_Left
-              $ plot_annotation_values .~ [(1,-1.3,snd $ fes !! 1)]
-              $ plot_annotation_style .~ blue_font
-              $ def in
-  let purple_lines  = plot_lines_style . line_color .~ purple `withOpacity` 1 
-                $ plot_lines_style . line_width .~ 2
-                $ plot_lines_values .~ [(fst $ fes !! 2)] $ def in
-  let purple_font = font_size .~ 15
-              $ font_color .~ purple `withOpacity` 1
-              $ def in
-  let purple_legend = plot_annotation_hanchor .~ HTA_Left
-              $ plot_annotation_values .~ [(1,-2.1,snd $ fes !! 2)]
-              $ plot_annotation_style .~ purple_font
-              $ def in
-  let my_layout = layout_plots .~ [toPlot red_lines , toPlot red_legend, toPlot blue_lines, toPlot blue_legend, toPlot purple_lines, toPlot purple_legend, toPlot my_dots]
-                $ layout_x_axis .
-                  laxis_generate .~ scaledAxis def (0,6)
-                $ layout_y_axis . laxis_generate .~ scaledAxis def (-2,10)
-                $ def in
-  let graphic =  toRenderable my_layout in
-  do
-     putStr ("Generating " ++ filename ++ "...")
-     renderableToFile def filename graphic;
-     putStrLn (" Done!")
-     return ()
+plot_funs filename dataset funs = undefined
+  -- let my_dots = plot_points_style .~ filledCircles 4 (opaque black)
+  --             $ plot_points_values .~ dataset
+  --             $ def in
+  -- let fes = map (\(f,e) -> (sample_fun f,e)) funs in
+  -- let red_lines  = plot_lines_style . line_color .~ red `withOpacity` 1 
+  --               $ plot_lines_style . line_width .~ 2
+  --               $ plot_lines_values .~ [(fst $ fes !! 0)] $ def in
+  -- let red_font = font_size .~ 15
+  --             $ font_color .~ red `withOpacity` 1
+  --             $ def in
+  -- let red_legend = plot_annotation_hanchor .~ HTA_Left
+  --             $ plot_annotation_values .~ [(1,-0.5,snd $ fes !! 0)]
+  --             $ plot_annotation_style .~ red_font
+  --             $ def in
+  -- let blue_lines  = plot_lines_style . line_color .~ blue `withOpacity` 1 
+  --               $ plot_lines_style . line_width .~ 2
+  --               $ plot_lines_values .~ [(fst $ fes !! 1)] $ def in
+  -- let blue_font = font_size .~ 15
+  --             $ font_color .~ blue `withOpacity` 1
+  --             $ def in
+  -- let blue_legend = plot_annotation_hanchor .~ HTA_Left
+  --             $ plot_annotation_values .~ [(1,-1.3,snd $ fes !! 1)]
+  --             $ plot_annotation_style .~ blue_font
+  --             $ def in
+  -- let purple_lines  = plot_lines_style . line_color .~ purple `withOpacity` 1 
+  --               $ plot_lines_style . line_width .~ 2
+  --               $ plot_lines_values .~ [(fst $ fes !! 2)] $ def in
+  -- let purple_font = font_size .~ 15
+  --             $ font_color .~ purple `withOpacity` 1
+  --             $ def in
+  -- let purple_legend = plot_annotation_hanchor .~ HTA_Left
+  --             $ plot_annotation_values .~ [(1,-2.1,snd $ fes !! 2)]
+  --             $ plot_annotation_style .~ purple_font
+  --             $ def in
+  -- let my_layout = layout_plots .~ [toPlot red_lines , toPlot red_legend, toPlot blue_lines, toPlot blue_legend, toPlot purple_lines, toPlot purple_legend, toPlot my_dots]
+  --               $ layout_x_axis .
+  --                 laxis_generate .~ scaledAxis def (0,6)
+  --               $ layout_y_axis . laxis_generate .~ scaledAxis def (-2,10)
+  --               $ def in
+  -- let graphic =  toRenderable my_layout in
+  -- do
+  --    putStr ("Generating " ++ filename ++ "...")
+  --    renderableToFile def filename graphic;
+  --    putStrLn (" Done!")
+  --    return ()
 
 
 
