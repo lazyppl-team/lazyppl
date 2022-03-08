@@ -85,7 +85,7 @@ randomMondrian base budget abs = do
     then do p <- base; return $ Block p abs
     else do
       let remaining = budget - cutCost
-      dim <- categorical $ map (/sumLengths) lengths -- ^ if dim is true then cut is perpendicular to (a_d, b_d)
+      dim <- categorical $ map (/sumLengths) lengths -- if dim is true then cut is perpendicular to (a_d, b_d)
       let (a_d, b_d) = abs !! dim
       cut <- uniformbounded a_d b_d
       leftMondrian <- randomMondrian base remaining
