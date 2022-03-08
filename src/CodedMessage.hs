@@ -29,6 +29,8 @@ import Data.Monoid ( Product(Product) )
 import Control.Monad (forM)
 import Control.DeepSeq ( deepseq )
 
+import Debug.Trace
+
 {- | Decoding a coded message (substitution cipher)
     Inpired from https://math.uchicago.edu/~shmuel/Network-course-readings/MCMCRev.pdf -}
 
@@ -47,7 +49,7 @@ transitionMap file = do
           (\(c1, c2) count -> if c1 == c then count / sumOccurrences else count) m)
           unnormalisedMap
           $ Map.keysSet $ Map.mapKeys fst unnormalisedMap
-  return normalisedMap
+  return unnormalisedMap
   where
     updateMap :: Map.Map (Char, Char) Double -> String -> Map.Map (Char, Char) Double
     updateMap m s =
@@ -95,7 +97,7 @@ loadJSONFile file = do
 
 -- | Encode a message with a substitution (substitution cipher)
 encodeMessage :: String -> Map.Map Char Char -> String
-encodeMessage s m = map (\c -> Map.findWithDefault c c m) s
+encodeMessage s m = map ((\c -> Map.findWithDefault c c m) . toLower) s
 
 {- | Generate a random substitution mapping each letter of 'msg' 
   to a letter of the output (coding) Alphabet 'outAlphabet'. -}
@@ -108,7 +110,8 @@ randomSubstitution msg outAlphabet = do
         let c' = a !! i
         return (Map.insert c c' m, delete c' a, n-1)
       else do return (m, a, n))
-    (Map.empty, outAlphabet, length outAlphabet) $ Set.fromList msg
+    (Map.empty, outAlphabet, length outAlphabet)
+    $ Set.fromList $ map toLower msg
   return m
 
 {- | Statistical model 1: Decode a coded message 'codedMsg' from scratch 
@@ -125,6 +128,7 @@ decodeMessageScratch tMap fMap corpus codedMsg = do
   let codedLettersOccurrences = map fst
         $ sortOn (\(_, n) -> -n) $ Map.toList
         $ Map.fromListWith (+) [(c, 1) | c <- codedMsg]
+
   (decodedLetters, _) <- foldlM (\(m, a) c ->
     if Data.Char.isLetter c
       then do
@@ -134,13 +138,17 @@ decodeMessageScratch tMap fMap corpus codedMsg = do
         return (Map.insert c c' m, renormalise $ Map.delete c' a)
       else do return (m, a))
     (Map.empty, fMap) codedLettersOccurrences
+
   let decodedMsg = map (\c -> Map.findWithDefault c c decodedLetters) codedMsg
+
   mapM_ (\cs -> let (c1', c2') = replaceSpecialChar cs in
     if c1' == ' ' && c2' == ' ' then return ()
-    else score $ Map.findWithDefault 0 (c1', c2') tMap)
+    else score $ 1 + Map.findWithDefault 0 (c1', c2') tMap)
     $ zip (' ' : decodedMsg) (decodedMsg ++ [' '])
+
   score $ foldl (\count w -> if Set.member w corpus then count+1 else count) 0 (words decodedMsg)
-      / fromIntegral (length decodedMsg)
+  --    / fromIntegral (length decodedMsg)
+
   return decodedMsg
   where
     replaceSpecialChar :: (Char, Char) -> (Char, Char)
@@ -153,10 +161,10 @@ decodeMessageScratch tMap fMap corpus codedMsg = do
       let sumOccurrences = sum $ Map.elems a
       in Map.map (/ sumOccurrences) a
     getKey :: Double -> Map.Map Char Double -> Char
-    getKey val m = fromJust $ Map.foldlWithKey lookupKey Nothing m
+    getKey val m = fromJust $ Map.foldrWithKey lookupKey Nothing m
       where
-        lookupKey Nothing k v = if val == v then Just k else Nothing
-        lookupKey (Just k) _ _ = Just k
+        lookupKey k v Nothing = if val == v then Just k else Nothing
+        lookupKey _ _  (Just k) = Just k
 
 
 {- | Statistical model 2: Decode a coded message 'codedMsg' by making transpositions 
@@ -277,6 +285,6 @@ main = do
   saveFrequenciesMapEng
   corpus <- corpusEng
   let outAlphabet = ['a'..'z']
-  let msg = exampleHume2
+  let msg = exampleFeynman1
   subst <- randomSubstitution msg outAlphabet
   inferenceMessage "../english-words-transition.json" "../english-words-frequencies.json" corpus msg subst
