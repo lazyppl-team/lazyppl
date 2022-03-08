@@ -35,7 +35,7 @@ test model n = do
   let ideas =
         [ (1, 0, "mh 1", "tab:blue"),
           (0.5, 0, "mh 0.5", "tab:green"),
-          (0.1, 0.1, "mh 0.2 mixed with mh 1", "tab:red")]
+          (0.1, 0.1, "mh 0.1 mixed with mh 1", "tab:red")]
   xws <- mapM (\(p, q, _, _) -> mhirreducible p q model) ideas
   let xs = map (map fst . take n) xws
   onscreen $
@@ -46,7 +46,7 @@ test model n = do
       (map (\x -> "duplicates: " ++ show (n - length (nub $ sort x))) xs)
       (map (\(_, _, _, c) -> c) ideas)
 
--- Plotting routine
+-- | Plotting routine
 histscatters xs y titles xtitles colors =
   foldl histscatter (subplots @@ [o2 "nrows" 2, o2 "ncols" (length xs)]) [0 .. (length xs - 1)]
   where
@@ -75,32 +75,32 @@ histscatters xs y titles xtitles colors =
 
 ----
 
--- A possible way of including transpositions in the MH proposal without changing mh
+-- | A possible way of including transpositions in the MH proposal without changing mh
 
--- A bimodal distribution that is symmetric in x and y. 
+-- | A bimodal distribution that is symmetric in x and y. 
 cross prior = do (x,y) <- sample prior
                  score $ (normalPdf (-5) (0.5) x) * (normalPdf 0 0.1 y) + (normalPdf (-5) (0.5) y) * (normalPdf 0 0.1 x)
                  return (x,y)
 
--- An uninformative prior on (x,y).
+-- | An uninformative prior on (x,y).
 prior2dA = do x <- normal 0 10
               y <- normal 0 10
               return (x,y)
 
--- Equivalent to prior2dA, but randomly flipping x and y
+-- | Equivalent to prior2dA, but randomly flipping x and y
 prior2dB = do b <- bernoulli 0.5
               x <- normal 0 10
               y <- normal 0 10
               return $ if b then (x,y) else (y,x)
 
--- Need :set -fobject-code to use this in ghci
+-- | Need :set -fobject-code to use this in ghci
 testB = do xyws <- mh1 $ cross prior2dA
            let xysA = map fst $ take 10000 $ xyws
            xyws <- mh1 $ cross prior2dB
            let xysB = map fst $ take 10000 $ xyws
            onscreen $ scatters [xysA,xysB] ["With intuitive prior","Equiv prior but extra flip"] ["tab:blue","tab:green"]
 
--- Plotting routine
+-- | Plotting routine
 scatters xys titles colors = foldl myscatter (subplots @@ [o2 "nrows" 1, o2 "ncols" (length xys)]) [0..(length xys - 1)]
  where myscatter mpl i = 
                    mpl
@@ -109,3 +109,51 @@ scatters xys titles colors = foldl myscatter (subplots @@ [o2 "nrows" 1, o2 "nco
                    % title (titles !! i)
                    % xlim (-6) 1
                    % ylim (-6) 1
+
+-- | Returning to the original problem.
+-- | Experiment with adding a redundant random if-then-else;
+-- | this causes MH to explore different modes a bit more. 
+
+-- | Let's call it a booster prior for now.
+-- | NB booster prior = prior, mathematically.
+-- | But under MH it has some inclination to try different branches things. 
+booster prior =
+             do b <- bernoulli 0.5
+                x <- prior
+                y <- prior
+                if b then return x else return y
+
+-- | Another possibility is to use what I'll call a superbernoulli.
+-- | Mathematically, superbernoulli p = bernoulli p.
+-- | But superbernoulli changes ~twice as often under (mh q) for small q.
+superbernoulli p =
+  do let q = 0.5 * (1- sqrt(1- 2 * p))
+     b <- bernoulli q
+     c <- bernoulli q
+     return $ b==c
+
+superbooster prior =
+             do b <- superbernoulli 0.5
+                x <- prior
+                y <- prior
+                if b then return x else return y
+
+-- | Try this e.g. (testboosters 10000 0.2)
+testboosters n p = do
+  let ys = map fromIntegral [1 .. n]
+  let ideas =
+        [ ((normal 0 4), p, "normal prior", "tab:blue"),
+          ((nnormal 10 0 4), p, "random walk", "tab:green"),
+          ((booster $ nnormal 10 0 4), p, "plus booster", "tab:red"),
+          ((superbooster $ nnormal 10 0 4), p, "plus superbooster", "tab:green") ]
+  xws <- mapM (\(m, p, _, _) -> mh p (bimodal m)) ideas
+  let xs = map (map fst . take n) xws
+  onscreen $
+    histscatters
+      xs
+      ys
+      (map (\(_, _, s, _) -> s) ideas)
+      (map (\x -> "duplicates: " ++ show (n - length (nub $ sort x))) xs)
+      (map (\(_, _, _, c) -> c) ideas)
+
+
