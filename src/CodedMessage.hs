@@ -99,6 +99,22 @@ loadJSONFile file = do
 encodeMessage :: String -> Map.Map Char Char -> String
 encodeMessage s m = map ((\c -> Map.findWithDefault c c m) . toLower) s
 
+lettersOccurrences :: String -> [Char]
+lettersOccurrences codedMsg = map fst
+  $ sortOn (\(_, n) -> -n) $ Map.toList
+  $ Map.fromListWith (+) [(c, 1) | c <- codedMsg]
+
+renormalise :: Map.Map k Double -> Map.Map k Double
+renormalise a =
+  let sumOccurrences = sum $ Map.elems a
+  in Map.map (/ sumOccurrences) a
+
+getKey :: Double -> Map.Map Char Double -> Char
+getKey val m = fromJust $ Map.foldrWithKey lookupKey Nothing m
+  where
+    lookupKey k v Nothing = if val == v then Just k else Nothing
+    lookupKey _ _  (Just k) = Just k
+
 {- | Generate a random substitution mapping each letter of 'msg' 
   to a letter of the output (coding) Alphabet 'outAlphabet'. -}
 randomSubstitution :: String -> [Char] -> IO (Map.Map Char Char)
@@ -114,6 +130,25 @@ randomSubstitution msg outAlphabet = do
     $ Set.fromList $ map toLower msg
   return m
 
+{- | Generate a random substitution of a `codedMsg` based on 
+  a frequency map of each letter of the input alphabet 
+  (the most common coded letter is more likely to be mapped to 
+  the most common input letter, etc...). -}
+sensibleSubstitution :: String -> Map.Map Char Double -> IO (Map.Map Char Char)
+sensibleSubstitution codedMsg fMap = do
+  let codedLettersOccurrences = lettersOccurrences codedMsg
+  (decodedLetters, _) <- foldlM (\(m, a) c ->
+    if Data.Char.isLetter c
+      then do
+        let frequencies = Map.elems a
+        r <- randomIO
+        let i = fromJust $ findIndex (>r) $ tail $ scanl (+) 0 frequencies
+        let c' = getKey (frequencies !! i) a
+        return (Map.insert c c' m, renormalise $ Map.delete c' a)
+      else do return (m, a))
+    (Map.empty, fMap) codedLettersOccurrences
+  return decodedLetters
+
 {- | Statistical model 1: Decode a coded message 'codedMsg' from scratch 
   (guess the cipher substitution)
   -- based on a transition map 'tMap', a frequency map 'fMap', 
@@ -125,9 +160,7 @@ randomSubstitution msg outAlphabet = do
 decodeMessageScratch :: Map.Map (Char, Char) Double -> Map.Map Char Double
   -> Set.Set String -> String -> Meas String
 decodeMessageScratch tMap fMap corpus codedMsg = do
-  let codedLettersOccurrences = map fst
-        $ sortOn (\(_, n) -> -n) $ Map.toList
-        $ Map.fromListWith (+) [(c, 1) | c <- codedMsg]
+  let codedLettersOccurrences = lettersOccurrences codedMsg
 
   (decodedLetters, _) <- foldlM (\(m, a) c ->
     if Data.Char.isLetter c
@@ -156,15 +189,6 @@ decodeMessageScratch tMap fMap corpus codedMsg = do
       let c1' = if Data.Char.isLetter c1 then c1 else ' '
           c2' = if Data.Char.isLetter c2 then c2 else ' ' in
       (c1', c2')
-    renormalise :: Map.Map k Double -> Map.Map k Double
-    renormalise a =
-      let sumOccurrences = sum $ Map.elems a
-      in Map.map (/ sumOccurrences) a
-    getKey :: Double -> Map.Map Char Double -> Char
-    getKey val m = fromJust $ Map.foldrWithKey lookupKey Nothing m
-      where
-        lookupKey k v Nothing = if val == v then Just k else Nothing
-        lookupKey _ _  (Just k) = Just k
 
 
 {- | Statistical model 2: Decode a coded message 'codedMsg' by making transpositions 
@@ -175,9 +199,9 @@ decodeMessageScratch tMap fMap corpus codedMsg = do
   (to the output alphabet in which codedMsg' is written),  
   where each input letter is coded as a unique output letter.
 -}
-substTranspose :: Map.Map (Char, Char) Double ->
+substTranspose :: Map.Map (Char, Char) Double -> Map.Map Char Double ->
   Map.Map Char Char -> String -> Meas (Map.Map Char Char, String)
-substTranspose tMap subst codedMsg = do
+substTranspose tMap fMap subst codedMsg = do
   let keysSubst = Map.keys subst
   let n = length keysSubst
   i <- sample $ uniformdiscrete n
@@ -198,20 +222,15 @@ substTranspose tMap subst codedMsg = do
           c2' = if Data.Char.isLetter c2 then c2 else ' ' in
       (c1', c2')
 
--- decodeMessageTranspose :: Map.Map (Char, Char) Double -> [Char] 
---  -> String -> Meas String
-getBestMessageTranspose :: Map.Map (Char, Char) Double -> [Char] -> String -> IO String
-getBestMessageTranspose tMap inAlphabet codedMsg = do
-  subst <- randomSubstitution codedMsg inAlphabet
-  -- mws' <- mh 0.5 $ decodeMessageTranspose tMap subst codedMsg
-  !scs' <- iterateNtimesM 1000 substMsgMax ((subst, codedMsg),  Product $ (Log.Exp . log) 1)
-  putStrLn "Done 1."
+getBestMessageTranspose :: Map.Map (Char, Char) Double -> Map.Map Char Double -> 
+  Map.Map Char Char -> String -> IO String
+getBestMessageTranspose tMap fMap subst codedMsg = do
+  !scs' <- iterateNtimesM 5000 substMsgMax ((subst, codedMsg),  Product $ (Log.Exp . log) 1)
   let scs = maxWeightElement scs'
-  putStrLn "Done 2."
   return $ snd scs
   where
     substMsgMax ((subst', codedMsg'), _) = do
-      scs <- mh 0.2 $ substTranspose tMap subst' codedMsg'
+      scs <- mh 0.2 $ substTranspose tMap fMap subst' codedMsg'
       let scs' = takeEagerEveryDrop 100 10 10 scs
       return $ scs' `deepseq` maxWeightPair scs'
     iterateNtimesM :: Int -> (a -> IO a) -> a -> IO [a]
@@ -233,22 +252,19 @@ inferenceMessage tMapJson fMapJson corpus msg subst = do
 
   putStrLn $ "Input alphabet: " ++ show fMap
 
-  mws' <- mh 0.2 $ decodeMessageScratch tMap fMap corpus codedMsg
-  -- -- mws' <- mh1 $ decodeMessageScratch tMap inAlphabet codedMsg
-  mws <- takeProgressEveryDrop 10000 100 100 mws'
-  let maxMsg = maxWeightElement mws
-
-
-  -- subst <- randomSubstitution codedMsg inAlphabet
-  -- mws' <- mh 0.5 $ decodeMessageTranspose tMap subst codedMsg
-  -- -- mws' <- mh1 $ decodeMessageTranspose tMap subst codedMsg
+  -- mws' <- mh 0.3 $ decodeMessageScratch tMap fMap corpus codedMsg
+  -- -- mws' <- mh1 $ decodeMessageScratch tMap fMap corpus codedMsg
   -- mws <- takeProgressEveryDrop 10000 100 100 mws'
-  -- maxMsg = maxWeightElement mws
-  -- maxMsg <- getBestMessageTranspose tMap inAlphabet codedMsg
+  -- let maxMsg = maxWeightElement mws
 
-  putStrLn $ "Initial message: " ++ msg
-  putStrLn $ "Coded message (to decipher): " ++ codedMsg
-  putStrLn $ "Decoded message: " ++ maxMsg
+
+  subst' <- sensibleSubstitution codedMsg fMap
+  maxMsg <- getBestMessageTranspose tMap fMap subst' codedMsg
+
+  putStrLn $ "Initial message: " ++ msg ++ "\n"
+  putStrLn $ "Coded message (to decipher): " ++ codedMsg ++ "\n"
+  putStrLn $ "Initial Substitution : " ++ show (encodeMessage codedMsg subst') ++ "\n"
+  putStrLn $ "Decoded message: " ++ maxMsg ++ "\n"
 
 
 -- | Examples
