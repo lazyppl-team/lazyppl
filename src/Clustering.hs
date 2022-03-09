@@ -21,6 +21,7 @@ import Numeric.Log
 import Graphics.Matplotlib hiding (density)
 
 
+
 type RgbColor = Double
 
 {- | A generic Chinese-Restaurant clustering program
@@ -66,7 +67,7 @@ example =
 test =
   do
     xycws' <- mh1 example
-    let xycws = take 3 xycws'
+    let xycws = take 5000 xycws'
     let maxw = (maximum $ map snd xycws :: Product (Log Double))
     let (Just xyc) = Data.List.lookup maxw $ map (\(z, w) -> (w, z)) xycws
     plot_coords "clustering.svg" xyc
@@ -117,14 +118,36 @@ plot_coords :: String -> [((Double, Double), RgbColor, (Double, Double, Double))
 plot_coords filename dataset = do 
   let xycs = map (\((x, y), c, _) -> ((x, y), c)) dataset 
   let (xys, cs) = unzip xycs
-  let (xs, ys) = unzip xys 
-  let plot = figure @@ [o1 0]
+  let (xs, ys) = unzip xys
+  let starterplot = figure @@ [o1 0]
        % setSizeInches 8 8 
        % axes @@ [o1 [0.1, 0.1, 0.65, 0.65]]
-       % scatter xs ys @@ [o2 "cmap" "nipy_spectral", o2 "c" cs] 
+  let gaussians = (foldl (\p (c,x,y,s) -> mplBivarNormal x y s c p) starterplot (nub $ map (\(_,c,(x,y,s))->(c,x,y,s)) dataset))
+  let plot = foldl 
+             (\p -> \((x,y),c,_) -> let c' = hsv (c * 365) 1 1 in 
+                         p % scatter [x] [y] @@ [o2 "color" [channelRed c',channelGreen c',channelBlue c']])
+             gaussians
+             dataset
   file filename plot
   putStrLn $ "generating " ++ filename ++ "... done."
 
+mplBivarNormal :: Double -> Double -> Double -> Double -> Matplotlib -> Matplotlib
+mplBivarNormal mux muy sigma c p =
+          p % imshow ws @@ [o2 "interpolation" "bilinear"
+               ,o2 "origin" "lower"
+               ,o2 "extent" [0::Double, 8, 0, 8]]
+                 where delta = 0.025::Double
+                       xs = [0.0+delta..8.0]
+                       ys = [0.0+delta..8.0]
+                       r = channelRed(hsv (c * 365) 1 1)
+                       g = channelGreen(hsv (c * 365) 1 1)
+                       b = channelBlue(hsv (c * 365) 1 1)
+                       ws = [[[r,g,b,pdfBivariateNormal x y sigma sigma mux muy 0.0] | x <- xs] | y <- ys]
+
+pdfBivariateNormal x y sigmax sigmay mux muy sigmaxy =
+  1/(2*pi*sigmax*sigmay*(sqrt(1-rho^2)))*exp(-z/(2*(1-rho^2)))
+  where rho = sigmaxy/(sigmax*sigmay)
+        z = (x-mux)^2/sigmax^2-(2*rho*(x-mux)*(y-muy))/(sigmax*sigmay)+(y-muy)^2/sigmay^2
 
 main :: IO ()
 main = do test
