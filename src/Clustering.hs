@@ -30,7 +30,7 @@ type RgbColor = Double
 cluster :: [a] -> Prob b -> (b -> a -> Double) -> Meas [(a, RgbColor, b)]
 cluster xs pparam like =
   do
-    rest <- sample $ newRestaurant 0.3
+    rest <- sample $ newRestaurant 2
     param <- sample $ memoize $ const pparam
     color <- sample $ memoize $ const $ uniformbounded 0.2 1
     mapM
@@ -66,7 +66,7 @@ example =
 test =
   do
     xycws' <- mh1 example
-    let xycws = take 20000 xycws'
+    let xycws = take 3 xycws'
     let maxw = (maximum $ map snd xycws :: Product (Log Double))
     let (Just xyc) = Data.List.lookup maxw $ map (\(z, w) -> (w, z)) xycws
     plot_coords "clustering.svg" xyc
@@ -114,24 +114,16 @@ test =
 --                         return ()
 
 plot_coords :: String -> [((Double, Double), RgbColor, (Double, Double, Double))] -> IO ()
-plot_coords filename xycs = do 
-  let (xs, ys) = unzip (map (\((x,y), _, _) -> (x, y)) xycs)
-  let (allColours, allClusters) = unzip $ nub $ map (\(_, c, k) -> (c, k)) xycs
-  let allClusters = map (\c -> map (\((x, y), _, _) -> (x, y)) $ 
-                           filter (\(_, c', _) -> c == c') xycs)
-                                allColours
-  let clustersAndColours = zip (map unzip allClusters) allColours                       
-  let plotSetup = figure @@ [o1 0]
+plot_coords filename dataset = do 
+  let xycs = map (\((x, y), c, _) -> ((x, y), c)) dataset 
+  let (xys, cs) = unzip xycs
+  let (xs, ys) = unzip xys 
+  let plot = figure @@ [o1 0]
        % setSizeInches 8 8 
        % axes @@ [o1 [0.1, 0.1, 0.65, 0.65]]
-  let scatterings = foldl 
-          (\p -> \((myxs, myys), mycolour) -> 
-                        p % scatter myxs myys @@ [o2 "color" (show mycolour)]) 
-            plotSetup
-            $ clustersAndColours
-  file filename scatterings
+       % scatter xs ys @@ [o2 "cmap" "nipy_spectral", o2 "c" cs] 
+  file filename plot
   putStrLn $ "generating " ++ filename ++ "... done."
-
 
 
 main :: IO ()
