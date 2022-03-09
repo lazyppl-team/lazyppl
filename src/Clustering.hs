@@ -21,13 +21,12 @@ import Numeric.Log
 import Graphics.Matplotlib hiding (density)
 
 
-type RgbColor = Double
 
 {- | A generic Chinese-Restaurant clustering program
     Takes pparam :: Prob b, a distribution on parameters
           like :: b -> a -> Double, parameterized likelihood function \
     Tags each point with a colour describing the cluster it is in -}
-cluster :: [a] -> Prob b -> (b -> a -> Double) -> Meas [(a, RgbColor, b)]
+cluster :: [a] -> Prob b -> (b -> a -> Double) -> Meas [(a, Double, b)]
 cluster xs pparam like =
   do
     rest <- sample $ newRestaurant 2
@@ -42,8 +41,7 @@ cluster xs pparam like =
       xs
 
 
-
-
+      
 
 -- | Example 2d data set
 dataset = [(7.7936387, 7.469271), (5.3105156, 7.891521), (5.4320135, 5.135559), (7.3844196, 7.478719), (6.7382938, 7.476735), (0.6663453, 4.460257), (3.2001898, 2.653919), (2.1231227, 3.758051), (3.3734472, 2.420528), (0.4699408, 1.835277)]
@@ -56,7 +54,7 @@ nnormal x s = do x1 <- normal x ((sqrt 15 * s * s) / 4); x2 <- normal 0 (s / 4);
 {- | Example of using the clustering program.
     Here the parameters are the x and y coordinates
     and standard deviation of the cluster -}
-example :: Meas [((Double, Double), RgbColor, (Double, Double, Double))]
+example :: Meas [((Double, Double), Double, (Double, Double, Double))]
 example =
   cluster
     dataset
@@ -113,7 +111,7 @@ test =
 --                         putStrLn (" Done!")
 --                         return ()
 
-plot_coords :: String -> [((Double, Double), RgbColor, (Double, Double, Double))] -> IO ()
+plot_coords :: String -> [((Double, Double), Double, (Double, Double, Double))] -> IO ()
 plot_coords filename dataset = do 
   let xycs = map (\((x, y), c, _) -> ((x, y), c)) dataset 
   let (xys, cs) = unzip xycs
