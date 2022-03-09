@@ -3,17 +3,11 @@ import LazyPPL
 import Distr
 
 import Data.List
-import Control.Monad
-import Control.Monad.State.Lazy (State, state , put, get, runState)
 import Data.Map (empty,lookup,insert,size,keys)
 import Data.IORef
 import System.IO.Unsafe
 
-import Data.Default.Class
-import Control.Lens
-import Data.Monoid
-
-import Debug.Trace
+import Graphics.Matplotlib hiding (density)
 
 
 dataset :: [(Double, Double)]
@@ -35,7 +29,7 @@ testWienerRegression =
   do
     fws <- mh 0.1 example
     let xys = map (\f -> map (\x -> (x,f x)) [0,0.25..6]) $ map fst $ take 100 $ every 1000 $ drop 10000 $ fws
-    plot_coords "wiener.svg" dataset xys
+    plotCoords "wiener.svg" dataset xys
 
 
 {-- Random Wiener function (Brownian motion), defined using hidden state and a "Brownian bridge" --} 
@@ -73,28 +67,13 @@ findMaxLower d (x:xs) = let y = findMaxLower d xs in
                                           if x > m && x < d then Just x else Just m 
 
 {-- GRAPHING ROUTINES --}
-plot_coords :: String -> [(Double,Double)] -> [[(Double,Double)]] -> IO ()
-plot_coords filename dataset xys = undefined
-  -- let graphs  = xys                 in
-  -- let my_lines  = plot_lines_style . line_color .~ blue `withOpacity` 0.1
-  --               $ plot_lines_values .~ graphs $ def in
-  -- let my_dots = plot_points_style .~ filledCircles 4 (opaque black)
-  --             $ plot_points_values .~ dataset
-  --             $ def in               
-  -- let my_layout = layout_plots .~ [toPlot my_lines , toPlot my_dots]
-  --               $ layout_x_axis .
-  --                 laxis_generate .~ scaledAxis def (0,6)
-  --               $ layout_y_axis . laxis_generate .~ scaledAxis def (-2,10)
-  --               $ def in
-  -- let graphic =  toRenderable my_layout in
-  -- do
-  --    putStr ("Generating " ++ filename ++ "...")
-  --    renderableToFile def filename graphic;
-  --    putStrLn (" Done!")
-  --    return ()
+plotCoords :: String -> [(Double,Double)] -> [[(Double,Double)]] -> IO ()
+plotCoords filename dataset xyss = 
+    do  putStrLn $ "Plotting " ++ filename ++ "..."
+        file filename $ foldl (\a xys -> a % plot (map fst xys) (map snd xys) @@ [o1 "go-", o2 "linewidth" (0.5 :: Double), o2 "alpha" (0.1 :: Double), o2 "ms" (0 :: Int)]) (scatter (map fst dataset) (map snd dataset) @@ [o2 "c" "black"] % xlim (0 :: Int) (6 :: Int) % ylim (-2 :: Int) (10 :: Int)) xyss
+        putStrLn "Done."
+        return ()
     
-
-
 
 main :: IO ()
 main = do { testWienerRegression } 
