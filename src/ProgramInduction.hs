@@ -6,6 +6,8 @@
 module ProgramInduction where
 import LazyPPL
 import Distr
+import Control.Monad (replicateM)
+import Graphics.Matplotlib hiding (density)
 
 -- A little programming language for arithmetic expressions and if-then-else
 
@@ -113,81 +115,38 @@ draw = do fws <- mh 0.1 (regress 0.25 randfun dataset)
 {-- Show three examples --} 
 testExprCodeRegression =
   do
-    red <- draw
-    blue <- draw
-    purple <- draw
-    plot_funs "expr-reg.svg" dataset [red,blue,purple]
+    functions <- replicateM 3 draw
+    plotFuns "expr-reg.svg" dataset functions
 
 
 
 {-- GRAPHING ROUTINES --}
  
 
--- Plot the points drawn from weighted samples
+-- Plot the points drawn 
 -- More graphing routines
 -- epsilon: smallest y axis difference to worry about
 -- delta: smallest x axis difference to worry about
-interesting_points :: (Double -> Double) -> Double -> Double -> Double -> Double -> [Double] -> [Double]
-interesting_points f lower upper epsilon delta acc =
+interestingPoints :: (Double -> Double) -> Double -> Double -> Double -> Double -> [Double] -> [Double]
+interestingPoints f lower upper epsilon delta acc =
   if abs(upper - lower) < delta then acc
   else
     let mid = (upper - lower) / 2 + lower in
     if abs((f(upper) - f(lower)) / 2 + f(lower) - f(mid)) < epsilon 
     then acc
-    else interesting_points f lower mid epsilon delta (mid : (interesting_points f mid upper epsilon delta acc))
+    else interestingPoints f lower mid epsilon delta (mid : (interestingPoints f mid upper epsilon delta acc))
  
-sample_fun f = 
+sampleFun f = 
 --  [ (x, f x) | x <- [(-0.25),(-0.25+0.1)..6.2]]
-  let xs = ((-0.25) : (interesting_points f (-0.25) 6.2 0.3 0.001 [6.2])) in
+  let xs = ((-0.25) : (interestingPoints f (-0.25) 6.2 0.3 0.001 [6.2])) in
   map (\x -> (x,f x)) xs 
 
-plot_funs :: String -> [(Double,Double)] -> [(Double -> Double,String)] -> IO ()
-plot_funs filename dataset funs = undefined
-  -- let my_dots = plot_points_style .~ filledCircles 4 (opaque black)
-  --             $ plot_points_values .~ dataset
-  --             $ def in
-  -- let fes = map (\(f,e) -> (sample_fun f,e)) funs in
-  -- let red_lines  = plot_lines_style . line_color .~ red `withOpacity` 1 
-  --               $ plot_lines_style . line_width .~ 2
-  --               $ plot_lines_values .~ [(fst $ fes !! 0)] $ def in
-  -- let red_font = font_size .~ 15
-  --             $ font_color .~ red `withOpacity` 1
-  --             $ def in
-  -- let red_legend = plot_annotation_hanchor .~ HTA_Left
-  --             $ plot_annotation_values .~ [(1,-0.5,snd $ fes !! 0)]
-  --             $ plot_annotation_style .~ red_font
-  --             $ def in
-  -- let blue_lines  = plot_lines_style . line_color .~ blue `withOpacity` 1 
-  --               $ plot_lines_style . line_width .~ 2
-  --               $ plot_lines_values .~ [(fst $ fes !! 1)] $ def in
-  -- let blue_font = font_size .~ 15
-  --             $ font_color .~ blue `withOpacity` 1
-  --             $ def in
-  -- let blue_legend = plot_annotation_hanchor .~ HTA_Left
-  --             $ plot_annotation_values .~ [(1,-1.3,snd $ fes !! 1)]
-  --             $ plot_annotation_style .~ blue_font
-  --             $ def in
-  -- let purple_lines  = plot_lines_style . line_color .~ purple `withOpacity` 1 
-  --               $ plot_lines_style . line_width .~ 2
-  --               $ plot_lines_values .~ [(fst $ fes !! 2)] $ def in
-  -- let purple_font = font_size .~ 15
-  --             $ font_color .~ purple `withOpacity` 1
-  --             $ def in
-  -- let purple_legend = plot_annotation_hanchor .~ HTA_Left
-  --             $ plot_annotation_values .~ [(1,-2.1,snd $ fes !! 2)]
-  --             $ plot_annotation_style .~ purple_font
-  --             $ def in
-  -- let my_layout = layout_plots .~ [toPlot red_lines , toPlot red_legend, toPlot blue_lines, toPlot blue_legend, toPlot purple_lines, toPlot purple_legend, toPlot my_dots]
-  --               $ layout_x_axis .
-  --                 laxis_generate .~ scaledAxis def (0,6)
-  --               $ layout_y_axis . laxis_generate .~ scaledAxis def (-2,10)
-  --               $ def in
-  -- let graphic =  toRenderable my_layout in
-  -- do
-  --    putStr ("Generating " ++ filename ++ "...")
-  --    renderableToFile def filename graphic;
-  --    putStrLn (" Done!")
-  --    return ()
+plotFuns :: String -> [(Double,Double)] -> [(Double -> Double,String)] -> IO ()
+plotFuns filename dataset funs =
+    do putStrLn $ "Plotting " ++ filename ++ "..."
+       file filename $ (foldl (\a (f,s) -> let xys = sampleFun f in a % plot (map fst xys) (map snd xys) @@ [o2 "label" s]) (scatter (map fst dataset) (map snd dataset) @@ [o2 "c" "black"] % xlim (0 :: Int) (6 :: Int) % ylim (-2 :: Int) (10 :: Int)) funs) % legend @@ [o2 "loc" "lower left",o2 "bbox_to_anchor" ((0.2 :: Double), (0.01 :: Double))]
+       putStrLn "Done."
+       return ()
 
 
 
