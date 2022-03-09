@@ -49,7 +49,7 @@ transitionMap file = do
           (\(c1, c2) count -> if c1 == c then count / sumOccurrences else count) m)
           unnormalisedMap
           $ Map.keysSet $ Map.mapKeys fst unnormalisedMap
-  return unnormalisedMap
+  return normalisedMap
   where
     updateMap :: Map.Map (Char, Char) Double -> String -> Map.Map (Char, Char) Double
     updateMap m s =
@@ -136,7 +136,7 @@ randomSubstitution msg outAlphabet = do
   the most common input letter, etc...). -}
 sensibleSubstitution :: String -> Map.Map Char Double -> IO (Map.Map Char Char)
 sensibleSubstitution codedMsg fMap = do
-  let codedLettersOccurrences = lettersOccurrences codedMsg
+  let codedLettersOccurrences = lettersOccurrences $ map toLower codedMsg
   (decodedLetters, _) <- foldlM (\(m, a) c ->
     if Data.Char.isLetter c
       then do
@@ -156,10 +156,14 @@ sensibleSubstitution codedMsg fMap = do
   from an input alphabet 
   (to the output alphabet in which codedMsg' is written),  
   where each input letter is coded as a unique output letter. 
+  The score given by the transition map is multiplied by 'transitionFactor', 
+  and the score given by the number of existing words is multiplied by 'existingWordsFactor'.
 -}
-decodeMessageScratch :: Map.Map (Char, Char) Double -> Map.Map Char Double
+decodeMessageScratch :: Double -> Double ->
+  Map.Map (Char, Char) Double -> Map.Map Char Double
   -> Set.Set String -> String -> Meas String
-decodeMessageScratch tMap fMap corpus codedMsg = do
+decodeMessageScratch transitionFactor existingWordsFactor
+  tMap fMap corpus codedMsg = do
   let codedLettersOccurrences = lettersOccurrences codedMsg
 
   (decodedLetters, _) <- foldlM (\(m, a) c ->
@@ -176,11 +180,11 @@ decodeMessageScratch tMap fMap corpus codedMsg = do
 
   mapM_ (\cs -> let (c1', c2') = replaceSpecialChar cs in
     if c1' == ' ' && c2' == ' ' then return ()
-    else score $ 1 + Map.findWithDefault 0 (c1', c2') tMap)
+    else score $ transitionFactor * Map.findWithDefault 0 (c1', c2') tMap)
     $ zip (' ' : decodedMsg) (decodedMsg ++ [' '])
 
-  score $ foldl (\count w -> if Set.member w corpus then count+1 else count) 0 (words decodedMsg)
-  --    / fromIntegral (length decodedMsg)
+  score $ existingWordsFactor * foldl (\count w -> if Set.member w corpus then count+1 else count) 0 (words decodedMsg)
+      / fromIntegral (length decodedMsg)
 
   return decodedMsg
   where
@@ -252,18 +256,18 @@ inferenceMessage tMapJson fMapJson corpus msg subst = do
 
   putStrLn $ "Input alphabet: " ++ show fMap
 
-  -- mws' <- mh 0.3 $ decodeMessageScratch tMap fMap corpus codedMsg
-  -- -- mws' <- mh1 $ decodeMessageScratch tMap fMap corpus codedMsg
-  -- mws <- takeProgressEveryDrop 10000 100 100 mws'
-  -- let maxMsg = maxWeightElement mws
+  mws' <- mh 0.2 $ decodeMessageScratch 20 100 tMap fMap corpus codedMsg
+  -- mws' <- mh1 $ decodeMessageScratch tMap fMap corpus codedMsg
+  mws <- takeProgressEveryDrop 10000 100 100 mws'
+  let maxMsg = maxWeightElement mws
 
 
-  subst' <- sensibleSubstitution codedMsg fMap
-  maxMsg <- getBestMessageTranspose tMap fMap subst' codedMsg
+  -- subst' <- sensibleSubstitution codedMsg fMap
+  -- maxMsg <- getBestMessageTranspose tMap fMap subst' codedMsg
 
   putStrLn $ "Initial message: " ++ msg ++ "\n"
   putStrLn $ "Coded message (to decipher): " ++ codedMsg ++ "\n"
-  putStrLn $ "Initial Substitution : " ++ show (encodeMessage codedMsg subst') ++ "\n"
+  -- putStrLn $ "Initial Substitution : " ++ show (encodeMessage codedMsg subst') ++ "\n"
   putStrLn $ "Decoded message: " ++ maxMsg ++ "\n"
 
 
