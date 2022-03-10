@@ -126,24 +126,49 @@ accumulate [] a = []
     If p = 1/dimension then this is a bit like single-site lightweight MH.
     (Wingate, Stuhlmuller, Goodman, AISTATS 2011.) 
     If p = 1 then this is like multi-site lightweight MH 
+
+    The algorithm is as follows:
+
+    Top level: produces a stream of samples.
+    * Split the random number generator in two
+    * One part is used as the first seed for the simulation,
+    * and one part is used for the randomness in the MH algorithm.
+
+    Then, run 'step' over and over to get a stream of '(tree, result, weight)'s.
+    The stream of seeds is used to produce a stream of result/weight pairs.
+
+    NB There are three kinds of randomness in the step function.
+    1. The start tree 't', which is the source of randomness for simulating the
+    program m to start with. This is sort-of the point in the "state space".
+    2. The randomness needed to propose a new tree ('g1')
+    3. The randomness needed to decide whether to accept or reject that ('g2')
+    The tree t is an argument and result,
+    but we use a state monad ('get'/'put') to deal with the other randomness '(g, g1, g2)'
+
+    Steps of the 'step' function:
+    1. Randomly change some sites, 
+    2. Rerun the model with the new tree, to get a new weight 'w''.
+    3. Compute the MH acceptance ratio. This is the probability of either returning the new seed or the old one.
+    4. Accept or reject the new sample based on the MH ratio.
+    
 --}
 
 mh :: forall a. Double -> Meas a -> IO [(a,Product (Log Double))]
 mh p (Meas m) = do
-    -- | Top level: produce a stream of samples.
-    -- | Split the random number generator in two
-    -- | One part is used as the first seed for the simulation,
-    -- | and one part is used for the randomness in the MH algorithm.
+    -- Top level: produce a stream of samples.
+    -- Split the random number generator in two
+    -- One part is used as the first seed for the simulation,
+    -- and one part is used for the randomness in the MH algorithm.
     newStdGen
     g <- getStdGen
     let (g1,g2) = split g
     let t = randomTree g1
     let (x, w) = runProb (runWriterT m) t
-    -- | Now run step over and over to get a stream of (tree,result,weight)s.
+    -- Now run step over and over to get a stream of (tree,result,weight)s.
     let (samples,_) = runState (iterateM step (t,x,w)) g2
-    -- | The stream of seeds is used to produce a stream of result/weight pairs.
+    -- The stream of seeds is used to produce a stream of result/weight pairs.
     return $ map (\(_,x,w) -> (x,w)) samples
-    {- | NB There are three kinds of randomness in the step function.
+    {- NB There are three kinds of randomness in the step function.
     1. The start tree 't', which is the source of randomness for simulating the
     program m to start with. This is sort-of the point in the "state space".
     2. The randomness needed to propose a new tree ('g1')
@@ -151,20 +176,20 @@ mh p (Meas m) = do
     The tree t is an argument and result,
     but we use a state monad ('get'/'put') to deal with the other randomness '(g,g1,g2)' -}
     where step :: RandomGen g => (Tree,a,Product (Log Double)) -> State g (Tree,a,Product (Log Double))
-          step (t,x,w) = do
-            -- | Randomly change some sites
+          step (t, x, w) = do
+            -- Randomly change some sites
             g <- get
-            let (g1,g2) = split g
+            let (g1, g2) = split g
             let t' = mutateTree p g1 t
-            -- | Rerun the model with the new tree, to get a new
-            -- | weight w'.
+            -- Rerun the model with the new tree, to get a new
+            -- weight w'.
             let (x', w') = runProb (runWriterT m) t'
-            -- | MH acceptance ratio. This is the probability of either
-            -- | returning the new seed or the old one.
+            -- MH acceptance ratio. This is the probability of either
+            -- returning the new seed or the old one.
             let ratio = getProduct w' / getProduct w
-            let (r,g2') = random g2
+            let (r, g2') = random g2
             put g2'
-            if r < min 1 (exp $ ln ratio) then return (t',x',w') else return (t,x,w)
+            if r < min 1 (exp $ ln ratio) then return (t', x', w') else return (t, x, w)
 
 
 -- | Replace the labels of a tree randomly, with probability p
@@ -178,24 +203,24 @@ mutateTrees p g (t:ts) = let (g1,g2) = split g in mutateTree p g1 t : mutateTree
 
 
 
-{-- Irreducible form of mh. Takes p like mh, but also q, which is the chance of proposing an all-sites change. --}
+{- | Irreducible form of 'mh'. Takes 'p' like 'mh', but also 'q', which is the chance of proposing an all-sites change. -}
 
 mhirreducible :: forall a. Double -> Double -> Meas a -> IO [(a,Product (Log Double))]
 mhirreducible p q (Meas m) = do
-    -- | Top level: produce a stream of samples.
-    -- | Split the random number generator in two
-    -- | One part is used as the first seed for the simulation,
-    -- | and one part is used for the randomness in the MH algorithm.
+    -- Top level: produce a stream of samples.
+    -- Split the random number generator in two
+    -- One part is used as the first seed for the simulation,
+    -- and one part is used for the randomness in the MH algorithm.
     newStdGen
     g <- getStdGen
     let (g1,g2) = split g
     let t = randomTree g1
     let (x, w) = runProb (runWriterT m) t
-    -- | Now run step over and over to get a stream of (tree,result,weight)s.
+    -- Now run step over and over to get a stream of (tree,result,weight)s.
     let (samples,_) = runState (iterateM step (t,x,w)) g2
-    -- | The stream of seeds is used to produce a stream of result/weight pairs.
+    -- The stream of seeds is used to produce a stream of result/weight pairs.
     return $ map (\(t,x,w) -> (x,w)) samples
-    {- | NB There are three kinds of randomness in the step function.
+    {- NB There are three kinds of randomness in the step function.
     1. The start tree 't', which is the source of randomness for simulating the
     program m to start with. This is sort-of the point in the "state space".
     2. The randomness needed to propose a new tree ('g1')
@@ -204,17 +229,17 @@ mhirreducible p q (Meas m) = do
     but we use a state monad ('get'/'put') to deal with the other randomness '(g,g1,g2)' -}
     where step :: RandomGen g => (Tree,a,Product (Log Double)) -> State g (Tree,a,Product (Log Double))
           step (t,x,w) = do
-            -- | Randomly change some sites
+            -- Randomly change some sites
             g <- get
             let (g1,g2) = split g
-            -- | Decide whether to resample all sites (r<q) or just some of them
+            -- Decide whether to resample all sites (r<q) or just some of them
             let (r,g1') = random g1
             let t' = if r<q then randomTree g1' else mutateTree p g1' t
-            -- | Rerun the model with the new tree, to get a new
-            -- | weight w'.
+            -- Rerun the model with the new tree, to get a new
+            -- weight w'.
             let (x', w') = runProb (runWriterT m) t'
-            -- | MH acceptance ratio. This is the probability of either
-            -- | returning the new seed or the old one.
+            -- MH acceptance ratio. This is the probability of either
+            -- returning the new seed or the old one.
             let ratio = getProduct w' / getProduct w
             let (r,g2') = random g2
             put g2'
@@ -407,25 +432,37 @@ takeWithProgress n = helper n n
       xs' <- helper n (i-1) xs
       return $ x : xs'
 
+takeEager :: Int -> [a] -> [a]
+takeEager n = helper n n
+  where
+    helper :: Int -> Int -> [a] -> [a]
+    helper _ i _ | i <= 0 = []
+    helper _ _ []        = []
+    helper n i ((!x):xs) = x : helper n (i-1) xs
+
 takeEveryDrop :: Int -> Int -> Int -> [a] -> [a]
 takeEveryDrop nTake nEvery nDrop stream = 
   take nTake $ every nEvery $ drop nDrop stream
+
+takeEagerEveryDrop :: Int -> Int -> Int -> [a] -> [a]
+takeEagerEveryDrop nTake nEvery nDrop stream = 
+  takeEager nTake $ every nEvery $ drop nDrop stream
 
 takeProgressEveryDrop :: Int -> Int -> Int -> [a] -> IO [a]
 takeProgressEveryDrop nTake nEvery nDrop stream = 
   takeWithProgress nTake $ every nEvery $ drop nDrop stream
 
 maxWeightElement :: Ord w => [(a, w)] -> a
-maxWeightElement mws =
-  let maxw = maximum $ map snd mws
-      (Just x) = L.lookup maxw $ map (\(m, w) -> (w, m)) mws in
-  x
+maxWeightElement aws =
+  let maxw = maximum $ map snd aws
+      (Just a) = L.lookup maxw $ map (\(a, w) -> (w, a)) aws in
+  a
 
 maxWeightPair :: Ord w => [(a, w)] -> (a, w)
-maxWeightPair mws =
-  let maxw = maximum $ map snd mws
-      (Just x) = L.lookup maxw $ map (\(m, w) -> (w, m)) mws in
-  (x, maxw)
+maxWeightPair aws =
+  let maxw = maximum $ map snd aws
+      (Just a) = L.lookup maxw $ map (\(a, w) -> (w, a)) aws in
+  (a, maxw)
 
 -- | An example probability distribution.
 exampleProb :: Prob Double

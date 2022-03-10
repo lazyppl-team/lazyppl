@@ -19,19 +19,19 @@ type Person = String
 example :: Meas (Bool, Bool)
 example = do
   r :: Restaurant <- sample $ newRestaurant 1.0
-  -- | Chance of people at 'tableA' talking to people at 'tableB'
+  -- Chance of people at 'tableA' talking to people at 'tableB'
   near :: ((Table, Table) -> Double) <- sample $ memoize $ \(tableA, tableB) -> beta 0.5 0.5
-  -- | Assign a table to each person
+  -- Assign a table to each person
   table :: (Person -> Table) <- sample $ memoize $ \person -> newCustomer r
-  -- | function to observe that personA talks to person B
+  -- function to observe that personA talks to person B
   let talks :: (Person, Person) -> Meas () = \(personA, personB) -> score $ near (table personA, table personB)
-  -- | function to observe that personA doesn't talk to person B
+  -- function to observe that personA doesn't talk to person B
   let nottalks :: (Person, Person) -> Meas () = \(personA, personB) -> score $ 1 - near (table personA, table personB)
-  -- | Data set
-  mapM talks $ [("tom", "fred"), ("tom", "jim"), ("jim", "fred"), ("mary", "sue"), ("mary", "ann"), ("ann", "sue")]
-  mapM nottalks $ [("mary", "fred"), ("mary", "jim"), ("sue", "fred"), ("sue", "tom"), ("ann", "jim"), ("ann", "tom")]
-  -- | We want to know whether Tom and Fred are at the same table,
-  -- | and whether Tom and Mary are at the same table.
+  -- Data set
+  mapM_ talks [("tom", "fred"), ("tom", "jim"), ("jim", "fred"), ("mary", "sue"), ("mary", "ann"), ("ann", "sue")]
+  mapM_ nottalks [("mary", "fred"), ("mary", "jim"), ("sue", "fred"), ("sue", "tom"), ("ann", "jim"), ("ann", "tom")]
+  -- We want to know whether Tom and Fred are at the same table,
+  -- and whether Tom and Mary are at the same table.
   return (table "tom" == table "fred", table "tom" == table "mary")
 
 test = do

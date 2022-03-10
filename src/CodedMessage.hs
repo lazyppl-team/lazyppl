@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 module CodedMessage where
 
 import Distr
@@ -25,6 +26,10 @@ import System.Random
 import Control.Monad.Extra (iterateM)
 import qualified Numeric.Log as Log
 import Data.Monoid ( Product(Product) )
+import Control.Monad (forM)
+import Control.DeepSeq ( deepseq )
+
+import Debug.Trace
 
 {- | Decoding a coded message (substitution cipher)
     Inpired from https://math.uchicago.edu/~shmuel/Network-course-readings/MCMCRev.pdf -}
@@ -40,9 +45,9 @@ transitionMap file = do
   let normalisedMap =
         Set.foldl (\m c ->
           let sumOccurrences = sum $ Map.elems $ Map.filterWithKey (\k _ -> fst k == c) unnormalisedMap
-          in Map.mapWithKey 
+          in Map.mapWithKey
           (\(c1, c2) count -> if c1 == c then count / sumOccurrences else count) m)
-          unnormalisedMap 
+          unnormalisedMap
           $ Map.keysSet $ Map.mapKeys fst unnormalisedMap
   return normalisedMap
   where
@@ -53,60 +58,138 @@ transitionMap file = do
         in Map.insert (c1, c2) (count + 1) m')
         m $ zip (' ' : s) (s ++ [' '])
 
+{- | Create a Map of letter frequencies based on a corpus of English words. -}
+frequenciesMap :: String -> IO (Map.Map Char Double)
+frequenciesMap file = do
+  contents <- readFile file
+  let unnormalisedMap = foldl updateMap Map.empty $ words contents
+  let sumOccurrences = sum $ Map.elems unnormalisedMap
+  let normalisedMap = Map.map (/ sumOccurrences) unnormalisedMap
+  return normalisedMap
+  where
+    updateMap :: Map.Map Char Double -> String -> Map.Map Char Double
+    updateMap m s =
+      foldl (\m' c ->
+        let count = Map.findWithDefault 0 c m'
+        in Map.insert c (count + 1) m')
+        m s
+
+{- | Create a set of existing words. -}
+corpusSet :: String -> IO (Set.Set String)
+corpusSet file = do
+  contents <- readFile file
+  return $ Set.fromList $ words contents
+
 saveTransitionMap :: String -> IO ()
 saveTransitionMap file = do
   tMap' <- transitionMap file
-  encodeFile (take (length file - 3) file ++ "json") tMap'
+  encodeFile (take (length file - 4) file ++ "-transition.json") tMap'
 
-loadTransitionMap :: String -> IO (Map.Map (Char, Char) Double)
-loadTransitionMap file = do
+saveFrequenciesMap :: String -> IO ()
+saveFrequenciesMap file = do
+  fMap' <- frequenciesMap file
+  encodeFile (take (length file - 4) file ++ "-frequencies.json") fMap'
+
+loadJSONFile :: FromJSON b => FilePath -> IO b
+loadJSONFile file = do
   contents <- LB.readFile file
   return $ fromJust $ decode contents
 
 -- | Encode a message with a substitution (substitution cipher)
 encodeMessage :: String -> Map.Map Char Char -> String
-encodeMessage s m = map (\c -> Map.findWithDefault c c m) s
+encodeMessage s m = map ((\c -> Map.findWithDefault c c m) . toLower) s
+
+lettersOccurrences :: String -> [Char]
+lettersOccurrences codedMsg = map fst
+  $ sortOn (\(_, n) -> -n) $ Map.toList
+  $ Map.fromListWith (+) [(c, 1) | c <- codedMsg]
+
+renormalise :: Map.Map k Double -> Map.Map k Double
+renormalise a =
+  let sumOccurrences = sum $ Map.elems a
+  in Map.map (/ sumOccurrences) a
+
+getKey :: Double -> Map.Map Char Double -> Char
+getKey val m = fromJust $ Map.foldrWithKey lookupKey Nothing m
+  where
+    lookupKey k v Nothing = if val == v then Just k else Nothing
+    lookupKey _ _  (Just k) = Just k
 
 {- | Generate a random substitution mapping each letter of 'msg' 
   to a letter of the output (coding) Alphabet 'outAlphabet'. -}
 randomSubstitution :: String -> [Char] -> IO (Map.Map Char Char)
 randomSubstitution msg outAlphabet = do
   (m, _, _) <- foldlM (\(m, a, n) c -> do
-    if Data.Char.isLetter c 
-      then do 
+    if Data.Char.isLetter c
+      then do
         i <- getStdRandom $ randomR (0, n - 1)
         let c' = a !! i
         return (Map.insert c c' m, delete c' a, n-1)
       else do return (m, a, n))
-    (Map.empty, outAlphabet, length outAlphabet) $ Set.fromList msg
+    (Map.empty, outAlphabet, length outAlphabet)
+    $ Set.fromList $ map toLower msg
   return m
+
+{- | Generate a random substitution of a `codedMsg` based on 
+  a frequency map of each letter of the input alphabet 
+  (the most common coded letter is more likely to be mapped to 
+  the most common input letter, etc...). -}
+sensibleSubstitution :: String -> Map.Map Char Double -> IO (Map.Map Char Char)
+sensibleSubstitution codedMsg fMap = do
+  let codedLettersOccurrences = lettersOccurrences $ map toLower codedMsg
+  (decodedLetters, _) <- foldlM (\(m, a) c ->
+    if Data.Char.isLetter c
+      then do
+        let frequencies = Map.elems a
+        r <- randomIO
+        let i = fromJust $ findIndex (>r) $ tail $ scanl (+) 0 frequencies
+        let c' = getKey (frequencies !! i) a
+        return (Map.insert c c' m, renormalise $ Map.delete c' a)
+      else do return (m, a))
+    (Map.empty, fMap) codedLettersOccurrences
+  return decodedLetters
 
 {- | Statistical model 1: Decode a coded message 'codedMsg' from scratch 
   (guess the cipher substitution)
-  based on a transition map 'tMap' 
-  from an input alphabet 'inAlphabet' 
+  -- based on a transition map 'tMap', a frequency map 'fMap', 
+  and corpus of words 'corpus' (set of existing words) --
+  from an input alphabet 
   (to the output alphabet in which codedMsg' is written),  
-  where a letter in a 'inAlphabet' corresponds to a unique output letter. 
+  where each input letter is coded as a unique output letter. 
+  The score given by the transition map is multiplied by 'transitionFactor', 
+  and the score given by the number of existing words is multiplied by 'existingWordsFactor'.
 -}
-decodeMessageScratch :: Map.Map (Char, Char) Double -> [Char] -> String -> Meas String
-decodeMessageScratch tMap inAlphabet codedMsg = do
-  let setCodedMsg = Set.fromList codedMsg
-  (decodedLetters, _, _) <- foldlM (\(m, a, n) c -> 
+decodeMessageScratch :: Double -> Double ->
+  Map.Map (Char, Char) Double -> Map.Map Char Double
+  -> Set.Set String -> String -> Meas String
+decodeMessageScratch transitionFactor existingWordsFactor
+  tMap fMap corpus codedMsg = do
+  let codedLettersOccurrences = lettersOccurrences codedMsg
+
+  (decodedLetters, _) <- foldlM (\(m, a) c ->
     if Data.Char.isLetter c
-      then do 
-        i <- sample $ uniformdiscrete n
-        let c' = a !! i
-        return (Map.insert c c' m, delete c' a, n-1)
-      else do return (m, a, n))
-    (Map.empty, inAlphabet, length inAlphabet) setCodedMsg
+      then do
+        let frequencies = Map.elems a
+        i <- sample $ categorical frequencies
+        let c' = getKey (frequencies !! i) a
+        return (Map.insert c c' m, renormalise $ Map.delete c' a)
+      else do return (m, a))
+    (Map.empty, fMap) codedLettersOccurrences
+
   let decodedMsg = map (\c -> Map.findWithDefault c c decodedLetters) codedMsg
-  mapM_ (\cs -> let (c1', c2') = replaceSpecialChar cs in 
-    if c1' == ' ' && c2' == ' ' then return () 
-    else score $ Map.findWithDefault 0 (c1', c2') tMap)
-    $ zip decodedMsg (tail decodedMsg)
+
+  mapM_ (\cs -> let (c1', c2') = replaceSpecialChar cs in
+    if c1' == ' ' && c2' == ' ' then return ()
+    else score $ transitionFactor * Map.findWithDefault 0 (c1', c2') tMap)
+    $ zip (' ' : decodedMsg) (decodedMsg ++ [' '])
+
+  score $ existingWordsFactor * foldl (\count w -> if Set.member w corpus then count+1 else count) 0 (words decodedMsg)
+      / fromIntegral (length decodedMsg)
+
   return decodedMsg
   where
-    replaceSpecialChar (c1, c2) = 
+    replaceSpecialChar :: (Char, Char) -> (Char, Char)
+    replaceSpecialChar (c1, c2) =
       let c1' = if Data.Char.isLetter c1 then c1 else ' '
           c2' = if Data.Char.isLetter c2 then c2 else ' ' in
       (c1', c2')
@@ -114,76 +197,78 @@ decodeMessageScratch tMap inAlphabet codedMsg = do
 
 {- | Statistical model 2: Decode a coded message 'codedMsg' by making transpositions 
   of the values of given a cipher substitution 'subst'
-  based on a transition map 'tMap' 
-  from an input alphabet 'inAlphabet' 
+  -- based on a transition map 'tMap', a frequency map 'fMap', 
+  and corpus of words 'corpus' (list of existing words) --
+  from an input alphabet 
   (to the output alphabet in which codedMsg' is written),  
-  where a letter in a 'inAlphabet' corresponds to a unique output letter. 
+  where each input letter is coded as a unique output letter.
 -}
-substTranspose :: Map.Map (Char, Char) Double -> 
+substTranspose :: Map.Map (Char, Char) Double -> Map.Map Char Double ->
   Map.Map Char Char -> String -> Meas (Map.Map Char Char, String)
-substTranspose tMap subst codedMsg = do
+substTranspose tMap fMap subst codedMsg = do
   let keysSubst = Map.keys subst
   let n = length keysSubst
   i <- sample $ uniformdiscrete n
   j <- sample $ uniformdiscrete (n-1)
   let c1 = keysSubst !! i
       c2 = delete c1 keysSubst !! j
-  let newSubst = Map.insert c1 (fromJust $ Map.lookup c2 subst) 
+  let newSubst = Map.insert c1 (fromJust $ Map.lookup c2 subst)
         $ Map.insert c2 (fromJust $ Map.lookup c1 subst) subst
   let decodedMsg = map (\c -> Map.findWithDefault c c newSubst) codedMsg
-  mapM_ (\cs -> let (c1', c2') = replaceSpecialChar cs in 
-    if c1' == ' ' && c2' == ' ' then return () 
+  mapM_ (\cs -> let (c1', c2') = replaceSpecialChar cs in
+    if c1' == ' ' && c2' == ' ' then return ()
     else score $ Map.findWithDefault 0 (c1', c2') tMap)
     $ zip decodedMsg (tail decodedMsg)
   return (newSubst, decodedMsg)
   where
-    replaceSpecialChar (c1, c2) = 
+    replaceSpecialChar (c1, c2) =
       let c1' = if Data.Char.isLetter c1 then c1 else ' '
           c2' = if Data.Char.isLetter c2 then c2 else ' ' in
       (c1', c2')
 
--- decodeMessageTranspose :: Map.Map (Char, Char) Double -> [Char] 
---  -> String -> Meas String
-getBestMessageTranspose :: Map.Map (Char, Char) Double -> [Char] -> String -> IO String
-getBestMessageTranspose tMap inAlphabet codedMsg = do
-  subst <- randomSubstitution codedMsg inAlphabet
-  -- mws' <- mh 0.5 $ decodeMessageTranspose tMap subst codedMsg
-  scs' <- takeWithProgress 100 $ iterate (>>= substMsgMax) $ return ((subst, codedMsg),  Product $ (Log.Exp . log) 1)
-  putStrLn "Done."
-  scs <- sequence scs'
-  return $ snd $ maxWeightElement scs
+getBestMessageTranspose :: Map.Map (Char, Char) Double -> Map.Map Char Double -> 
+  Map.Map Char Char -> String -> IO String
+getBestMessageTranspose tMap fMap subst codedMsg = do
+  !scs' <- iterateNtimesM 5000 substMsgMax ((subst, codedMsg),  Product $ (Log.Exp . log) 1)
+  let scs = maxWeightElement scs'
+  return $ snd scs
   where
     substMsgMax ((subst', codedMsg'), _) = do
-      scs <- mh 0.2 $ substTranspose tMap subst' codedMsg'
-      let scs' = takeEveryDrop 100 10 10 scs
-      return $ maxWeightPair scs'
+      scs <- mh 0.2 $ substTranspose tMap fMap subst' codedMsg'
+      let scs' = takeEagerEveryDrop 100 10 10 scs
+      return $ scs' `deepseq` maxWeightPair scs'
+    iterateNtimesM :: Int -> (a -> IO a) -> a -> IO [a]
+    iterateNtimesM n f x = helper n n f x
+      where
+        helper _ i _ _ | i <= 0 = return []
+        helper n i f a = do
+          putStrLn $ "Progress: " ++ show (fromIntegral (100*(n-i)) / fromIntegral n) ++ "%"
+          !a' <- f a
+          as <- helper n (i-1) f a
+          return $ a' : as
 
-
-inferenceMessage :: String -> String -> Map.Map Char Char -> IO ()
-inferenceMessage tMapJson msg subst = do
+inferenceMessage :: String -> String -> Set.Set String
+  -> String -> Map.Map Char Char -> IO ()
+inferenceMessage tMapJson fMapJson corpus msg subst = do
   let codedMsg = encodeMessage msg subst
-  tMap <- loadTransitionMap tMapJson
-  let inAlphabet = delete ' ' $ nub $ 
-        concatMap (\(c1, c2) -> [c1, c2]) $ Map.keys tMap
-  putStrLn $ "Input alphabet: " ++ show inAlphabet
+  tMap <- loadJSONFile tMapJson
+  fMap <- loadJSONFile fMapJson
 
-  -- mws' <- mh (1/80) $ decodeMessageScratch tMap inAlphabet codedMsg
-  -- -- mws' <- mh1 $ decodeMessageScratch tMap inAlphabet codedMsg
-  -- mws <- takeProgressEveryDrop 10000 100 100 mws'
-  -- maxMsg = maxWeightElement mws
+  putStrLn $ "Input alphabet: " ++ show fMap
 
-
-  -- subst <- randomSubstitution codedMsg inAlphabet
-  -- mws' <- mh 0.5 $ decodeMessageTranspose tMap subst codedMsg
-  -- -- mws' <- mh1 $ decodeMessageTranspose tMap subst codedMsg
-  -- mws <- takeProgressEveryDrop 10000 100 100 mws'
-  -- maxMsg = maxWeightElement mws
+  mws' <- mh 0.2 $ decodeMessageScratch 20 100 tMap fMap corpus codedMsg
+  -- mws' <- mh1 $ decodeMessageScratch tMap fMap corpus codedMsg
+  mws <- takeProgressEveryDrop 10000 100 100 mws'
+  let maxMsg = maxWeightElement mws
 
 
-  maxMsg <- getBestMessageTranspose tMap inAlphabet codedMsg
-  putStrLn $ "Initial message: " ++ msg
-  putStrLn $ "Coded message (to decipher): " ++ codedMsg
-  putStrLn $ "Decoded message: " ++ maxMsg
+  -- subst' <- sensibleSubstitution codedMsg fMap
+  -- maxMsg <- getBestMessageTranspose tMap fMap subst' codedMsg
+
+  putStrLn $ "Initial message: " ++ msg ++ "\n"
+  putStrLn $ "Coded message (to decipher): " ++ codedMsg ++ "\n"
+  -- putStrLn $ "Initial Substitution : " ++ show (encodeMessage codedMsg subst') ++ "\n"
+  putStrLn $ "Decoded message: " ++ maxMsg ++ "\n"
 
 
 -- | Examples
@@ -194,6 +279,12 @@ tMapEng = transitionMap "../english-words.txt"
 
 saveTransitionMapEng :: IO ()
 saveTransitionMapEng = saveTransitionMap "../english-words.txt"
+
+saveFrequenciesMapEng :: IO ()
+saveFrequenciesMapEng = saveFrequenciesMap "../english-words.txt"
+
+corpusEng :: IO (Set.Set String)
+corpusEng = corpusSet "../english-words.txt"
 
 exampleHume1 :: String
 exampleHume1 = "But the life of a man is of no greater importance to the universe than that of an oyster"
@@ -211,7 +302,9 @@ exampleGrothendieck1 = "Craindre l'erreur et craindre la vérité est une seule 
 main :: IO ()
 main = do
   saveTransitionMapEng
+  saveFrequenciesMapEng
+  corpus <- corpusEng
   let outAlphabet = ['a'..'z']
-  let msg = exampleHume2
+  let msg = exampleFeynman1
   subst <- randomSubstitution msg outAlphabet
-  inferenceMessage "../english-words.json" msg subst
+  inferenceMessage "../english-words-transition.json" "../english-words-frequencies.json" corpus msg subst
