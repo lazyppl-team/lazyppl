@@ -149,6 +149,52 @@ sensibleSubstitution codedMsg fMap = do
     (Map.empty, fMap) codedLettersOccurrences
   return decodedLetters
 
+-- {- | Statistical model 1: Decode a coded message 'codedMsg' from scratch 
+--   (guess the cipher substitution)
+--   -- based on a transition map 'tMap', a frequency map 'fMap', 
+--   and corpus of words 'corpus' (set of existing words) --
+--   from an input alphabet 
+--   (to the output alphabet in which codedMsg' is written),  
+--   where each input letter is coded as a unique output letter. 
+--   The score given by the transition map is multiplied by 'transitionFactor', 
+--   and the score given by the number of existing words is multiplied by 'existingWordsFactor'.
+-- -}
+-- decodeMessageScratch :: Double -> Double ->
+--   Map.Map (Char, Char) Double -> Map.Map Char Double
+--   -> Set.Set String -> String -> Meas String
+-- decodeMessageScratch transitionFactor existingWordsFactor  
+--   tMap fMap corpus codedMsg = do
+--   let codedLettersOccurrences = lettersOccurrences codedMsg
+
+--   (decodedLetters, _) <- foldlM (\(m, a) c ->
+--     if Data.Char.isLetter c
+--       then do
+--         let frequencies = Map.elems a
+--         i <- sample $ categorical frequencies
+--         let c' = getKey (frequencies !! i) a
+--         return (Map.insert c c' m, renormalise $ Map.delete c' a)
+--       else do return (m, a))
+--     (Map.empty, fMap) codedLettersOccurrences
+
+--   let decodedMsg = map (\c -> Map.findWithDefault c c decodedLetters) codedMsg
+
+--   mapM_ (\cs -> let (c1', c2') = replaceSpecialChar cs in
+--     if c1' == ' ' && c2' == ' ' then return ()
+--     else score $ transitionFactor * Map.findWithDefault 0 (c1', c2') tMap)
+--     $ zip (' ' : decodedMsg) (decodedMsg ++ [' '])
+
+--   score $ existingWordsFactor * foldl (\count w -> if Set.member w corpus then count+1 else count) 0 (words decodedMsg)
+--       / fromIntegral (length decodedMsg)
+
+--   return decodedMsg
+--   where
+--     replaceSpecialChar :: (Char, Char) -> (Char, Char)
+--     replaceSpecialChar (c1, c2) =
+--       let c1' = if Data.Char.isLetter c1 then c1 else ' '
+--           c2' = if Data.Char.isLetter c2 then c2 else ' ' in
+--       (c1', c2')
+
+-- TODO: general map rather than substitution, and transpositions at the end
 {- | Statistical model 1: Decode a coded message 'codedMsg' from scratch 
   (guess the cipher substitution)
   -- based on a transition map 'tMap', a frequency map 'fMap', 
@@ -159,11 +205,11 @@ sensibleSubstitution codedMsg fMap = do
   The score given by the transition map is multiplied by 'transitionFactor', 
   and the score given by the number of existing words is multiplied by 'existingWordsFactor'.
 -}
-decodeMessageScratch :: Double -> Double ->
+decodeMessageScratch :: Double -> Double -> Double ->
   Map.Map (Char, Char) Double -> Map.Map Char Double
   -> Set.Set String -> String -> Meas String
-decodeMessageScratch transitionFactor existingWordsFactor
-  tMap fMap corpus codedMsg = do
+decodeMessageScratch transitionFactor existingWordsFactor 
+  lambda tMap fMap corpus codedMsg = do
   let codedLettersOccurrences = lettersOccurrences codedMsg
 
   (decodedLetters, _) <- foldlM (\(m, a) c ->
@@ -175,16 +221,31 @@ decodeMessageScratch transitionFactor existingWordsFactor
         return (Map.insert c c' m, renormalise $ Map.delete c' a)
       else do return (m, a))
     (Map.empty, fMap) codedLettersOccurrences
+  
+  let keysSubst = Map.keys decodedLetters
+  let n = length keysSubst
+  
+  numberTranspositions <- sample $ poisson lambda
+
+  substWithTranspositions <- iterateNtimesM (fromIntegral numberTranspositions)
+    (\subst -> do
+      i <- sample $ uniformdiscrete n
+      j <- sample $ uniformdiscrete (n-1)
+      let c1 = keysSubst !! i
+          c2 = delete c1 keysSubst !! j
+      return $ Map.insert c1 (fromJust $ Map.lookup c2 subst)
+        $ Map.insert c2 (fromJust $ Map.lookup c1 subst) subst)
+    decodedLetters
 
   let decodedMsg = map (\c -> Map.findWithDefault c c decodedLetters) codedMsg
 
   mapM_ (\cs -> let (c1', c2') = replaceSpecialChar cs in
     if c1' == ' ' && c2' == ' ' then return ()
-    else score $ transitionFactor * Map.findWithDefault 0 (c1', c2') tMap)
+    else score $ 1 + transitionFactor * Map.findWithDefault 0 (c1', c2') tMap)
     $ zip (' ' : decodedMsg) (decodedMsg ++ [' '])
 
   score $ existingWordsFactor * foldl (\count w -> if Set.member w corpus then count+1 else count) 0 (words decodedMsg)
-      / fromIntegral (length decodedMsg)
+      -- / fromIntegral (length decodedMsg)
 
   return decodedMsg
   where
@@ -193,7 +254,11 @@ decodeMessageScratch transitionFactor existingWordsFactor
       let c1' = if Data.Char.isLetter c1 then c1 else ' '
           c2' = if Data.Char.isLetter c2 then c2 else ' ' in
       (c1', c2')
-
+    iterateNtimesM :: Monad m => Int -> (a -> m a) -> a -> m a
+    iterateNtimesM i _ a | i <= 0 = return a
+    iterateNtimesM i f a = do
+      !a' <- f a
+      iterateNtimesM (i-1) f a'
 
 {- | Statistical model 2: Decode a coded message 'codedMsg' by making transpositions 
   of the values of given a cipher substitution 'subst'
@@ -256,9 +321,9 @@ inferenceMessage tMapJson fMapJson corpus msg subst = do
 
   putStrLn $ "Input alphabet: " ++ show fMap
 
-  mws' <- mh 0.2 $ decodeMessageScratch 20 100 tMap fMap corpus codedMsg
+  mws' <- mh 0.2 $ decodeMessageScratch 20 100 4 tMap fMap corpus codedMsg
   -- mws' <- mh1 $ decodeMessageScratch tMap fMap corpus codedMsg
-  mws <- takeProgressEveryDrop 10000 100 100 mws'
+  mws <- takeProgressEveryDrop 1000 100 100 mws'
   let maxMsg = maxWeightElement mws
 
 

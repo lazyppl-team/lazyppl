@@ -1,5 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
-
 module Distr where
 
 import LazyPPL
