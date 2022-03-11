@@ -115,6 +115,12 @@ getKey val m = fromJust $ Map.foldrWithKey lookupKey Nothing m
     lookupKey k v Nothing = if val == v then Just k else Nothing
     lookupKey _ _  (Just k) = Just k
 
+accuracy :: String -> String -> Double
+accuracy guessedMsg msg =
+  let n = length guessedMsg
+      nCorrect = length $ filter (uncurry (==)) $ zip (words guessedMsg) (words msg)
+  in fromIntegral nCorrect / fromIntegral n
+
 {- | Generate a random substitution mapping each letter of 'msg' 
   to a letter of the output (coding) Alphabet 'outAlphabet'. -}
 randomSubstitution :: String -> [Char] -> IO (Map.Map Char Char)
@@ -241,11 +247,11 @@ decodeMessageScratch transitionFactor existingWordsFactor
 
   mapM_ (\cs -> let (c1', c2') = replaceSpecialChar cs in
     if c1' == ' ' && c2' == ' ' then return ()
-    else score $ 1 + transitionFactor * Map.findWithDefault 0 (c1', c2') tMap)
+    else score $ transitionFactor * Map.findWithDefault 0 (c1', c2') tMap)
     $ zip (' ' : decodedMsg) (decodedMsg ++ [' '])
 
   score $ existingWordsFactor * foldl (\count w -> if Set.member w corpus then count+1 else count) 0 (words decodedMsg)
-      -- / fromIntegral (length decodedMsg)
+      / fromIntegral (length decodedMsg)
 
   return decodedMsg
   where
@@ -334,6 +340,7 @@ inferenceMessage tMapJson fMapJson corpus msg subst = do
   putStrLn $ "Coded message (to decipher): " ++ codedMsg ++ "\n"
   -- putStrLn $ "Initial Substitution : " ++ show (encodeMessage codedMsg subst') ++ "\n"
   putStrLn $ "Decoded message: " ++ maxMsg ++ "\n"
+  putStrLn $ "Accuracy: " ++ show (100 * accuracy maxMsg msg) ++ "% \n"
 
 
 -- | Examples
@@ -370,6 +377,6 @@ main = do
   saveFrequenciesMapEng
   corpus <- corpusEng
   let outAlphabet = ['a'..'z']
-  let msg = exampleFeynman1
+  let msg = map Data.Char.toLower exampleFeynman1
   subst <- randomSubstitution msg outAlphabet
   inferenceMessage "../english-words-transition.json" "../english-words-frequencies.json" corpus msg subst
