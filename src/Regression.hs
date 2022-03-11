@@ -48,7 +48,7 @@ regress :: Double -> Prob (a -> Double) -> [(a, Double)] -> Meas (a -> Double)
 regress sigma prior dataset =
   do
     f <- sample prior
-    mapM (\(x, y) -> score $ normalPdf (f x) sigma y) dataset
+    mapM_ (\(x, y) -> score $ normalPdf (f x) sigma y) dataset
     return f
 
 
