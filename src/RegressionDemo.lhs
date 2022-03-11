@@ -65,8 +65,8 @@ plotDataset =
 
 Our regression here is noisy: the function has not _precisely_ generated this data set, because the points are not colinear. 
 
-Our generic regression function takes a random function "prior", and some input/output observations "dataset", 
-    which are assumed to be noisy according to "sigma", 
+Our generic regression function takes a random function `prior`, and some input/output observations `dataset`, 
+    which are assumed to be noisy according to `sigma`, 
     returns a conditioned random linear function (unnormalized).
 \begin{code}
 regress :: Double -> Prob (a -> Double) -> [(a, Double)] -> Meas (a -> Double)
@@ -89,7 +89,7 @@ plotLinReg =
 Piecewise linear regression and Poisson point processes
 -----
 
-To move to piecewise linear regression, we introduce a function splice which splices together different draws from a random function at a random selection of change points. NB if the point process is infinite then the resulting function has an infinite number of pieces, but this is all done lazily, so it's not a problem. 
+To move to piecewise linear regression, we introduce a function `splice` which splices together different draws from a random function at a random selection of change points. NB if the point process is infinite then the resulting function has an infinite number of pieces, but this is all done lazily, so it's not a problem. 
 \begin{code}
 splice :: Prob [Double] -> Prob (Double -> Double) -> Prob (Double -> Double)
 splice pointProcess randomFun =
@@ -133,7 +133,7 @@ plotPoissonPP =
 </details>
 <br></br>
 
-We can now invoke a random piecewise linear function by calling splice (poissonPP 0 0.1) linear. 
+We can now invoke a random piecewise linear function by calling `splice (poissonPP 0 0.1) linear`. 
 Here are ten draws from this distribution: 
 ![](images/regression-piecewise-prior.svg)
 <details class="code-details">
