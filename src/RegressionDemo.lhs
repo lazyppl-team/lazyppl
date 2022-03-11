@@ -133,7 +133,7 @@ plotPoissonPP =
 </details>
 <br></br>
 
-We can now invoke a random piecewise linear function by calling `splice (poissonPP 0 0.1) linear`. 
+We can now invoke a random piecewise linear function by calling `splice (poissonPP 0 0.1) linear`{.haskell}. 
 Here are ten draws from this distribution: 
 ![](images/regression-piecewise-prior.svg)
 <details class="code-details">
