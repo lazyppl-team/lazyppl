@@ -118,7 +118,7 @@ getKey val m = fromJust $ Map.foldrWithKey lookupKey Nothing m
 
 accuracy :: String -> String -> Double
 accuracy guessedMsg msg =
-  let n = length guessedMsg
+  let n = length $ words guessedMsg
       nCorrect = length $ filter (uncurry (==)) $ zip (words guessedMsg) (words msg)
   in fromIntegral nCorrect / fromIntegral n
 
@@ -245,14 +245,19 @@ decodeMessageScratch transitionFactor existingWordsFactor
     decodedLetters
 
   let decodedMsg = map (\c -> Map.findWithDefault c c decodedLetters) codedMsg
+      lenDecodedMsgIncrd = length decodedMsg + 1
+      tScore =
+        foldl (\score cs -> let (c1', c2') = replaceSpecialChar cs in
+          if c1' == ' ' && c2' == ' ' then score
+          else score <> 
+            Product (Exp (log (Map.findWithDefault 0 (c1', c2') tMap)
+            /fromIntegral lenDecodedMsgIncrd)))
+          (Product $ (Exp . log) transitionFactor) $ zip (' ' : decodedMsg) (decodedMsg ++ [' '])
+      fScore = (Exp . log) $ existingWordsFactor * 
+        foldl (\count w -> if Set.member w corpus then count+1 else count) 0 (words decodedMsg)
+        / fromIntegral (length $ words decodedMsg)
 
-  mapM_ (\cs -> let (c1', c2') = replaceSpecialChar cs in
-    if c1' == ' ' && c2' == ' ' then return ()
-    else score $ transitionFactor * Map.findWithDefault 0 (c1', c2') tMap)
-    $ zip (' ' : decodedMsg) (decodedMsg ++ [' '])
-
-  score $ existingWordsFactor * foldl (\count w -> if Set.member w corpus then count+1 else count) 0 (words decodedMsg)
-      / fromIntegral (length decodedMsg)
+  scorelog $ getProduct tScore + fScore 
 
   return decodedMsg
   where
@@ -328,9 +333,9 @@ inferenceMessage tMapJson fMapJson corpus msg subst = do
 
   putStrLn $ "Input alphabet: " ++ show fMap
 
-  mws' <- mh 0.2 $ decodeMessageScratch 10 400 20 tMap fMap corpus codedMsg
+  mws' <- mh 0.2 $ decodeMessageScratch 1 4 10 tMap fMap corpus codedMsg
   -- mws' <- mh1 $ decodeMessageScratch tMap fMap corpus codedMsg
-  mws <- takeProgressEveryDrop 5000 100 100 mws'
+  mws <- takeProgressEveryDrop 1000 100 100 mws'
   let maxMsg = maxWeightElement mws
 
 
@@ -387,7 +392,7 @@ returnScore tMap corpus transitionFactor existingWordsFactor msg =
           (Product $ (Exp . log) transitionFactor) $ zip (' ' : msg) (msg ++ [' '])
       fScore =
         Product $ (Exp . log) $ existingWordsFactor * foldl (\count w -> if Set.member w corpus then count+1 else count) 0 (words msg)
-        / fromIntegral n
+        / fromIntegral (length (words msg))
       in getProduct tScore + getProduct (trace ("fScore:" ++ show fScore) fScore)
   where
   replaceSpecialChar :: (Char, Char) -> (Char, Char)
