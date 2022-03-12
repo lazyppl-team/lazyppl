@@ -333,9 +333,9 @@ inferenceMessage tMapJson fMapJson corpus msg subst = do
 
   putStrLn $ "Input alphabet: " ++ show fMap
 
-  mws' <- mh 0.2 $ decodeMessageScratch 1 4 10 tMap fMap corpus codedMsg
+  mws' <- mh 0.2 $ decodeMessageScratch 10 1 10 tMap fMap corpus codedMsg
   -- mws' <- mh1 $ decodeMessageScratch tMap fMap corpus codedMsg
-  mws <- takeProgressEveryDrop 1000 100 100 mws'
+  mws <- takeProgressEveryDrop 10000 100 100 mws'
   let maxMsg = maxWeightElement mws
 
 
@@ -404,8 +404,8 @@ returnScore tMap corpus transitionFactor existingWordsFactor msg =
 f1 = map Data.Char.toLower exampleFeynman1
 f2 = "i can live with doubt, and uncertainty, and not knowing. i think it's much more interesting to live not knowing than to have answers which might be wrong. i have affroximate answers, and fossible belieps, and dipperent degrees op certainty about dipperent things, but i'm not absolutely sure op anything. there are many things i don't know anything about, such as whether it means anything to ask 'why are we here?' i might think about it a little bit, and ip i can't pigure it out then i go on to something else. but i don't have to know an answer. i don't peel prightened by not knowing things, by being lost in the mysterious universe without having any furfose — which is the way it really is, as par as i can tell. fossibly. it doesn't prighten me."
 
-s1 = returnScore tMapEng corpusEng 10 40000 f1
-s2 = returnScore tMapEng corpusEng 10 40000 f2
+s1 = returnScore tMapEng corpusEng 10 1 f1
+s2 = returnScore tMapEng corpusEng 10 1 f2
 
 main :: IO ()
 main = do
