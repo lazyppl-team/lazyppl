@@ -229,20 +229,20 @@ decodeMessageScratch transitionFactor existingWordsFactor
       else do return (m, a))
     (Map.empty, fMap) codedLettersOccurrences
   
-  let keysSubst = Map.keys decodedLetters
-  let n = length keysSubst
+  -- let keysSubst = Map.keys decodedLetters
+  -- let n = length keysSubst
   
-  numberTranspositions <- sample $ poisson lambda
+  -- numberTranspositions <- sample $ poisson lambda
 
-  decodedLetters <- iterateNtimesM (fromIntegral numberTranspositions)
-    (\subst -> do
-      i <- sample $ uniformdiscrete n
-      j <- sample $ uniformdiscrete (n-1)
-      let c1 = keysSubst !! i
-          c2 = delete c1 keysSubst !! j
-      return $ Map.insert c1 (fromJust $ Map.lookup c2 subst)
-        $ Map.insert c2 (fromJust $ Map.lookup c1 subst) subst)
-    decodedLetters
+  -- decodedLetters <- iterateNtimesM (fromIntegral numberTranspositions)
+  --   (\subst -> do
+  --     i <- sample $ uniformdiscrete n
+  --     j <- sample $ uniformdiscrete (n-1)
+  --     let c1 = keysSubst !! i
+  --         c2 = delete c1 keysSubst !! j
+  --     return $ Map.insert c1 (fromJust $ Map.lookup c2 subst)
+  --       $ Map.insert c2 (fromJust $ Map.lookup c1 subst) subst)
+  --   decodedLetters
 
   let decodedMsg = map (\c -> Map.findWithDefault c c decodedLetters) codedMsg
       lenDecodedMsgIncrd = length decodedMsg + 1
@@ -257,7 +257,7 @@ decodeMessageScratch transitionFactor existingWordsFactor
         foldl (\count w -> if Set.member w corpus then count+1 else count) 0 (words decodedMsg)
         / fromIntegral (length $ words decodedMsg)
 
-  scorelog $ getProduct tScore + fScore 
+  scorelog $ getProduct tScore + fScore
 
   return decodedMsg
   where
@@ -335,7 +335,7 @@ inferenceMessage tMapJson fMapJson corpus msg subst = do
 
   mws' <- mh 0.2 $ decodeMessageScratch 100 10 10 tMap fMap corpus codedMsg
   -- mws' <- mh1 $ decodeMessageScratch tMap fMap corpus codedMsg
-  mws <- takeProgressEveryDrop 1000 100 100 mws'
+  mws <- takeProgressEveryDrop 50000 100 100 mws'
   let maxMsg = maxWeightElement mws
 
 
