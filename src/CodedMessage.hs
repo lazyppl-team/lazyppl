@@ -234,7 +234,7 @@ decodeMessageScratch transitionFactor existingWordsFactor
   
   numberTranspositions <- sample $ poisson lambda
 
-  substWithTranspositions <- iterateNtimesM (fromIntegral numberTranspositions)
+  decodedLetters <- iterateNtimesM (fromIntegral numberTranspositions)
     (\subst -> do
       i <- sample $ uniformdiscrete n
       j <- sample $ uniformdiscrete (n-1)
@@ -333,9 +333,9 @@ inferenceMessage tMapJson fMapJson corpus msg subst = do
 
   putStrLn $ "Input alphabet: " ++ show fMap
 
-  mws' <- mh 0.2 $ decodeMessageScratch 10 1 10 tMap fMap corpus codedMsg
+  mws' <- mh 0.2 $ decodeMessageScratch 100 10 10 tMap fMap corpus codedMsg
   -- mws' <- mh1 $ decodeMessageScratch tMap fMap corpus codedMsg
-  mws <- takeProgressEveryDrop 10000 100 100 mws'
+  mws <- takeProgressEveryDrop 1000 100 100 mws'
   let maxMsg = maxWeightElement mws
 
 
@@ -413,6 +413,6 @@ main = do
   saveFrequenciesMapEng
   corpus <- corpusSet "../english-words.txt"
   let outAlphabet = ['a'..'z']
-  let msg = map Data.Char.toLower exampleHume2
+  let msg = map Data.Char.toLower exampleFeynman1
   subst <- randomSubstitution msg outAlphabet
   inferenceMessage "../english-words-transition.json" "../english-words-frequencies.json" corpus msg subst
