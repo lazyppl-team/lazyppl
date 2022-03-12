@@ -97,12 +97,12 @@ randfun = do
     The prior functions are tagged with a string, so we can 
     print them. 
 --} 
-regress :: Double -> Prob (a -> Double,String) -> [(a,Double)]
-           -> Meas (a->Double,String)
+regress :: Double -> Prob (a -> Double, String) -> [(a,Double)]
+          -> Meas (a -> Double, String)
 regress sigma prior dataset =
-  do (f,s) <- sample prior
-     mapM (\(x,y) -> score $ normalPdf (f x) sigma y) dataset
-     return (f,s)
+  do  (f, s) <- sample prior
+      mapM_ (\(x,y) -> score $ normalPdf (f x) sigma y) dataset
+      return (f, s)
 
 {-- A sample dataset --}
 dataset :: [(Double, Double)]

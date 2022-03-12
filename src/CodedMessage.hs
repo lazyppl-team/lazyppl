@@ -24,8 +24,9 @@ import Data.Char (toLower, isLetter)
 import System.Random
 
 import Control.Monad.Extra (iterateM)
-import qualified Numeric.Log as Log
-import Data.Monoid ( Product(Product) )
+
+import Numeric.Log (Log( Exp ))
+import Data.Monoid ( Product(Product, getProduct) )
 import Control.Monad (forM)
 import Control.DeepSeq ( deepseq )
 
@@ -117,7 +118,7 @@ getKey val m = fromJust $ Map.foldrWithKey lookupKey Nothing m
 
 accuracy :: String -> String -> Double
 accuracy guessedMsg msg =
-  let n = length guessedMsg
+  let n = length $ words guessedMsg
       nCorrect = length $ filter (uncurry (==)) $ zip (words guessedMsg) (words msg)
   in fromIntegral nCorrect / fromIntegral n
 
@@ -244,14 +245,19 @@ decodeMessageScratch transitionFactor existingWordsFactor
     decodedLetters
 
   let decodedMsg = map (\c -> Map.findWithDefault c c decodedLetters) codedMsg
+      lenDecodedMsgIncrd = length decodedMsg + 1
+      tScore =
+        foldl (\score cs -> let (c1', c2') = replaceSpecialChar cs in
+          if c1' == ' ' && c2' == ' ' then score
+          else score <> 
+            Product (Exp (log (Map.findWithDefault 0 (c1', c2') tMap)
+            /fromIntegral lenDecodedMsgIncrd)))
+          (Product $ (Exp . log) transitionFactor) $ zip (' ' : decodedMsg) (decodedMsg ++ [' '])
+      fScore = (Exp . log) $ existingWordsFactor * 
+        foldl (\count w -> if Set.member w corpus then count+1 else count) 0 (words decodedMsg)
+        / fromIntegral (length $ words decodedMsg)
 
-  mapM_ (\cs -> let (c1', c2') = replaceSpecialChar cs in
-    if c1' == ' ' && c2' == ' ' then return ()
-    else score $ transitionFactor * Map.findWithDefault 0 (c1', c2') tMap)
-    $ zip (' ' : decodedMsg) (decodedMsg ++ [' '])
-
-  score $ existingWordsFactor * foldl (\count w -> if Set.member w corpus then count+1 else count) 0 (words decodedMsg)
-      / fromIntegral (length decodedMsg)
+  scorelog $ getProduct tScore + fScore 
 
   return decodedMsg
   where
@@ -300,7 +306,7 @@ substTranspose tMap fMap subst codedMsg = do
 getBestMessageTranspose :: Map.Map (Char, Char) Double -> Map.Map Char Double -> 
   Map.Map Char Char -> String -> IO String
 getBestMessageTranspose tMap fMap subst codedMsg = do
-  !scs' <- iterateNtimesM 5000 substMsgMax ((subst, codedMsg),  Product $ (Log.Exp . log) 1)
+  !scs' <- iterateNtimesM 5000 substMsgMax ((subst, codedMsg),  mempty)
   let scs = maxWeightElement scs'
   return $ snd scs
   where
@@ -327,9 +333,9 @@ inferenceMessage tMapJson fMapJson corpus msg subst = do
 
   putStrLn $ "Input alphabet: " ++ show fMap
 
-  mws' <- mh 0.2 $ decodeMessageScratch 20 100 4 tMap fMap corpus codedMsg
+  mws' <- mh 0.2 $ decodeMessageScratch 10 1 10 tMap fMap corpus codedMsg
   -- mws' <- mh1 $ decodeMessageScratch tMap fMap corpus codedMsg
-  mws <- takeProgressEveryDrop 1000 100 100 mws'
+  mws <- takeProgressEveryDrop 10000 100 100 mws'
   let maxMsg = maxWeightElement mws
 
 
@@ -346,17 +352,17 @@ inferenceMessage tMapJson fMapJson corpus msg subst = do
 -- | Examples
 
 -- English corpus: https://github.com/first20hours/google-10000-english/blob/master/google-10000-english.txt
-tMapEng :: IO (Map.Map (Char, Char) Double)
-tMapEng = transitionMap "../english-words.txt"
+tMapEng :: Map.Map (Char, Char) Double
+tMapEng = unsafePerformIO $ transitionMap "../english-words.txt"
+
+corpusEng :: Set.Set String
+corpusEng = unsafePerformIO $ corpusSet "../english-words.txt"
 
 saveTransitionMapEng :: IO ()
 saveTransitionMapEng = saveTransitionMap "../english-words.txt"
 
 saveFrequenciesMapEng :: IO ()
 saveFrequenciesMapEng = saveFrequenciesMap "../english-words.txt"
-
-corpusEng :: IO (Set.Set String)
-corpusEng = corpusSet "../english-words.txt"
 
 exampleHume1 :: String
 exampleHume1 = "But the life of a man is of no greater importance to the universe than that of an oyster"
@@ -370,13 +376,43 @@ exampleFeynman1 = "I can live with doubt, and uncertainty, and not knowing. I th
 exampleGrothendieck1 :: String
 exampleGrothendieck1 = "Craindre l'erreur et craindre la vérité est une seule et même chose. Celui qui craint de se tromper est impuissant à découvrir. C'est quand nous craignons de nous tromper que l'erreur qui est en nous se fait immuable comme un roc. Car dans notre peur, nous nous accrochons à ce que nous avons décrété 'vrai' un jour, ou à ce qui depuis toujours nous a été présenté comme tel. Quand nous sommes mûs, non par la peur de voir s'évanouir une illusoire sécurité, mais par une soif de connaître, alors l'erreur, comme la souffrance ou la tristesse, nous traverse sans se ﬁger jamais, et la trace de son passage est une connaissance renouvelée."
 
+-- For debugging purposes
+returnScore :: Map.Map (Char, Char) Double 
+  -> Set.Set String -> Double -> Double -> String -> Log Double
+returnScore tMap corpus transitionFactor existingWordsFactor msg = 
+  let n = length msg
+      tScore =
+        foldl (\score cs -> let (c1', c2') = replaceSpecialChar cs in
+          if c1' == ' ' && c2' == ' ' then trace("score:" ++ show score) score
+          else 
+            let newScore = score <> 
+                  Product (Exp (log (Map.findWithDefault 0 (c1', c2') tMap)/ fromIntegral (n+1)))
+            in trace("score:" ++ show newScore) newScore)
+          -- mempty $ zip (' ' : msg) (msg ++ [' '])
+          (Product $ (Exp . log) transitionFactor) $ zip (' ' : msg) (msg ++ [' '])
+      fScore =
+        Product $ (Exp . log) $ existingWordsFactor * foldl (\count w -> if Set.member w corpus then count+1 else count) 0 (words msg)
+        / fromIntegral (length (words msg))
+      in getProduct tScore + getProduct (trace ("fScore:" ++ show fScore) fScore)
+  where
+  replaceSpecialChar :: (Char, Char) -> (Char, Char)
+  replaceSpecialChar (c1, c2) =
+    let c1' = if Data.Char.isLetter c1 then c1 else ' '
+        c2' = if Data.Char.isLetter c2 then c2 else ' ' in
+    (c1', c2')
+
+f1 = map Data.Char.toLower exampleFeynman1
+f2 = "i can live with doubt, and uncertainty, and not knowing. i think it's much more interesting to live not knowing than to have answers which might be wrong. i have affroximate answers, and fossible belieps, and dipperent degrees op certainty about dipperent things, but i'm not absolutely sure op anything. there are many things i don't know anything about, such as whether it means anything to ask 'why are we here?' i might think about it a little bit, and ip i can't pigure it out then i go on to something else. but i don't have to know an answer. i don't peel prightened by not knowing things, by being lost in the mysterious universe without having any furfose — which is the way it really is, as par as i can tell. fossibly. it doesn't prighten me."
+
+s1 = returnScore tMapEng corpusEng 10 1 f1
+s2 = returnScore tMapEng corpusEng 10 1 f2
 
 main :: IO ()
 main = do
   saveTransitionMapEng
   saveFrequenciesMapEng
-  corpus <- corpusEng
+  corpus <- corpusSet "../english-words.txt"
   let outAlphabet = ['a'..'z']
-  let msg = map Data.Char.toLower exampleFeynman1
+  let msg = map Data.Char.toLower exampleHume2
   subst <- randomSubstitution msg outAlphabet
   inferenceMessage "../english-words-transition.json" "../english-words-frequencies.json" corpus msg subst
