@@ -48,53 +48,118 @@ prior2 =
 Of course, we could solve this particular program analytically. The point is rather that we have a universal program transformation manipulation that could be applied automatically. 
 
 The following chart shows that the expected sample size (the ratio between the variance of a single true sample and the variance among the generated samples) is much better with this second implementation of the prior, although Metropolis Hastings is still far from optimal for this contrived problem.
-![](images/controlflow-ess.png)
-
-In single-site Metropolis Hastings (`mh1`), the first implementation of the prior is especially bad, because _all_ proposals will be rejected except perhaps one.
-
-<br>
-
+![](images/controlflow-essA.png)
 <details class="code-details">
-<summary>(Code for effective sample size)</summary>
+<summary>(Code for precision of estimators)</summary>
 \begin{code}
--- Take a sampler (m) and calculate the mean, variance and effective sample size
--- for the estimator that returns the probability of return true.
+-- Take a sampler (m)  returning reals, regarded as an estimator,
+-- and calculate the mean and precision for the estimator.
 -- k is the number of samples to use in the estimator.
 -- n is the number of runs to average over to approximate the mean, variance and ess.
-meanVarESS :: IO [(Bool,a)] -> Int -> Int -> IO (Double,Double,Double)
-meanVarESS m n k =
+meanPrec :: IO [(Double,a)] -> Int -> Int -> IO (Double,Double)
+meanPrec m n k =
   do xwss <- replicateM n m
-     let as = map ((\x -> (fromIntegral x) / (fromIntegral k)). length . filter id . map fst . take k) xwss
-     let mean = (sum as) / (fromIntegral n) -- samplemean
-     let var = (sum (map (\x -> (x - mean)^2) as)) / (fromIntegral n) -- samplevariance
-     let sigmasquared = mean - mean^2 -- estimated variance for one true sample
-     return (mean,var,sigmasquared/var)
+     let as = map ((\x -> x / (fromIntegral k)). sum . map fst . take k) xwss
+     let mean = (sum as) / (fromIntegral n) -- sample mean
+     let var = (sum (map (\x -> (x - mean)^2) as)) / (fromIntegral n) -- sample variance
+     return (mean,1/var)
+
 \end{code}
 </details>
 <details class="code-details">
 <summary>(Plotting code)</summary>
 \begin{code}     
-plotESS = 
-  do let xs = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,20,30,40,50,60,70,80,90,100]
+plotESSA = 
+  do let xs = [1,1000,10000]
      -- A rejection sampler where the scores are known to be 0 or 1.
      let rejectionsampler m = fmap (filter (\(_,w) -> w>0.00001)) $ weightedsamples $ m
+     let truevar = (4.0/7.0) - (4.0/7.0)^2 -- variance for one true sample
      -- Tests to plot
-     as <- forM xs $ fmap (\(_,_,ess)->ess) . meanVarESS (mh 0.33 $ model prior1) 1000 
-     bs <- forM xs $ fmap (\(_,_,ess)->ess) . meanVarESS (mh1 $ model prior1) 1000 
-     cs <- forM xs $ fmap (\(_,_,ess)->ess) . meanVarESS (mh 0.33 $ model prior2) 1000 
-     ds <- forM xs $ fmap (\(_,_,ess)->ess) . meanVarESS (mh1 $ model prior2) 1000
-     es <- forM xs $ fmap (\(_,_,ess)->ess) . meanVarESS (mh 1 $ model prior1) 1000
-     fs <- forM xs $ fmap (\(_,_,ess)->ess) . meanVarESS (rejectionsampler $ model prior1) 1000
-     file "images/controlflow-ess.png" $
-       plot xs bs @@ [o2 "label" "mh1 with prior1"] %
-       plot xs ds @@ [o2 "label" "mh1 with prior2"] %
+     as <- forM xs $ fmap (\(_,prec)->truevar*prec) . meanPrec (mh 0.3 $ fmap fromBool $ model prior1) 100
+     cs <- forM xs $ fmap (\(_,prec)->truevar*prec) . meanPrec (mh 0.33 $ fmap fromBool $ model prior2) 100
+     es <- forM xs $ fmap (\(_,prec)->truevar*prec) . meanPrec (mh 1 $ fmap fromBool $ model prior1) 100
+     fs <- forM xs $ fmap (\(_,prec)->truevar*prec) . meanPrec (rejectionsampler $ fmap fromBool $ model prior1) 100
+     file "images/controlflow-essA.png" $
        plot xs as @@ [o2 "label" "mh 0.3 with prior1"] %
        plot xs cs @@ [o2 "label" "mh 0.3 with prior2"] %
        plot xs es @@ [o2 "label" "all sites mh"] %
        plot xs fs @@ [o2 "label" "rejection sampling"] %
-       ylim (1::Double) (6::Double) %
+       ylim (1::Double) (500::Double) %
        xlabel "Samples" % ylabel "Effective sample size" % legend @@ [o2 "loc" "upper right"]
+\end{code}
+</details>
 
-main = plotESS
+Irreducibility 
+----
+
+This example also illustrates the issue with potential irreducibility in single-site Metropolis Hastings (`mh1`): the first implementation of the prior is especially bad, because _all_ proposals will be rejected except perhaps one.
+This irreducibility arises from the hard constraints (scores of `0`) and is avoided to some extent with a softer constraint:
+\begin{code}
+softModel :: Prob (Bool,Bool) -> Meas Bool
+softModel prior =
+  do (x,y) <- sample prior
+     score (if x==y then 0.9 else 0.1)
+     return x
+\end{code}
+![](images/controlflow-essB.png)
+<details class="code-details">
+<summary>(Plotting code)</summary>
+\begin{code}     
+fromBool b = if b then 1.0 else 0.0
+plotESSB = 
+  do let xs = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,20,30,40,50,60,70,80,90,100]
+     let truevar = (4.0/7.0) - (4.0/7.0)^2 -- variance for one true sample
+     -- Tests to plot
+     as <- forM xs $ fmap (\(_,prec)->truevar*prec) . meanPrec (mh1 $ fmap fromBool $ model prior1) 1000 
+     bs <- forM xs $ fmap (\(_,prec)->truevar*prec) . meanPrec (mh1 $ fmap fromBool $ softModel prior1) 1000
+     file "images/controlflow-essB.png" $
+       plot xs as @@ [o2 "label" "mh1 with hard constraint"] %
+       plot xs bs @@ [o2 "label" "mh1 with soft constraint"] %
+       xlabel "Samples" % ylabel "Effective sample size" % legend @@ [o2 "loc" "upper right"]
+\end{code}
+</details>
+
+Note about different Metropolis-Hastings kernels in general
+----
+
+These are contrived examples and the reader should not conclude that all-sites Metropolis-Hastings outperforms the more complex Metropolis-Hastings algorithms of LazyPPL in general. To emphasise this, we plot the precision in the intercept for a linear regression example (similar to <a href="Regression.html">here</a>). 
+\begin{code}
+linreg :: Meas (Double,Double)
+linreg =
+  do
+    a <- sample $ normal 0 3
+    b <- sample $ normal 0 3
+    let dataset = [(0,5), (0.1,10), (0.2,0)]
+    mapM (\(x, y) -> score $ normalPdf (a*x + b) 0.5 y) dataset
+    return (a,b)
+\end{code}
+![](images/controlflow-prec.png)
+
+(Here we plot precision, which is proportional to effective sample size, because a general effective sample size analysis isn't written yet.)
+<br>
+
+<details class="code-details">
+<summary>(Plotting code)</summary>
+\begin{code}     
+plotPrec = 
+  do let xs = [1,100,200,400,700,1000]
+     -- Tests to plot
+     as <- forM xs $ fmap snd . meanPrec (mh 0.5 $ fmap snd $ linreg) 1000
+     bs <- forM xs $ fmap snd . meanPrec (mh1 $ fmap snd $ linreg) 1000
+     es <- forM xs $ fmap snd . meanPrec (mh 1 $ fmap snd $ linreg) 1000
+     file "images/controlflow-prec.png" $
+       plot xs bs @@ [o2 "label" "mh1"] %
+       plot xs as @@ [o2 "label" "mh 0.5"] %
+       plot xs es @@ [o2 "label" "all sites mh"] %
+       xlabel "Samples" % ylabel "Precision for mean b" % legend @@ [o2 "loc" "upper right"]
+\end{code}
+</details>
+<details class="code-details">
+<summary>(Epilogue code)</summary>
+\begin{code}     
+main = do
+  plotESSA
+  plotESSB
+  plotPrec
 \end{code}
 </details>
