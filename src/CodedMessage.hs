@@ -25,7 +25,7 @@ import System.Random
 
 import Control.Monad.Extra (iterateM)
 
-import Numeric.Log (Log( Exp ))
+import qualified Numeric.Log as L (Log( Exp), sum)
 import Data.Monoid ( Product(Product, getProduct) )
 import Control.Monad (forM)
 import Control.DeepSeq ( deepseq )
@@ -169,11 +169,9 @@ sensibleSubstitution codedMsg fMap = do
 -}
 decodeMessageScratch :: Double -> Double -> Double ->
   Map.Map (Char, Char) Double -> Map.Map Char Double
-  -> Set.Set String -> String -> Meas String
-decodeMessageScratch transitionFactor existingWordsFactor 
-  lambda tMap fMap corpus codedMsg = do
-  let codedLettersOccurrences = lettersOccurrences codedMsg
-
+  -> Set.Set String -> [Char] -> String -> Meas String
+decodeMessageScratch transitionFactor existingWordsFactor
+  lambda tMap fMap corpus codedLettersOccurrences codedMsg = do
   (decodedLetters, _) <- foldlM (\(m, a) c ->
     if Data.Char.isLetter c
       then do
@@ -183,10 +181,10 @@ decodeMessageScratch transitionFactor existingWordsFactor
         return (Map.insert c c' m, renormalise $ Map.delete c' a)
       else do return (m, a))
     (Map.empty, fMap) codedLettersOccurrences
-  
+
   let keysSubst = Map.keys decodedLetters
   let n = length keysSubst
-  
+
   numberTranspositions <- sample $ poisson lambda
 
   decodedLetters <- iterateNtimesM (fromIntegral numberTranspositions)
@@ -201,23 +199,23 @@ decodeMessageScratch transitionFactor existingWordsFactor
 
   let decodedMsg = map (\c -> Map.findWithDefault c c decodedLetters) codedMsg
       lenDecodedMsgIncrd = length decodedMsg + 1
-      tScore =
-        foldl (\score cs -> let (c1', c2') = replaceSpecialChar cs in
+      tScore = L.Exp $ foldl'
+        (\score (c1, c2) -> let (c1', c2') = replaceSpecialChar c1 c2 in
           if c1' == ' ' && c2' == ' ' then score
-          else score <> 
-            Product (Exp (log (Map.findWithDefault 0 (c1', c2') tMap)
-            /fromIntegral lenDecodedMsgIncrd)))
-          (Product $ (Exp . log) transitionFactor) $ zip (' ' : decodedMsg) (decodedMsg ++ [' '])
-      fScore = Product $ (Exp . log) $ existingWordsFactor * 
-        foldl (\count w -> if Set.member w corpus then count+1 else count) 0 (words decodedMsg)
+          else score + log (Map.findWithDefault 1 (c1', c2') tMap))
+        0 (zip (' ' : decodedMsg) (decodedMsg ++ [' ']))
+        / fromIntegral lenDecodedMsgIncrd
+        + log transitionFactor
+      fScore = (L.Exp . log) $ existingWordsFactor *
+        foldl' (\count w -> if Set.member w corpus then count+1 else count) 0 (words decodedMsg)
         / fromIntegral (length $ words decodedMsg)
 
-  scoreProductLog $ tScore + fScore
-
+  scoreLog $ L.sum [tScore, fScore]
+  -- scoreLog $ getProduct tScore + fScore
   return decodedMsg
   where
-    replaceSpecialChar :: (Char, Char) -> (Char, Char)
-    replaceSpecialChar (c1, c2) =
+    replaceSpecialChar :: Char -> Char -> (Char, Char)
+    replaceSpecialChar c1 c2 =
       let c1' = if Data.Char.isLetter c1 then c1 else ' '
           c2' = if Data.Char.isLetter c2 then c2 else ' ' in
       (c1', c2')
@@ -258,7 +256,7 @@ substTranspose tMap fMap subst codedMsg = do
           c2' = if Data.Char.isLetter c2 then c2 else ' ' in
       (c1', c2')
 
-getBestMessageTranspose :: Map.Map (Char, Char) Double -> Map.Map Char Double -> 
+getBestMessageTranspose :: Map.Map (Char, Char) Double -> Map.Map Char Double ->
   Map.Map Char Char -> String -> IO String
 getBestMessageTranspose tMap fMap subst codedMsg = do
   !scs' <- iterateNtimesM 5000 substMsgMax ((subst, codedMsg),  mempty)
@@ -285,12 +283,14 @@ inferenceMessage tMapJson fMapJson corpus msg subst = do
   let codedMsg = encodeMessage msg subst
   tMap <- loadJSONFile tMapJson
   fMap <- loadJSONFile fMapJson
+  let codedLettersOccurrences = lettersOccurrences codedMsg
 
   putStrLn $ "Input alphabet: " ++ show fMap
 
-  mws' <- mh 0.2 $ decodeMessageScratch 100 10 4 tMap fMap corpus codedMsg
+  mws' <- mh 0.2 
+    $ decodeMessageScratch 100 10 4 tMap fMap corpus codedLettersOccurrences codedMsg
   -- mws' <- mh1 $ decodeMessageScratch tMap fMap corpus codedMsg
-  mws <- takeProgressEveryDrop 10000 100 100 mws'
+  mws <- takeProgressEveryDrop 30000 100 100 mws'
   let maxMsg = maxWeightElement mws
 
 
@@ -332,26 +332,27 @@ exampleGrothendieck1 :: String
 exampleGrothendieck1 = "Craindre l'erreur et craindre la vérité est une seule et même chose. Celui qui craint de se tromper est impuissant à découvrir. C'est quand nous craignons de nous tromper que l'erreur qui est en nous se fait immuable comme un roc. Car dans notre peur, nous nous accrochons à ce que nous avons décrété 'vrai' un jour, ou à ce qui depuis toujours nous a été présenté comme tel. Quand nous sommes mûs, non par la peur de voir s'évanouir une illusoire sécurité, mais par une soif de connaître, alors l'erreur, comme la souffrance ou la tristesse, nous traverse sans se ﬁger jamais, et la trace de son passage est une connaissance renouvelée."
 
 -- For debugging purposes
-returnScore :: Map.Map (Char, Char) Double 
-  -> Set.Set String -> Double -> Double -> String -> Log Double
-returnScore tMap corpus transitionFactor existingWordsFactor msg = 
+returnScore :: Map.Map (Char, Char) Double
+  -> Set.Set String -> Double -> Double -> String -> L.Log Double
+returnScore tMap corpus transitionFactor existingWordsFactor msg =
   let n = length msg
-      tScore =
-        foldl (\score cs -> let (c1', c2') = replaceSpecialChar cs in
-          if c1' == ' ' && c2' == ' ' then trace("score:" ++ show score) score
-          else 
-            let newScore = score <> 
-                  Product (Exp (log (Map.findWithDefault 0 (c1', c2') tMap)/ fromIntegral (n+1)))
-            in trace("score:" ++ show newScore) newScore)
-          -- mempty $ zip (' ' : msg) (msg ++ [' '])
-          (Product $ (Exp . log) transitionFactor) $ zip (' ' : msg) (msg ++ [' '])
+      tScore = L.Exp $
+        foldl (\score (c1, c2) -> let (c1', c2') = replaceSpecialChar c1 c2 in
+          if c1' == ' ' && c2' == ' ' then trace ("score: " ++ show score) score
+          else
+            let newScore = score +
+                  log (Map.findWithDefault 1 (c1', c2') tMap)
+            in trace ("score: " ++ show newScore) newScore)
+          0 (zip (' ' : msg) (msg ++ [' ']))
+        / fromIntegral (n+1)
+        + log transitionFactor
       fScore =
-        Product $ (Exp . log) $ existingWordsFactor * foldl (\count w -> if Set.member w corpus then count+1 else count) 0 (words msg)
+        (L.Exp . log) $ existingWordsFactor * foldl (\count w -> if Set.member w corpus then count+1 else count) 0 (words msg)
         / fromIntegral (length (words msg))
-      in getProduct tScore + getProduct (trace ("fScore:" ++ show fScore) fScore)
+      in L.sum [trace ("tScore: " ++ show tScore) tScore, trace ("fScore: " ++ show fScore) fScore]
   where
-  replaceSpecialChar :: (Char, Char) -> (Char, Char)
-  replaceSpecialChar (c1, c2) =
+  replaceSpecialChar :: Char -> Char -> (Char, Char)
+  replaceSpecialChar c1 c2 =
     let c1' = if Data.Char.isLetter c1 then c1 else ' '
         c2' = if Data.Char.isLetter c2 then c2 else ' ' in
     (c1', c2')
@@ -359,8 +360,8 @@ returnScore tMap corpus transitionFactor existingWordsFactor msg =
 f1 = map Data.Char.toLower exampleFeynman1
 f2 = "i can live with doubt, and uncertainty, and not knowing. i think it's much more interesting to live not knowing than to have answers which might be wrong. i have affroximate answers, and fossible belieps, and dipperent degrees op certainty about dipperent things, but i'm not absolutely sure op anything. there are many things i don't know anything about, such as whether it means anything to ask 'why are we here?' i might think about it a little bit, and ip i can't pigure it out then i go on to something else. but i don't have to know an answer. i don't peel prightened by not knowing things, by being lost in the mysterious universe without having any furfose — which is the way it really is, as par as i can tell. fossibly. it doesn't prighten me."
 
-s1 = returnScore tMapEng corpusEng 10 1 f1
-s2 = returnScore tMapEng corpusEng 10 1 f2
+s1 = returnScore tMapEng corpusEng 100 10 f1
+s2 = returnScore tMapEng corpusEng 100 10 f2
 
 main :: IO ()
 main = do
