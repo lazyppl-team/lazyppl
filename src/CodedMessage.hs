@@ -198,20 +198,21 @@ decodeMessageScratch transitionFactor existingWordsFactor
     decodedLetters
 
   let decodedMsg = map (\c -> Map.findWithDefault c c decodedLetters) codedMsg
-      lenDecodedMsgIncrd = length decodedMsg + 1
-      tScore = L.Exp $ foldl'
+      tScore = L.Exp $ foldl
         (\score (c1, c2) -> let (c1', c2') = replaceSpecialChar c1 c2 in
           if c1' == ' ' && c2' == ' ' then score
-          else score + log (Map.findWithDefault 1 (c1', c2') tMap))
+          else score + log (1 + Map.findWithDefault 0 (c1', c2') tMap))
         0 (zip (' ' : decodedMsg) (decodedMsg ++ [' ']))
-        / fromIntegral lenDecodedMsgIncrd
+        / fromIntegral (length decodedMsg + 1)
         + log transitionFactor
       fScore = (L.Exp . log) $ existingWordsFactor *
-        foldl' (\count w -> if Set.member w corpus then count+1 else count) 0 (words decodedMsg)
-        / fromIntegral (length $ words decodedMsg)
+        (foldl (\count w -> if Set.member w corpus then count+1 else count) 0 (words decodedMsg)
+        / fromIntegral (length (words decodedMsg))
+        + 1)
+      totalScore = L.sum [tScore, fScore]
 
-  scoreLog $ L.sum [tScore, fScore]
-  -- scoreLog $ getProduct tScore + fScore
+  scoreLog $ trace ("Score: " ++ show totalScore) totalScore
+  -- scoreLog totalScore
   return decodedMsg
   where
     replaceSpecialChar :: Char -> Char -> (Char, Char)
@@ -287,10 +288,10 @@ inferenceMessage tMapJson fMapJson corpus msg subst = do
 
   putStrLn $ "Input alphabet: " ++ show fMap
 
-  mws' <- mh 0.2 
-    $ decodeMessageScratch 100 10 4 tMap fMap corpus codedLettersOccurrences codedMsg
+  mws' <- mh1 
+    $ decodeMessageScratch 1 2 4 tMap fMap corpus codedLettersOccurrences codedMsg
   -- mws' <- mh1 $ decodeMessageScratch tMap fMap corpus codedMsg
-  mws <- takeProgressEveryDrop 30000 100 100 mws'
+  mws <- takeProgressEveryDrop 20000 100 100 mws'
   let maxMsg = maxWeightElement mws
 
 
@@ -338,17 +339,17 @@ returnScore tMap corpus transitionFactor existingWordsFactor msg =
   let n = length msg
       tScore = L.Exp $
         foldl (\score (c1, c2) -> let (c1', c2') = replaceSpecialChar c1 c2 in
-          if c1' == ' ' && c2' == ' ' then trace ("score: " ++ show score) score
+          if c1' == ' ' && c2' == ' ' then trace ("log-score: " ++ show score) score
           else
             let newScore = score +
-                  log (Map.findWithDefault 1 (c1', c2') tMap)
-            in trace ("score: " ++ show newScore) newScore)
+                  log (1 + Map.findWithDefault 0 (c1', c2') tMap)
+            in trace ("log-score: " ++ show newScore) newScore)
           0 (zip (' ' : msg) (msg ++ [' ']))
         / fromIntegral (n+1)
         + log transitionFactor
       fScore =
-        (L.Exp . log) $ existingWordsFactor * foldl (\count w -> if Set.member w corpus then count+1 else count) 0 (words msg)
-        / fromIntegral (length (words msg))
+        (L.Exp . log) $ existingWordsFactor * (foldl (\count w -> if Set.member w corpus then count+1 else count) 0 (words msg)
+        / fromIntegral (length (words msg)) + 1)
       in L.sum [trace ("tScore: " ++ show tScore) tScore, trace ("fScore: " ++ show fScore) fScore]
   where
   replaceSpecialChar :: Char -> Char -> (Char, Char)
