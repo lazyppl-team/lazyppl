@@ -169,11 +169,9 @@ sensibleSubstitution codedMsg fMap = do
 -}
 decodeMessageScratch :: Double -> Double -> Double ->
   Map.Map (Char, Char) Double -> Map.Map Char Double
-  -> Set.Set String -> String -> Meas String
+  -> Set.Set String -> [Char] -> String -> Meas String
 decodeMessageScratch transitionFactor existingWordsFactor
-  lambda tMap fMap corpus codedMsg = do
-  let codedLettersOccurrences = lettersOccurrences codedMsg
-
+  lambda tMap fMap corpus codedLettersOccurrences codedMsg = do
   (decodedLetters, _) <- foldlM (\(m, a) c ->
     if Data.Char.isLetter c
       then do
@@ -285,12 +283,14 @@ inferenceMessage tMapJson fMapJson corpus msg subst = do
   let codedMsg = encodeMessage msg subst
   tMap <- loadJSONFile tMapJson
   fMap <- loadJSONFile fMapJson
+  let codedLettersOccurrences = lettersOccurrences codedMsg
 
   putStrLn $ "Input alphabet: " ++ show fMap
 
-  mws' <- mh 0.2 $ decodeMessageScratch 100 10 4 tMap fMap corpus codedMsg
+  mws' <- mh 0.2 
+    $ decodeMessageScratch 100 10 4 tMap fMap corpus codedLettersOccurrences codedMsg
   -- mws' <- mh1 $ decodeMessageScratch tMap fMap corpus codedMsg
-  mws <- takeProgressEveryDrop 2000 100 100 mws'
+  mws <- takeProgressEveryDrop 30000 100 100 mws'
   let maxMsg = maxWeightElement mws
 
 
