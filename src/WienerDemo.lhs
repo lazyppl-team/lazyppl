@@ -113,4 +113,4 @@ plotCoords filename dataset xyss ymin ymax alpha =
 main :: IO ()
 main = do { plotWienerPrior ; plotWienerRegression } 
 \end{code}
-\end{details}
+</details>
