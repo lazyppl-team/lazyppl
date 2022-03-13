@@ -70,7 +70,8 @@ meanPrec m n k =
 <summary>(Plotting code)</summary>
 \begin{code}     
 plotESSA = 
-  do let xs = [1,1000,10000]
+  do putStrLn "Plotting images/controlflow-essA.png..."
+     let xs = [1,1000,10000]
      -- A rejection sampler where the scores are known to be 0 or 1.
      let rejectionsampler m = fmap (filter (\(_,w) -> w>0.00001)) $ weightedsamples $ m
      let truevar = (4.0/7.0) - (4.0/7.0)^2 -- variance for one true sample
@@ -80,12 +81,13 @@ plotESSA =
      es <- forM xs $ fmap (\(_,prec)->truevar*prec) . meanPrec (mh 1 $ fmap fromBool $ model prior1) 100
      fs <- forM xs $ fmap (\(_,prec)->truevar*prec) . meanPrec (rejectionsampler $ fmap fromBool $ model prior1) 100
      file "images/controlflow-essA.png" $
-       plot xs as @@ [o2 "label" "mh 0.3 with prior1"] %
-       plot xs cs @@ [o2 "label" "mh 0.3 with prior2"] %
-       plot xs es @@ [o2 "label" "all sites mh"] %
-       plot xs fs @@ [o2 "label" "rejection sampling"] %
+       plot xs as @@ [o2 "label" "mh 0.3 with prior1", o2 "color" "tomato"] %
+       plot xs cs @@ [o2 "label" "mh 0.3 with prior2", o2 "color" "firebrick"] %
+       plot xs es @@ [o2 "label" "all sites mh", o2 "color" "forestgreen"] %
+       plot xs fs @@ [o2 "label" "rejection sampling", o2 "color" "black"] %
        ylim (1::Double) (500::Double) %
        xlabel "Samples" % ylabel "Effective sample size" % legend @@ [o2 "loc" "upper right"]
+     putStrLn "done."
 \end{code}
 </details>
 
@@ -107,15 +109,17 @@ softModel prior =
 \begin{code}     
 fromBool b = if b then 1.0 else 0.0
 plotESSB = 
-  do let xs = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,20,30,40,50,60,70,80,90,100]
+  do putStrLn "Plotting images/controlflow-essB.png..."
+     let xs = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,20,30,40,50,60,70,80,90,100]
      let truevar = (4.0/7.0) - (4.0/7.0)^2 -- variance for one true sample
      -- Tests to plot
      as <- forM xs $ fmap (\(_,prec)->truevar*prec) . meanPrec (mh1 $ fmap fromBool $ model prior1) 1000 
      bs <- forM xs $ fmap (\(_,prec)->truevar*prec) . meanPrec (mh1 $ fmap fromBool $ softModel prior1) 1000
      file "images/controlflow-essB.png" $
-       plot xs as @@ [o2 "label" "mh1 with hard constraint"] %
-       plot xs bs @@ [o2 "label" "mh1 with soft constraint"] %
+       plot xs as @@ [o2 "label" "mh1 with hard constraint", o2 "color" "mediumblue"] %
+       plot xs bs @@ [o2 "label" "mh1 with soft constraint", o2 "color" "deepskyblue"] %
        xlabel "Samples" % ylabel "Effective sample size" % legend @@ [o2 "loc" "upper right"]
+     putStrLn "done."
 \end{code}
 </details>
 
@@ -142,16 +146,18 @@ linreg =
 <summary>(Plotting code)</summary>
 \begin{code}     
 plotPrec = 
-  do let xs = [1,100,200,400,700,1000]
+  do putStrLn "Plotting images/controlflow-prec.png..."
+     let xs = [1,100,200,400,700,1000]
      -- Tests to plot
      as <- forM xs $ fmap snd . meanPrec (mh 0.5 $ fmap snd $ linreg) 1000
      bs <- forM xs $ fmap snd . meanPrec (mh1 $ fmap snd $ linreg) 1000
      es <- forM xs $ fmap snd . meanPrec (mh 1 $ fmap snd $ linreg) 1000
      file "images/controlflow-prec.png" $
-       plot xs bs @@ [o2 "label" "mh1"] %
-       plot xs as @@ [o2 "label" "mh 0.5"] %
-       plot xs es @@ [o2 "label" "all sites mh"] %
+       plot xs bs @@ [o2 "label" "mh1", o2 "color" "mediumblue"] %
+       plot xs as @@ [o2 "label" "mh 0.5", o2 "color" "firebrick"] %
+       plot xs es @@ [o2 "label" "all sites mh", o2 "color" "forestgreen"] %
        xlabel "Samples" % ylabel "Precision for mean b" % legend @@ [o2 "loc" "upper right"]
+     putStrLn "done."
 \end{code}
 </details>
 <details class="code-details">
