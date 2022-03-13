@@ -74,8 +74,11 @@ newtype Meas a = Meas (WriterT (Product (Log Double)) Prob a)
 score :: Double -> Meas ()
 score r = Meas $ tell $ Product $ (Exp . log) (if r==0 then exp(-300) else r)
 
-scorelog :: Log Double -> Meas ()
-scorelog r = Meas $ tell $ Product r
+scoreLog :: Log Double -> Meas ()
+scoreLog r = Meas $ tell $ Product r
+
+scoreProductLog :: Product (Log Double) -> Meas ()
+scoreProductLog r = Meas $ tell r
 
 sample :: Prob a -> Meas a
 sample p = Meas $ lift p
