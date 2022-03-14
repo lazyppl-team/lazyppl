@@ -26,6 +26,8 @@ import Data.Maybe
 import qualified Data.Map as M
 import qualified Data.List as L (lookup)
 
+import Debug.Trace
+
 {- | This file defines
     1. Two monads: 'Prob' (for probabilities) and 'Meas' (for unnormalized probabilities)
     2. Three inference methods: 'lwis' (likelihood weighted importance sampling)
@@ -192,7 +194,7 @@ mh p (Meas m) = do
             let ratio = getProduct w' / getProduct w
             let (r, g2') = random g2
             put g2'
-            if r < min 1 (exp $ ln ratio) then return (t', x', w') else return (t, x, w)
+            if r < min 1 (exp $ ln $ trace ("Ratio: " ++ show ratio) ratio) then return (t', x', w') else return (t, x, w)
 
 
 -- | Replace the labels of a tree randomly, with probability p
