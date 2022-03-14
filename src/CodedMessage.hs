@@ -335,7 +335,9 @@ inferenceMessageHyperparameters tMapJson fMapJson corpus msg = do
           (!maxMsg, !maxWeight) = maxWeightPair mws
       return ((maxMsg, maxWeight), accuracy maxMsg msg))
       listEpochs
-    return (((t, e, l), maxWeightElement listResults), averageAcc listResults))
+    let !maxWeightEl = maxWeightElement listResults
+        !avgAcc = averageAcc listResults
+    return (((t, e, l), maxWeightEl), avgAcc))
     listHyperparam
   hyperParamResults <- takeWithProgress (length listHyperparam) hyperParamResults
 
