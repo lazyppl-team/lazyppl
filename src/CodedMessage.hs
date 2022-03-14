@@ -319,10 +319,10 @@ inferenceMessageHyperparameters tMapJson fMapJson corpus msg = do
   -- 'transitionFactor', 'existingWordsFactor' and 'lambda' 
   -- and keep the best ones
 
-  let numberEpochs = 5
+  let numberEpochs = 10
       numberMhSteps = 1000
 
-  let listHyperparam = [(t, e, l) | t <- [10, 50.. 1000],
+  let listHyperparam = [(t, e, l) | t <- [10, 50.. 1200],
         e <- [10, 50.. 500], 
         l <- [1, 2.. 10]]
       listEpochs = [1, 2.. numberEpochs]
@@ -341,17 +341,17 @@ inferenceMessageHyperparameters tMapJson fMapJson corpus msg = do
     listHyperparam
   
   let lenHyperparam = length listHyperparam
-  putStrLn $ "Length of listHyperparam: " ++ show lenHyperparam ++ "\n"
   hyperParamResults <- hardTakeWithProgress lenHyperparam hyperParamResults
 
   let (((t, e, l), (maxMsg, maxWeight)), acc) = maxWeightPair hyperParamResults
 
+  putStrLn $ "Length of listHyperparam: " ++ show lenHyperparam ++ "\n"
   putStrLn $ "Initial message: " ++ msg ++ "\n"
   putStrLn $ "Coded message (to decipher): " ++ codedMsg ++ "\n"
   putStrLn $ "Decoded message: " ++ maxMsg ++ "\n"
   putStrLn $ "Weight: " ++ show maxWeight ++ "\n\n\n"
   putStrLn $ "Best hyperparameters (transitionFactor, existingWordsFactor, λ): " ++ show (t, e, l) ++ "\n"
-  putStrLn $ "Max Accuracy: " ++ show (100 * acc) ++ "% \n"
+  putStrLn $ "Max Weight Accuracy: " ++ show (100 * acc) ++ "% \n"
   putStrLn $ "Avg Accuracy: " ++ show (100 * accuracy maxMsg msg) ++ "% \n"
   where
     averageAcc l = 
