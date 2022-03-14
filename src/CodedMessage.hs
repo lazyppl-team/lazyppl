@@ -320,7 +320,7 @@ inferenceMessageHyperparameters tMapJson fMapJson corpus msg = do
   -- and keep the best ones
 
   let numberEpochs = 10
-      numberMhSteps = 10000
+      numberMhSteps = 1000
 
   let listHyperparam = [(t, e, l) | t <- [10, 20.. 1500],
         e <- [10, 20.. 1500], 
@@ -332,14 +332,17 @@ inferenceMessageHyperparameters tMapJson fMapJson corpus msg = do
       mws' <- mh 0.2
         $ decodeMessageScratch t e l tMap fMap corpus codedLettersOccurrences codedMsg
       let mws = takeEager numberMhSteps mws'
-          (!maxMsg, !maxWeight) = maxWeightPair mws
+          (maxMsg, maxWeight) = maxWeightPair mws
       return ((maxMsg, maxWeight), accuracy maxMsg msg))
       listEpochs
     let !maxWeightEl = maxWeightElement listResults
         !avgAcc = averageAcc listResults
     return (((t, e, l), maxWeightEl), avgAcc))
     listHyperparam
-  hyperParamResults <- takeWithProgress (length listHyperparam) hyperParamResults
+  
+  let lenHyperparam = length listHyperparam
+  putStrLn $ "Length of listHyperparam: " ++ show lenHyperparam ++ "\n"
+  hyperParamResults <- takeWithProgress lenHyperparam hyperParamResults
 
   let (((t, e, l), (maxMsg, maxWeight)), acc) = maxWeightPair hyperParamResults
 
