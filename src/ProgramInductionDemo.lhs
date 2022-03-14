@@ -13,7 +13,7 @@ We treat program induction as a regression problem: finding programs that may ha
 module ProgramInductionDemo where
 import LazyPPL
 import Distr
-import Control.Monad (replicateM)
+import Control.Monad (replicateM,forM_)
 import Graphics.Matplotlib hiding (density)
 \end{code}
 </details>
@@ -60,7 +60,8 @@ randexpralt = do
        !! i        
   return e
 \end{code}
-The following change works much better. We simultaneously generate all the random choices, lazily. It only makes sense when lazy, because `es` is an infinite thing.
+The following transformed code is equivalent but works much better. We simultaneously generate all the random choices, lazily. It only makes sense when lazy, because `es` is an infinite thing.
+This kind of transformation, which uses laziness (also "affine monads", "discardability") is discussed more [here](ControlFlow.html).
 \begin{code}
 randexpr :: Prob Expr
 randexpr = do
@@ -73,7 +74,7 @@ randexpr = do
      do { r <- normal 0 5 ; e1 <- randexpr ; e2 <- randexpr ; return $ IfLess r e1 e2}]
   return $ es !! i
 \end{code}
-We can use the random expression to define a random function. Ideally we'd just return the function (`eval e`), but we also keep a string so we can print things. 
+We can use the random expression `randexpr` to define a random function. Ideally we'd just return the function (`eval e`), but we also keep a string so we can print things. 
 \begin{code}
 randfun :: Prob (Double -> Double,String)
 randfun = do
@@ -93,7 +94,7 @@ regress :: Double -> Prob (a -> Double,String) -> [(a,Double)]
            -> Meas (a->Double,String)
 regress sigma prior dataset =
   do (f,s) <- sample prior
-     mapM (\(x,y) -> score $ normalPdf (f x) sigma y) dataset
+     forM_ dataset $ \(x,y) -> score $ normalPdf (f x) sigma y
      return (f,s)
 \end{code}
 

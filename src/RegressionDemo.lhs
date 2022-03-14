@@ -2,8 +2,10 @@
 title: Linear and piecewise linear regression with LazyPPL
 ---
 
-Linear regression
----------
+We discuss Bayesian [linear regression](#linearRegression) and [piecewise linear regression](#piecewiseLinearRegression). 
+Our piecewise linear regression uses an infinite Poisson process as the set of change points. 
+The laziness of Haskell effectively truncates the infinite process as needed.
+The examples also demonstrate that higher-order functions (such as `regress` and `splice`) are very useful. 
 
 <details class="code-details">
 <summary>Extensions and imports for this Literate Haskell file</summary>
@@ -13,10 +15,16 @@ import LazyPPL
 import Distr
 import Data.Colour
 import Data.Colour.Names
+import Control.Monad
 
 import Graphics.Matplotlib hiding (density)
 \end{code}
 </details>
+
+
+Linear regression {#linearRegression}
+---------
+
 
 Regression is about finding fitting a function to some data. Bayesian regression is about finding a
 posterior distribution on functions, given the data.
@@ -73,7 +81,7 @@ regress :: Double -> Prob (a -> Double) -> [(a, Double)] -> Meas (a -> Double)
 regress sigma prior dataset =
   do
     f <- sample prior
-    mapM (\(x, y) -> score $ normalPdf (f x) sigma y) dataset
+    forM_ dataset (\(x, y) -> score $ normalPdf (f x) sigma y)
     return f
 \end{code}
 Now we can run Bayesian linear regression by sampling from the unnormalized measure using Metropolis-Hastings. The result is the posterior distribution over linear functions.
@@ -86,7 +94,7 @@ plotLinReg =
 ![](images/regression-linear-reg.svg)
 
 
-Piecewise linear regression and Poisson point processes
+Piecewise linear regression and Poisson point processes {#piecewiseLinearRegression}
 -----
 
 To move to piecewise linear regression, we introduce a function `splice` which splices together different draws from a random function at a random selection of change points. NB if the point process is infinite then the resulting function has an infinite number of pieces, but this is all done lazily, so it's not a problem. 
@@ -104,7 +112,7 @@ splice pointProcess randomFun =
     return (h (zip xs fs))
 \end{code}
 
-Note that this second-order function works for any point process and for any random function. We will use the random linear function, and for a point process we will use the following Poisson point process. This generates an infinite random list of points, where the gaps between them are exponentially distributed.
+Note that this second-order function works for any point process and for any random function. We will use the random linear function `linear`, and for a point process we will use the following Poisson point process, `poissonPP`. This generates an infinite random list of points, where the gaps between them are exponentially distributed.
 \begin{code}
 poissonPP :: Double -> Double -> Prob [Double]
 poissonPP lower rate =
@@ -114,7 +122,7 @@ poissonPP lower rate =
     xs <- poissonPP x rate
     return (x : xs)
 \end{code}
-Here are five draws from the process, truncated to the viewport [0,20].
+Here are five draws from the process. Each draw is really an infinite set of points, but we have truncated the display to the viewport [0,20]. Laziness then takes care of truncating the infinite sequences appropriately.
 ![](images/regression-poissonpp.svg)
 <details class="code-details">
 <summary>(Plotting code)</summary>
@@ -134,8 +142,10 @@ plotPoissonPP =
 <br></br>
 
 We can now invoke a random piecewise linear function by calling `splice (poissonPP 0 0.1) linear`{.haskell}. 
-Here are ten draws from this distribution: 
+Here are ten draws from this distribution. Because the viewport is bounded, laziness takes care of truncations to the point process that we passed to `splice`.
+
 ![](images/regression-piecewise-prior.svg)
+
 <details class="code-details">
 <summary>(Plotting code)</summary>
 \begin{code}
@@ -147,7 +157,7 @@ plotPiecewisePrior =
 \end{code}
 </details>
 <br></br>
-This is a random function just like any other, so we can use it as a prior, using the same regression routines as before, and then sample from the unnormalized distribution using Metropolis-Hastings.
+This is a random function just like any other, so we can use it as a prior, using the same regression routines as before, `regress 0.1 (splice (poissonPP 0 0.1) linear)`{.haskell}. We can then sample from the unnormalized distribution using Metropolis-Hastings.
 \begin{code}
 plotPiecewiseReg =
   do

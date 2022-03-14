@@ -11,6 +11,7 @@ import Distr
 
 import Data.List
 import Data.Map (empty,lookup,insert,size,keys)
+import Control.Monad
 import Data.IORef
 import System.IO.Unsafe
 
@@ -38,14 +39,14 @@ We will use this random function as a prior for Bayesian regression, as in <a hr
 dataset :: [(Double, Double)]
 dataset = [(0,0.6), (1, 0.7), (2,1.2), (3,3.2), (4,6.8), (5, 8.2), (6,8.4)]
 \end{code}
-And here is our model where we combine a Wiener function `g` plus a start point `a`.
-(We could also have built it with the second-order `regress` function from <a href="Regression.html">the other regression examples</a>.)
+And here is our model where we combine a Wiener function `g` plus a random start point `a`.
+(Note that we are treating this `g` as a function like any other. And we could also have built this model with the second-order `regress` function from <a href="Regression.html">the other regression examples</a>.)
 \begin{code}
 example :: Meas (Double -> Double)
 example = do g <- sample wiener
              a <- sample $ normal 0 3
              let f x = a + 2 * (g x)
-             mapM (\(x,y) -> score $ normalPdf (f x) 0.3 y) dataset
+             forM_ dataset (\(x,y) -> score $ normalPdf (f x) 0.3 y)
              return f
 \end{code}
 We can now sample from the unnormalized distribution, using Metropolis-Hastings. 
