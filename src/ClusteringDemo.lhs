@@ -10,16 +10,10 @@ This file contains an example of non-parametric clustering using a Dirichlet pro
 <summary>Extensions and imports for this Literate Haskell file</summary>
 \begin{code}
 {-# LANGUAGE ExtendedDefaultRules #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-
 module ClusteringDemo where
-import Control.Lens
 import Control.Monad
-import Data.Colour
-import Data.Colour.Names
 import Data.Colour.RGBSpace.HSV
 import Data.Colour.SRGB
-import Data.Default.Class
 import Data.List
 import Data.Monoid
 import Distr
