@@ -34,13 +34,13 @@ plotWienerPrior =
 \end{code}
 </details>
 <br>
-We will use this random function as a prior for Bayesian regression, as in <a href="Regression.html">the other regression examples</a>. Here is our example data set: 
+We will use this random function as a prior for Bayesian regression, as in [the other regression examples](RegressionDemo.html). Here is our example data set: 
 \begin{code}
 dataset :: [(Double, Double)]
 dataset = [(0,0.6), (1, 0.7), (2,1.2), (3,3.2), (4,6.8), (5, 8.2), (6,8.4)]
 \end{code}
 And here is our model where we combine a Wiener function `g` plus a random start point `a`.
-(Note that we are treating this `g` as a function like any other. And we could also have built this model with the second-order `regress` function from <a href="Regression.html">the other regression examples</a>.)
+(Note that we are treating this `g` as a function like any other. And we could also have built this model with the second-order `regress` function from [the other regression examples](RegressionDemo.html).)
 \begin{code}
 example :: Meas (Double -> Double)
 example = do g <- sample wiener

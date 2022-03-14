@@ -61,7 +61,7 @@ randexpralt = do
   return e
 \end{code}
 The following transformed code is equivalent but works much better. We simultaneously generate all the random choices, lazily. It only makes sense when lazy, because `es` is an infinite thing.
-This kind of transformation, which uses laziness (also "affine monads", "discardability") is discussed more [here](ControlFlow.html).
+This kind of transformation, which uses laziness (also "affine monads", "discardability") is discussed more [here](ControlFlowDemo.html).
 \begin{code}
 randexpr :: Prob Expr
 randexpr = do
@@ -88,7 +88,7 @@ We will use the same example data set.
 dataset :: [(Double, Double)]
 dataset = [(0,0.6), (1, 0.7), (2,1.2), (3,3.2), (4,6.8), (5, 8.2), (6,8.4)]
 \end{code}
-We recall the generic regression function from <a href="Regression.html">the other regression examples</a>. 
+We recall the generic regression function from <a href="RegressionDemo.html">the other regression examples</a>. 
 \begin{code}
 regress :: Double -> Prob (a -> Double,String) -> [(a,Double)]
            -> Meas (a->Double,String)
