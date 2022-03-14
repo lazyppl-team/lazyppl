@@ -328,11 +328,11 @@ inferenceMessageHyperparameters tMapJson fMapJson corpus msg = do
       listEpochs = [1, 2.. numberEpochs]
 
   hyperParamResults <- mapM (\(t, e, l) -> do
-    listResults <- mapM (\_ -> do
+    !listResults <- mapM (\_ -> do
       mws' <- mh 0.2
         $ decodeMessageScratch t e l tMap fMap corpus codedLettersOccurrences codedMsg
       let mws = takeEager numberMhSteps mws'
-          (maxMsg, maxWeight) = maxWeightPair mws
+          (!maxMsg, !maxWeight) = maxWeightPair mws
       return ((maxMsg, maxWeight), accuracy maxMsg msg))
       listEpochs
     return (((t, e, l), maxWeightElement listResults), averageAcc listResults))
