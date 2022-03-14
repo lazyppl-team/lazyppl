@@ -291,8 +291,8 @@ inferenceMessage tMapJson fMapJson corpus msg subst = do
   mws' <- mh 0.2
     $ decodeMessageScratch 100 30 10 tMap fMap corpus codedLettersOccurrences codedMsg
   -- mws' <- mh1 $ decodeMessageScratch 1 4 4 tMap fMap corpus codedLettersOccurrences codedMsg
-  mws <- takeProgressEveryDrop 20000 100 100 mws'
-  let maxMsg = maxWeightElement mws
+  mws <- takeProgressEveryDrop 20000 10 10 mws'
+  let (maxMsg, maxWeight) = maxWeightPair mws
 
 
   -- subst' <- sensibleSubstitution codedMsg fMap
@@ -302,7 +302,58 @@ inferenceMessage tMapJson fMapJson corpus msg subst = do
   putStrLn $ "Coded message (to decipher): " ++ codedMsg ++ "\n"
   -- putStrLn $ "Initial Substitution : " ++ show (encodeMessage codedMsg subst') ++ "\n"
   putStrLn $ "Decoded message: " ++ maxMsg ++ "\n"
+  putStrLn $ "Weight: " ++ show maxWeight ++ "\n"
   putStrLn $ "Accuracy: " ++ show (100 * accuracy maxMsg msg) ++ "% \n"
+
+inferenceMessageHyperparameters :: String -> String -> Set.Set String
+  -> String -> IO ()
+inferenceMessageHyperparameters tMapJson fMapJson corpus msg = do
+  -- Coded Feynam quote 
+  let codedMsg = "a lto vamb najq sfepj, tos eolbzjtaojh, tos ofj dofnaoi. a jqaod aj'y welq wfzb aojbzbyjaoi jf vamb ofj dofnaoi jqto jf qtmb toynbzy nqalq waiqj pb nzfoi. a qtmb tggzfcawtjb toynbzy, tos gfyyapvb pbvabxy, tos saxxbzboj sbizbby fx lbzjtaojh tpfej saxxbzboj jqaoiy, pej a'w ofj tpyfvejbvh yezb fx tohjqaoi. jqbzb tzb wtoh jqaoiy a sfo'j dofn tohjqaoi tpfej, yelq ty nqbjqbz aj wbtoy tohjqaoi jf tyd 'nqh tzb nb qbzb?' a waiqj jqaod tpfej aj t vajjvb paj, tos ax a lto'j xaiezb aj fej jqbo a if fo jf yfwbjqaoi bvyb. pej a sfo'j qtmb jf dofn to toynbz. a sfo'j xbbv xzaiqjbobs ph ofj dofnaoi jqaoiy, ph pbaoi vfyj ao jqb whyjbzafey eoambzyb najqfej qtmaoi toh gezgfyb — nqalq ay jqb nth aj zbtvvh ay, ty xtz ty a lto jbvv. gfyyapvh. aj sfbyo'j xzaiqjbo wb."
+  
+  tMap <- loadJSONFile tMapJson
+  fMap <- loadJSONFile fMapJson
+  let codedLettersOccurrences = lettersOccurrences codedMsg
+
+  -- Test different values of hyperparameters 
+  -- 'transitionFactor', 'existingWordsFactor' and 'lambda' 
+  -- and keep the best ones
+
+  let numberEpochs = 10
+      numberMhSteps = 10000
+
+  let listHyperparam = [(t, e, l) | t <- [10, 20.. 1500],
+        e <- [10, 20.. 1500], 
+        l <- [1, 2.. 20]]
+      listEpochs = [1, 2.. numberEpochs]
+
+  hyperParamResults <- mapM (\(t, e, l) -> do
+    listResults <- mapM (\_ -> do
+      mws' <- mh 0.2
+        $ decodeMessageScratch t e l tMap fMap corpus codedLettersOccurrences codedMsg
+      mws <- takeWithProgress numberMhSteps mws'
+      let (maxMsg, maxWeight) = maxWeightPair mws
+      return ((maxMsg, maxWeight), accuracy maxMsg msg))
+      listEpochs
+    return (((t, e, l), maxWeightElement listResults), averageAcc listResults))
+    listHyperparam
+
+  let (((t, e, l), (maxMsg, maxWeight)), acc) = maxWeightPair hyperParamResults
+
+  putStrLn $ "Initial message: " ++ msg ++ "\n"
+  putStrLn $ "Coded message (to decipher): " ++ codedMsg ++ "\n"
+  putStrLn $ "Decoded message: " ++ maxMsg ++ "\n"
+  putStrLn $ "Weight: " ++ show maxWeight ++ "\n\n\n"
+  putStrLn $ "Best hyperparameters (transitionFactor, existingWordsFactor, λ): " ++ show (t, e, l) ++ "\n"
+  putStrLn $ "Max Accuracy: " ++ show (100 * acc) ++ "% \n"
+  putStrLn $ "Avg Accuracy: " ++ show (100 * accuracy maxMsg msg) ++ "% \n"
+  where
+    averageAcc l = 
+      let (sum, len) = foldl' (\(!sum,!len) (_, i) -> (i+sum, len+1)) (0,0) l 
+      in realToFrac sum / realToFrac len
+
+
+
 
 
 -- | Examples
@@ -369,7 +420,10 @@ main = do
   saveTransitionMapEng
   saveFrequenciesMapEng
   corpus <- corpusSet "../english-words.txt"
-  let outAlphabet = ['a'..'z']
   let msg = map Data.Char.toLower exampleFeynman1
-  subst <- randomSubstitution msg outAlphabet
-  inferenceMessage "../english-words-transition.json" "../english-words-frequencies.json" corpus msg subst
+  
+  --  let outAlphabet = ['a'..'z']
+  -- subst <- randomSubstitution msg outAlphabet
+  --inferenceMessage "../english-words-transition.json" "../english-words-frequencies.json" corpus msg subst
+
+  inferenceMessageHyperparameters "../english-words-transition.json" "../english-words-frequencies.json" corpus msg

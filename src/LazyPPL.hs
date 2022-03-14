@@ -194,9 +194,9 @@ mh p (Meas m) = do
             let ratio = getProduct w' / getProduct w
             let (r, g2') = random g2
             put g2'
-            if r < min 1 (exp $ ln ratio) -- (trace ("Ratio: " ++ show ratio) ratio))
-              then return (t', x', w') 
-              else return (t, x, w)
+            if r < min 1 (exp $ ln ratio) -- (trace ("-- Ratio: " ++ show ratio) ratio))
+              then return (t', x', w') -- trace ("---- Weight: " ++ show w') w')
+              else return (t, x, w) -- trace ("---- Weight: " ++ show w) w)
 
 
 -- | Replace the labels of a tree randomly, with probability p
