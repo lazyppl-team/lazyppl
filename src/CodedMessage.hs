@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE BangPatterns, ScopedTypeVariables #-}
 module CodedMessage where
 
 import Distr
@@ -319,15 +319,15 @@ inferenceMessageHyperparameters tMapJson fMapJson corpus msg = do
   -- 'transitionFactor', 'existingWordsFactor' and 'lambda' 
   -- and keep the best ones
 
-  let numberEpochs = 10
+  let numberEpochs = 5
       numberMhSteps = 1000
 
-  let listHyperparam = [(t, e, l) | t <- [10, 20.. 1500],
-        e <- [10, 20.. 1500], 
-        l <- [1, 2.. 20]]
+  let listHyperparam = [(t, e, l) | t <- [10, 50.. 1000],
+        e <- [10, 50.. 500], 
+        l <- [1, 2.. 10]]
       listEpochs = [1, 2.. numberEpochs]
 
-  hyperParamResults <- mapM (\(t, e, l) -> do
+  (hyperParamResults :: [(((Double, Double, Double), (String, Product (L.Log Double))), Double)]) <- mapM (\(t, e, l) -> do
     !listResults <- mapM (\_ -> do
       mws' <- mh 0.2
         $ decodeMessageScratch t e l tMap fMap corpus codedLettersOccurrences codedMsg
@@ -335,14 +335,14 @@ inferenceMessageHyperparameters tMapJson fMapJson corpus msg = do
           (maxMsg, maxWeight) = maxWeightPair mws
       return ((maxMsg, maxWeight), accuracy maxMsg msg))
       listEpochs
-    let !maxWeightEl = maxWeightElement listResults
-        !avgAcc = averageAcc listResults
+    let maxWeightEl = maxWeightElement listResults
+        avgAcc = averageAcc listResults
     return (((t, e, l), maxWeightEl), avgAcc))
     listHyperparam
   
   let lenHyperparam = length listHyperparam
   putStrLn $ "Length of listHyperparam: " ++ show lenHyperparam ++ "\n"
-  hyperParamResults <- takeWithProgress lenHyperparam hyperParamResults
+  hyperParamResults <- hardTakeWithProgress lenHyperparam hyperParamResults
 
   let (((t, e, l), (maxMsg, maxWeight)), acc) = maxWeightPair hyperParamResults
 
@@ -357,9 +357,6 @@ inferenceMessageHyperparameters tMapJson fMapJson corpus msg = do
     averageAcc l = 
       let (sum, len) = foldl' (\(!sum,!len) (_, i) -> (i+sum, len+1)) (0,0) l 
       in realToFrac sum / realToFrac len
-
-
-
 
 
 -- | Examples

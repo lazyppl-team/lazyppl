@@ -439,6 +439,18 @@ takeWithProgress n = helper n n
       xs' <- helper n (i-1) xs
       return $ x : xs'
 
+-- | Take as eagerly as possible from a list of tuples and print the current progress. 
+hardTakeWithProgress :: NFData a => Int -> [a] -> IO [a]
+hardTakeWithProgress n = helper n n
+  where
+    helper :: NFData a =>  Int -> Int -> [a] -> IO [a]
+    helper _ i _ | i <= 0 = return []
+    helper _ _ []        = return []
+    helper n i (x:xs)    = do
+      putStrLn $ x `deepseq` ("Progress: " ++ show (fromIntegral (100*(n-i)) / fromIntegral n) ++ "%")
+      xs' <- helper n (i-1) xs
+      return $ x : xs'
+
 takeEager :: Int -> [a] -> [a]
 takeEager n = helper n n
   where
