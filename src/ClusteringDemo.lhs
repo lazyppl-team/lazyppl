@@ -4,7 +4,7 @@ title: Clustering with a lazy Dirichlet process
 
 
 
-This file contains an example of non-parametric clustering using a Dirichlet process. The idea of clustering is that we have some data points and we try to group them into clusters that make sense. In our example, the data points are on the plane and clusters contain points that are closer to each other.
+This file contains an example of non-parametric clustering using a Dirichlet process. The idea of clustering is that we have some data points and we try to group them into clusters that make sense. 
 
 <details class="code-details">
 <summary>Extensions and imports for this Literate Haskell file</summary>
@@ -28,11 +28,31 @@ import Distr.Memoization
 import LazyPPL
 import Numeric.Log
 import Graphics.Matplotlib hiding (density)
+
+-- In Ghci you will need to :set -fobject-code
+\end{code}
+</details>
+<br>
+In our example, the data points are on the plane and clusters contain points that are closer to each other.
+To illustrate this, we consider a synthetic example data set:       
+\begin{code}
+dataset = [(7.7936387, 7.469271), (5.3105156, 7.891521), (5.4320135, 5.135559), (7.3844196, 7.478719), (6.7382938, 7.476735), (0.6663453, 4.460257), (3.2001898, 2.653919), (2.1231227, 3.758051), (3.3734472, 2.420528), (0.4699408, 1.835277)]
+\end{code}
+![](images/clustering-dataset.svg)
+<details class="code-details">
+<summary>Code for plotting the data points.</summary>
+\begin{code} 
+plotDataset :: IO ()
+plotDataset = do
+  let filename = "images/clustering-dataset.svg"
+  putStrLn $ "Generating " ++ filename ++ "..."
+  file filename $ mplBivarNormal 0 0 100 0 (scatter [0,8] [0,8] @@ [o2 "color" "white"]) % scatter (map fst dataset) (map snd dataset) @@ [o2 "color" "black"]
+  putStrLn $ "Done."
 \end{code}
 </details>
 
-
-We first define a generic clustering model that uses a Chinese Restaurant process. The parameters are:
+We first define a generic clustering model that uses a Chinese Restaurant process.
+The parameters for our generic clustering model are:
 
 * `xs :: [a]`{.haskell}, a data set  
 *  `pparam :: Prob b`{.haskell}, from which we sample a parameter for each cluster 
@@ -59,28 +79,18 @@ cluster xs pparam like =
       )
 \end{code}
 
-To illustrate this, we consider a synthetic example data set:       
+Here we are using our Chinese Restaurant process interface (`Distr.DirichletP`). It involves abstract types `Restaurant`{.haskell} and `Table`{.haskell}, and provides two functions:
 
-\begin{code}
-dataset = [(7.7936387, 7.469271), (5.3105156, 7.891521), 
-           (5.4320135, 5.135559), (7.3844196, 7.478719), 
-           (6.7382938, 7.476735), (0.6663453, 4.460257), 
-           (3.2001898, 2.653919), (2.1231227, 3.758051), 
-           (3.3734472, 2.420528), (0.4699408, 1.835277)]
-\end{code}
+* `newRestaurant :: Double -> Prob Restaurant`{.haskell}, which provides a new restaurant;
+* `newCustomer :: Restaurant -> Prob Table`{.haskell}, which says which table a new customer will sit at.
+
+We model data points by customers to a restaurant, and they are in the cluster if they sit at the same table. 
+The restaurant is implemented in `Distr.DirichletP` by a lazy stick-breaking construction.
+
+The tables support stochastic memoization via a function `memoize :: (Table -> Prob a) -> Prob (Table -> a)`{.haskell}. This is defined using laziness (lazy tries). This memoization allows us to randomly assign parameters and colours to clusters/tables. 
 
 
-We define a version of the normal distribution ('nnormal'), this is equivalent
-to sampling from a normal distribution but it uses two random seeds. 
-With our multi-site Metropolis-Hastings implementation, this will perhaps 
-encourage a bit more exploration. On the other hand with single-site MH it will 
-likely take more time. 
-
-\begin{code}
-nnormal x s = do x1 <- normal x ((sqrt 15 * s * s) / 4); x2 <- normal 0 (s / 4); return $ x1 + x2
-\end{code}
-
-We try clustering on the synthetic data set above. 
+We try clustering on the synthetic data set `dataset`. 
 
 The code below is the model. The return value is a list where each data point is tagged with a color 
 and the parameters for the cluster we assigned it (coordinates of mean and standard deviation).  
@@ -89,7 +99,7 @@ example :: Meas [((Double, Double), Double, (Double, Double, Double))]
 example =
   cluster
     dataset
-    (do x <- nnormal 5 4; y <- nnormal 5 4; prec <- gamma 2 4;
+    (do x <- normal 5 4; y <- normal 5 4; prec <- gamma 2 4;
                                         return (x, y, 1 / sqrt prec))
     (\(x, y, s) (x', y') -> normalPdf x s x' * normalPdf y s y')
 \end{code}
@@ -99,31 +109,27 @@ Then the inference code is as follows:
 infer =
   do
     xycws' <- mh1 example
-    let xycws = take 5000 xycws'
+    let xycws = take 20000 xycws'
     let maxw = (maximum $ map snd xycws :: Product (Log Double))
     let (Just xyc) = Data.List.lookup maxw $
                                      map (\(z, w) -> (w, z)) xycws
     -- for illustration we plot the MAP sample
-    plot_coords "clustering.svg" xyc 
-
-
-main :: IO ()
-main = do { infer }
+    plotCoords "images/clustering-map.svg" xyc 
 \end{code}
 
 This produces the following cluster asssignment:  
 
-![](clustering.svg)
+![](images/clustering-map.svg)
 
 
 <details class="code-details">
 <summary>Code for plotting the data points and clusters.</summary>
 \begin{code} 
-plot_coords :: String -> [((Double, Double), Double, (Double, Double, Double))] -> IO ()
-plot_coords filename dataset = do 
-  let starterplot = figure @@ [o1 0]
-       % setSizeInches 8 8 
-       % axes @@ [o1 [0.1, 0.1, 0.65, 0.65]]
+plotCoords :: String -> [((Double, Double), Double, (Double, Double, Double))] -> IO ()
+plotCoords filename dataset = do 
+  putStrLn $ "Generating " ++ filename ++ "..."
+  let starterplot = 
+       scatter [0,8] [0,8] @@ [o2 "color" "white"]
   let gaussians = (foldl (\p (c,x,y,s) -> mplBivarNormal x y s c p) starterplot (nub $ map (\(_,c,(x,y,s))->(c,x,y,s)) dataset))
   let plot = foldl 
              (\p -> \((x,y),c,_) -> let c' = hsv (c * 365) 1 1 in 
@@ -131,7 +137,7 @@ plot_coords filename dataset = do
              gaussians
              dataset
   file filename plot
-  putStrLn $ "generating " ++ filename ++ "... done."
+  putStrLn $ "Done."
 
 mplBivarNormal :: Double -> Double -> Double -> Double -> Matplotlib -> Matplotlib
 mplBivarNormal mux muy sigma c p =
@@ -150,6 +156,9 @@ pdfBivariateNormal x y sigmax sigmay mux muy sigmaxy =
   1/(2*pi*sigmax*sigmay*(sqrt(1-rho^2)))*exp(-z/(2*(1-rho^2)))
   where rho = sigmaxy/(sigmax*sigmay)
         z = (x-mux)^2/sigmax^2-(2*rho*(x-mux)*(y-muy))/(sigmax*sigmay)+(y-muy)^2/sigmay^2
+
+main :: IO ()
+main = do { plotDataset ; infer }
 \end{code}
 </details>
 
