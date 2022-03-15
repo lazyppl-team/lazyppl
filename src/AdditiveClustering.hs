@@ -118,7 +118,7 @@ calculateFeatureProbs = do
     -- indices for nig and zim 
     mapM_ (\f -> do
         let haveFeature = filter (hasFeature f) samples
-        print $ "Prossh -i ~/lazyppl2022.pem archlinux@ec2-35-176-102-180.eu-west-2.compute.amazonaws.com portion of samples with feature " ++ show f ++ ":"
+        print $ "Proportion of samples with feature " ++ show f ++ ":"
         print $ fromIntegral (length haveFeature) / fromIntegral (length samples)
         print "--") featuresADCLUS
     -- take many samples from posterior 
