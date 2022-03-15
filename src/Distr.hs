@@ -1,5 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
-
 module Distr where
 
 import LazyPPL
@@ -19,16 +17,17 @@ import Debug.Trace
 
 
 normal :: Double -> Double -> Prob Double
-normal m s = do x <- uniform
-                return $ quantile (normalDistr m s) x
+normal m s = do 
+  x <- uniform
+  return $ quantile (normalDistr m s) x
 
 normalPdf :: Double -> Double -> Double -> Double
 normalPdf m s = density $ normalDistr m s
 
 exponential :: Double -> Prob Double
-exponential rate =
-  do x <- uniform
-     return $ - (log x / rate)
+exponential rate = do 
+  x <- uniform
+  return $ - (log x / rate)
 
 expPdf :: Double -> Double -> Double
 expPdf rate x = exp (-rate*x) * rate
@@ -46,8 +45,8 @@ beta a b = do
 poisson :: Double -> Prob Integer
 poisson lambda = do
   x <- uniform
-  let cmf = scanl1 (+) $ map (probability $ Poisson.poisson lambda) $ [0,1..]
-  let (Just n) = findIndex (\r -> r > x) cmf
+  let cmf = scanl1 (+) $ map (probability $ Poisson.poisson lambda) [0,1..]
+  let (Just n) = findIndex (> x) cmf
   return $ fromIntegral n
 
 poissonPdf :: Double -> Integer -> Double
@@ -71,7 +70,7 @@ bernoulli r = do
   return $ x < r
 
 {-
- uniform distribution on [0, ..., n-1]
+  uniform distribution on [0, ..., n-1]
 -}
 uniformdiscrete :: Int -> Prob Int
 uniformdiscrete n =
@@ -85,61 +84,10 @@ uniformdiscrete n =
 categorical :: [Double] -> Prob Int
 categorical xs = do 
   r <- uniform
-  let (Just i) = findIndex (>r) $ tail $ scanl (+) 0 xs
-  return i
-
-{-- Stochastic memoization.
-    We use unsafePerformIO to maintain
-    a table of calls that have already been made.
-    If a is finite, we could just sample all values of a in advance
-    and avoid unsafePerformIO.
-    If it is countably infinite, there probably also are implementation tricks.
---}
-memoize :: Ord a => (a -> Prob b) -> Prob (a -> b)
-memoize f =  Prob $ do g <- get
-                       let ( (Tree _ gs), g2) = splitTree g
-                       put g2
-                       return $ unsafePerformIO $ do
-                                ref <- newIORef Data.Map.empty
-                                return $ \x -> unsafePerformIO $ do
-                                          m <- liftM (Data.Map.lookup x) (readIORef ref)
-                                          case m of
-                                              Just y -> return y
-                                              Nothing -> do
-                                                            let (Prob k) = f x
-                                                            n <- readIORef ref
-                                                            let (y,_) = runState k (gs !! (1 + size n))
-                                                            modifyIORef' ref (Data.Map.insert x y)
-                                                            return y
+  case findIndex (>r) $ tail $ scanl (+) 0 xs of
+    Just i -> return i
+    Nothing -> error "categorical: probabilities do not sum to 1"
 
 
-
-
-
-
-{-- Stochastic memoization for recursive functions.
-    Applying 'memoize' to a recursively defined function only memoizes at the
-    top-level: recursive calls are calls to the non-memoized function.
-    'memrec' is an alternative implementation which resolves recursion and
-    memoization at the same time, so that recursive calls are also memoized.
---}
-memrec :: Ord a => Show a => ((a -> b) -> (a -> Prob b)) -> Prob (a -> b)
-memrec f =
-   Prob $ do
-    g <- get
-    let ( (Tree _ gs), g2) = splitTree g
-    put g2
-    return $ unsafePerformIO $ do
-                  ref <- newIORef Data.Map.empty
-                  let memoized_fixpoint = \x -> unsafePerformIO $ do
-                                m <- liftM (Data.Map.lookup x) (readIORef ref)
-                                case m of
-                                      Just y -> return y
-                                      Nothing -> do
-                                                  n <- readIORef ref
-                                                  let fix = f memoized_fixpoint
-                                                  let Prob k = fix x
-                                                  let (y, _) = runState k (gs !! (1 + size n))
-                                                  modifyIORef' ref (Data.Map.insert x y)
-                                                  return y
-                  return memoized_fixpoint
+iid :: Prob a -> Prob [a]
+iid p = do r <- p; rs <- iid p; return $ r : rs

@@ -1,8 +1,13 @@
-module Distr.IBP (Restaurant,Dish,newCustomer,newRestaurant) where
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
+-- module Distr.IBP (Restaurant,Dish,newCustomer,newRestaurant) where
+module Distr.IBP where
+
 
 import LazyPPL
 import Distr
 import Distr.Counter
+import Distr.Memoization
 
 import Data.List
 
@@ -21,8 +26,8 @@ Workshop on probabilistic programming semantics (PPS 2017).
 
  
 -- Some abstract types 
-data Restaurant = R ([[Bool]], Counter)  
-data Dish = D Int  deriving (Eq,Ord,Show)
+newtype Restaurant = R ([[Bool]], Counter)  
+newtype Dish = D Int  deriving (Eq,Ord,Show,MonadMemo Prob)
 
 newCustomer :: Restaurant -> Prob [Dish]
 newCustomer (R (matrix, ref)) = do 
