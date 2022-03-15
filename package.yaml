@@ -1,5 +1,5 @@
 name:                lazyppl
-version:             0.1.0.0
+version:             0.2.0.0
 license:             MIT
 author:              "Sam Staton and others"
 maintainer:          "sam.staton@cs.ox.ac.uk"
@@ -49,17 +49,6 @@ library:
   source-dirs: src
 
 executables:
-  infinitewalk-exe:
-    main:                InfiniteWalk.hs
-    source-dirs:         src
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    - -O2
-    - -main-is InfiniteWalk
-    dependencies:
-    - lazyppl
   ibp-exe:
     main:                AdditiveClustering.hs
     source-dirs:         src
@@ -71,43 +60,43 @@ executables:
     dependencies:
     - lazyppl
   wiener-exe:
-    main:                Wiener.hs
+    main:                WienerDemo.lhs
     source-dirs:         src
     ghc-options:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-    - -main-is Wiener
+    - -main-is WienerDemo
     dependencies:
     - lazyppl
   regression-exe:
-    main:                Regression.hs
+    main:                RegressionDemo.lhs
     source-dirs:         src
     ghc-options:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-    - -main-is Regression
+    - -main-is RegressionDemo
     dependencies:
     - lazyppl
   clustering-exe:
-    main:                Clustering.hs
+    main:                ClusteringDemo.lhs
     source-dirs:         src
     ghc-options:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-    - -main-is Clustering
+    - -main-is ClusteringDemo
     dependencies:
     - lazyppl
   programinduction-exe:
-    main:                ProgramInduction.hs
+    main:                ProgramInductionDemo.lhs
     source-dirs:         src
     ghc-options:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-    - -main-is ProgramInduction
+    - -main-is ProgramInductionDemo
     dependencies:
     - lazyppl
   mondrian-exe:
