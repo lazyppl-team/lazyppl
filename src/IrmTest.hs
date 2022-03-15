@@ -43,7 +43,7 @@ test = do
 main = test
 
 {-- Web Church Program from http://v1.probmods.org/non-parametric-models.html#example-the-infinite-relational-model
-Returns the wrong result: Says ~35% chance of Tom and Mary in the same group.
+Seems to return the wrong result: Says ~35% chance of Tom and Mary in the same group.
 
 (define samples
   (mh-query
