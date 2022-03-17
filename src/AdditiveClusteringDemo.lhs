@@ -71,6 +71,9 @@ Data set
 >   [0.60, 0.12, 0.03, 0.55, 0.12, 0.01, 0.05, 0.45, 0.10, 0.03, 0.57, 0.08, 0.02, 0.12],
 >   [0.01, 0.08, 0.01, 0.11, 0.15, 0.02, 0.29, 0.01, 0.31, 0.83, 0.08, 0.01, 0.02, 0.01, 0.03]]
 
+Data set taken from [Representing Stimulus Similarity](https://digital.library.adelaide.edu.au/dspace/handle/2440/21902), PhD thesis, D. J. Navarro. Department of Psychology
+University of Adelaide. December, 2002
+
 </details>
 
 
