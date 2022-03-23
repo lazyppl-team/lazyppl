@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE DefaultSignatures #-}
 
 module Distr.Memoization (MonadMemo, memoize, generalmemoize, memrec) where
 
@@ -15,6 +16,11 @@ import System.IO.Unsafe
 
 class (Monad m) => MonadMemo m a where
   memoize :: (a -> m b) -> m (a -> b)
+  default memoize :: (Enum a) => (a -> m b) -> m (a -> b)
+  memoize f = 
+    do
+      t <- ini 0 (f . toEnum)
+      return $ \x -> look t (fromEnum x)
 
 {-- Basic trie based integer-indexed memo table.
     NB Currently ignores negative integers --}
@@ -27,11 +33,7 @@ look :: BinTree a -> Int -> a
 look (Branch x l r) 0 = x
 look (Branch _ l r) n = if even n then look r (n `div` 2) else look l (n `div` 2)
 
-instance (Monad m) => MonadMemo m Int where
-  memoize f =
-    do
-      t <- ini 0 f
-      return $ \x -> look t x
+instance (Monad m) => MonadMemo m Int
 
 instance (Monad m, MonadMemo m a, MonadMemo m b) => MonadMemo m (a, b) where
   memoize f = fmap uncurry $ memoize $ \x -> memoize $ \y -> f (x, y)

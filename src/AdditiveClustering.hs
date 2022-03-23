@@ -24,12 +24,12 @@ removeDuplicates [] = []
 removeDuplicates (x:xs) = if x `elem` xs then removeDuplicates xs else x:removeDuplicates xs
 
 
-print_feature_groups :: [[Dish]] -> [String] -> IO ()
-print_feature_groups features names = do
+print_feature_groups :: ([[Dish]],Dish->Double) -> [String] -> IO ()
+print_feature_groups (features,w) names = do
     let n = length names
     let fs = removeDuplicates $ concat features
     mapM_ (\j -> do
-                putStr ("Group " ++ show (j+1) ++ ":")
+                putStr ("Group " ++ show (j+1) ++ " (weight " ++ show (w (fs !! j)) ++ "):")
                 putStrLn $ foldl (++) " " [ names!!i | i <- [0..(n-1)], fs !! j `elem` features!!i ])
         [0..(length fs-1)];
 
@@ -65,7 +65,7 @@ countries_dataset =
 countries_names = ["China ", "Cuba ", "Germany ", "Indonesia ", "Iraq ", "Italy ", "Jamaica ", "Japan ", "Libya ", "Nigeria ", "Philippines ", "Russia ", "Spain ", "United States ", "Vietnam ", "Zimbabwe "]
 
 
-additive_clustering :: Double -> Double -> Double -> [[Double]] -> Meas [[Dish]]
+additive_clustering :: Double -> Double -> Double -> [[Double]] -> Meas ([[Dish]],(Dish -> Double))
 additive_clustering alpha lambda1 lambda2 similarityData = do
     restaurant <- sample $ newRestaurant alpha
     weights <- sample $ memoize (\d -> gamma lambda1 lambda2)
@@ -74,7 +74,7 @@ additive_clustering alpha lambda1 lambda2 similarityData = do
     let similarity :: Int -> Int -> Double
         similarity i j = sum [weights a | a <- features!!j, a `elem` features!!i]
     mapM_ (\(i, j) -> score $ normalPdf (similarityData!!i!!j) 0.1 (similarity i j)) [ (i, j) | i <- [0..(n-1)], j <- [0..(i-1)] ]
-    return features
+    return (features,weights)
 
 
 countList :: Eq a => [a] -> a -> Int
@@ -109,7 +109,7 @@ completeLines m =
 
 
 calculateFeatureProbs = do
-    stream <- mh 0.2 (additive_clustering 2 2 0.5 countries_dataset)
+    stream <- mh 0.2 (fmap fst $ additive_clustering 3 2 0.5 countries_dataset)
     let samples = take 300 $ every 200 $ drop 2000 $ map fst stream
     let featuresADCLUS = [[2, 5, 12], [14, 0, 7, 10, 3], [2, 11, 13, 0, 7], [9, 15],
                             [9, 15, 1, 6, 4, 8],
@@ -118,7 +118,7 @@ calculateFeatureProbs = do
     -- indices for nig and zim 
     mapM_ (\f -> do
         let haveFeature = filter (hasFeature f) samples
-        print $ "Prossh -i ~/lazyppl2022.pem archlinux@ec2-35-176-102-180.eu-west-2.compute.amazonaws.com portion of samples with feature " ++ show f ++ ":"
+        print $ "Proportion of samples with feature " ++ show f ++ ":"
         print $ fromIntegral (length haveFeature) / fromIntegral (length samples)
         print "--") featuresADCLUS
     -- take many samples from posterior 
@@ -128,8 +128,8 @@ calculateFeatureProbs = do
 examplematrix = [[D 0,D 1],[D 0],[D 1,D 2],[D 0,D 1],[D 0,D 3,D 4],[D 2,D 5],[D 0,D 6,D 7],[D 0,D 1],[D 0,D 3],[D 3,D 6,D 8],[D 0,D 1],[D 1,D 5],[D 0,D 2,D 5],[D 1,D 5],[D 0,D 1],[D 0,D 8]]
 
 
-main :: IO ()
-main = calculateFeatureProbs
+--main :: IO ()
+--main = calculateFeatureProbs
     -- print $ makesquare (map mtransdish examplematrix)
     -- print $ map mtransdish examplematrix
     -- putStrLn ""
@@ -138,19 +138,19 @@ main = calculateFeatureProbs
     -- print $ hasFeature [9, 15] examplematrix 
 
 
-oldmain =
+main =
     do
         -- print $ mtrans $ map D [1, 4, 5 ,6, 0] 
         let matrix = [[1],[2], [3], [4]]
-        everything <- mh 0.2 (additive_clustering 3 2 0.5 countries_dataset)
-        let samples = take 10 $ every 200 everything
+        everything <- mhirreducible 0.2 0.01 (additive_clustering 2 6 0.3 countries_dataset)
+        let samples = take 10000 everything
         -- histogram of the number of features 
-        let featureCounts = map ((maximum . map (\c -> if null c then D 0 else maximum c)) . fst) samples
+{--        let featureCounts = map ((maximum . map (\c -> if null c then D 0 else maximum c)) . fst) samples
         let histogram = map (countList featureCounts . D) [1, 2..13]
-        print histogram
+        print histogram--}
         let maxw = (maximum $ map snd samples :: Product (Numeric.Log.Log Double))
         let (Just xyc) = Data.List.lookup maxw $ map (\(z,w) -> (w,z)) samples
-        print xyc
+        --print xyc
         print_feature_groups xyc countries_names
 
 {-- Prints something like:

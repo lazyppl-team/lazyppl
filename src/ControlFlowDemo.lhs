@@ -36,7 +36,7 @@ The posterior probability of `(model prior1)` returning true is 4/7.
 
 Since `x` and `y` are correlated, it is not a good idea to use a naive Metropolis Hastings simulation. But this is an extreme example, and less extreme examples might appear in more complex probabilistic programs that do benefit from Metropolis Hastings simulation, where the correlations are not known in advance. 
 
-Here is a second implementation of the prior. It is mathematically equivalent, and computationally equivalent on each run, because of laziness. But it works better with Metropolis Hastings because it explicitly uses different sites for the two different conditional branches. 
+Here is a second implementation of the prior. It is mathematically equivalent, and computationally equivalent on each run, because of laziness. With Metropolis-Hastings, it is asymptotically the same (of course, as long as the proposal is irreducible -- see below). But in practice this prior works better with Metropolis-Hastings because it explicitly uses different sites for the two different conditional branches. 
 \begin{code}
 prior2 :: Prob (Bool,Bool)
 prior2 =
