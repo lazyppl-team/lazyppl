@@ -29,9 +29,9 @@ A demonstration of using Indian Buffet Process for feature finding.
 
 </details>
 
-Additive clustering is a method for assigning features to a set of 
-of objects using similarity data. The number of possible features is
-unknown and inferred using the Indian Buffet Process. Each feature has an associated 
+Additive clustering is a method for inferring features over a set of 
+of objects using similarity data. The nature of the features is unknown, and the number of possible features is
+unknown, and inferred using the Indian Buffet Process. Each feature has an associated 
 "saliency" weight indicating how much it contributes to the similarity 
 coefficient. We also infer the saliency weights.   
 
@@ -80,9 +80,22 @@ University of Adelaide. December, 2002
 Additive clustering model
 ----
 
-Our additive clustering models has three parameters (`alpha`, `lambda1` and `lambda2`) and produces a mapping from countries to lists of features. We use an Indian Buffet Process abstraction, so we imagine that each country arrives as a customer at a buffet, and takes some dishes, which are the features. 
+The Indian Buffet Process provides abstract types `Restaurant`{.haskell} and `Dish`{.haskell}, and the following interface:
 
-> additiveClustering :: Double -> Double -> Double -> Array (Country,Country) Double -> Meas (Array Country [Dish])
+* `newRestaurant :: Double -> Prob Restaurant`{.haskell} opens a new restaurant;
+
+* `newCustomer :: Restaurant -> Prob [Dish]`{.haskell} assigns a finite set of dishes to a new customer. 
+
+
+Our additive clustering models has three parameters (`alpha`, `lambda1` and `lambda2`) and produces a mapping from countries to lists of features. We use an Indian Buffet Process abstraction, so we imagine that each country arrives as a customer at a buffet, and takes some dishes, which are the features. We can then assess which countries took similar dishes to see which countries are similar. 
+
+
+
+> additiveClustering :: Double -> Double -> Double
+>                    -> Array (Country,Country) Double -> Meas (Array Country [Dish])
+
+(Recall that in Haskell, the type `(Array a b)`{.haskell} comprises `a`{.haskell}-indexed arrays of things of type `b`{.haskell}.)
+
 > additiveClustering alpha lambda1 lambda2 similarityData = do
 >     (restaurant :: Restaurant) <- sample $ newRestaurant alpha
 
@@ -113,7 +126,7 @@ We return the feature assignment.
 Simulation
 ---
 
-We sample from this using Metropolis Hastings simulation, and plot some MAP features.
+We sample from this using Metropolis Hastings simulation, and plot some MAP features. The columns represent the found features, with a coloured box if the country has that feature. 
 
 > test = do
 >   samples <- mhirreducible 0.2 0.01 $ additiveClustering 2 6 0.3 similarityData

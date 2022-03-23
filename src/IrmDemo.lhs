@@ -35,6 +35,11 @@ The model
 ---
 
 The model is set up by building a Chinese Restaurant and placing the people at tables in it.
+Here we are using our Chinese Restaurant process interface (`Distr.DirichletP`). It involves abstract types `Restaurant`{.haskell} and `Table`{.haskell}, and provides two functions:
+
+* `newRestaurant :: Double -> Prob Restaurant`{.haskell}, which provides a new restaurant;
+* `newCustomer :: Restaurant -> Prob Table`{.haskell}, which says which table a new customer will sit at.
+
 The model describes an unnormalized probability measure on functions assigning tables to people. 
 
 > model :: Meas (Person -> Table)
