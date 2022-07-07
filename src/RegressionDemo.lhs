@@ -217,6 +217,6 @@ plotFuns filename dataset funs alpha =
 
 
 main :: IO ()
-main = do {plotLinearPrior ; plotDataset ; plotLinReg ; plotPiecewisePrior ; plotPoissonPP ; plotPiecewiseReg }
+main = do {plotLinearPrior ; plotDataset ; plotLinReg ; plotPiecewisePrior ; plotPoissonPP ; plotPiecewiseReg ; plotPiecewiseConst }
 \end{code}
 </details>
