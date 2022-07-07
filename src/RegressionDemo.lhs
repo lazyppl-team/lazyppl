@@ -26,7 +26,7 @@ Linear regression {#linearRegression}
 ---------
 
 
-Regression is about finding fitting a function to some data. Bayesian regression is about finding a
+Regression is about finding a fitting function to some data. Bayesian regression is about finding a
 posterior distribution on functions, given the data.
 
 We start with a random linear function: 
@@ -166,6 +166,26 @@ plotPiecewiseReg =
     plotFuns "images/regression-piecewise-reg.svg" dataset fs 0.01
 \end{code}
 ![](images/regression-piecewise-reg.svg)
+
+Finally, we can also do our regression using piecewise constant functions. Our prior will now be `randConst`{.haskell}, a random linear function with slope 0.
+\begin{code}
+randConst :: Prob (Double -> Double)
+randConst =
+  do
+    b <- normal 0 3
+    let f = \x -> b
+    return f
+\end{code}
+Using the same recipe as before, we can construct our prior by calling `splice (poissonPP 0 0.1) randConst`{.haskell} and perform inference on it to get the resultant unnormalized distribution of piecewise constant functions.
+\begin{code}
+plotPiecewiseConst =
+  do
+    fs' <- mhirreducible 0.2 0.1 (regress 0.1 (splice (poissonPP 0 0.1) randConst) dataset)
+    let fs = map fst $ take 1000 $ every 1000 $ drop 10000 fs'
+    plotFuns "images/regression-piecewise-const.svg" dataset fs 0.01
+\end{code}
+![](images/regression-piecewise-const.svg)
+
 
 <details class="code-details">
 <summary>Graphing routines</summary>
