@@ -254,9 +254,6 @@ mhirreducible p q (Meas m) = do
 
 
 
-
-
-
 {-- | Single-site Metropolis-Hastings --}
 
 -- | A partial tree, used for examining finite evaluated subtrees of the working infinite
@@ -273,46 +270,6 @@ getSites' :: PTree -> Site  -> [Site]
 getSites' (PTree (Just v) ts) site = site : concat [ getSites' t (n:site)  | (n, Just t) <- zip [0..] ts ]
 getSites' (PTree Nothing  ts) site = concat [ getSites' t (n:site) | (n, Just t) <- zip [0..] ts ]
 
--- getSites :: PTree -> [Site]
--- getSites p = map fst $ getSites' p ([],Nothing)
-
--- getSites' :: PTree -> (Site, Maybe Double)  -> [(Site, Maybe Double)]
--- getSites' (PTree (Just v) ts) (site,_) = (site, Just v) : concat [ getSites' t (n:site, Just v)  | (n, Just t) <- zip [0..] ts ]
--- getSites' (PTree Nothing  ts) (site,_) = concat [ getSites' t (n:site, Nothing) | (n, Just t) <- zip [0..] ts ]
-
-{-
-Example of `getSites` working:
-
-pt = PTree (Just 0.1) [ Just ( PTree (Just 0.3) [ Just ( PTree Nothing [ Nothing
-                                                                       , Just ( PTree (Just 0.5) [ Nothing
-                                                                                                 , Just ( PTree (Just 0.2) []
-                                                                                                        )
-                                                                                                 ]
-                                                                              )
-                                                                       , Just ( PTree (Just 0.6) []
-                                                                              )
-                                                                       ]
-                                                       )
-                                                ]
-                             )
-                      , Nothing
-                      , Just ( PTree (Just 0.4) []
-                             )
-                      , Just ( PTree Nothing [ Nothing
-                                             , Nothing
-                                             , Nothing
-                                             , Just ( PTree (Just 0.8) []
-                                                    )
-                                             ]
-                             )
-                      ]
-
-> getSites pt
-[[],[0],[1,0,0],[1,1,0,0],[2,0,0],[2],[3,3]]
-
-The sites (paths to nodes) are in reverse order.
--}
-
 mutateNode :: Tree -> Site -> Double -> Tree
 mutateNode (Tree _ ts) []     d = Tree d ts
 mutateNode (Tree v ts) (n:ns) d = Tree v $ take n ts ++ mutateNode (ts!!n) ns d : drop (n+1) ts
@@ -324,8 +281,7 @@ randomElement :: RandomGen g => g -> [a] -> (g, a)
 randomElement g xs = if null xs then error "0d sample space" else (g', xs !! n)
   where (n, g') = uniformR (0, length xs - 1) g
                -- ^^^^^^^^ 
-               -- Depending on the version of `random` this can be either
-               -- uniformR or randomR (but randomR is slowly being deprecated).
+               -- Depending on the version of `random` this can be either uniformR or randomR.
 
 mh1 :: forall a. NFData a => Meas a -> IO [(a, Product (Log Double))]
 mh1 (Meas m) = do
@@ -343,7 +299,7 @@ mh1 (Meas m) = do
                 sites = getSites ptree
                 (seed1', randSite) = (\(x,y) -> (x, reverse y)) $ randomElement seed1 sites
                 (newNode :: Double, seed1'') = random seed1'
-                (u :: Double, _) = random seed1'' -- the 'u' from Luke's notes
+                (u :: Double, _) = random seed1'' 
                 sub' = M.insert randSite newNode sub
                 t' = mutateNodes (randomTree treeSeed) sub'
                 (x',w') = runProb (runWriterT m) t'
@@ -379,7 +335,6 @@ helperT b = do
                   return $ PTree Nothing l''
             (ConstrClosure {dataArgs = [d], name = "D#"}, ThunkClosure {}) ->
                   return $ PTree (Just $ unsafeCoerce d) []
-            (ThunkClosure {}, ThunkClosure {}) -> undefined
             (SelectorClosure {}, ThunkClosure {}) ->
               return $ PTree Nothing []
             (SelectorClosure {}, ConstrClosure {name = ":"}) ->
