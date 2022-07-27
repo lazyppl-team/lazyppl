@@ -45,6 +45,7 @@ dependencies:
 - deepseq
 - aeson
 - bytestring
+- hmatrix
 
 library:
   source-dirs: src
@@ -110,14 +111,13 @@ executables:
     - -main-is MondrianExample
     dependencies:
     - lazyppl
-  codedmessage-exe:
-    main:                CodedMessage.hs
+  gaussianprocess-exe:
+    main:                GaussianProcessDemo.lhs
     source-dirs:         src
     ghc-options:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-    - -main-is CodedMessage
+    - -main-is GaussianProcessDemo
     dependencies:
     - lazyppl
-
