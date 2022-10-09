@@ -7,6 +7,12 @@ Various examples are given in Literate Haskell at [https://lazyppl.bitbucket.io/
 To try the different examples, use ``stack run wiener-exe`` and so on.
 The source is in ``src/`` .
 
+Docker Image:
+
+```bash
+docker run -it --rm -v ~/images:/opt/lazyppl/images youkad/lazyppl
+```
+
 Laziness appears to be a useful method for specifying non-parametric models. For example, we often use processes or infinite dimensional functions, and this is fine because only finite parts are explored in practice. 
 
 The aim of this implementation is to demonstrate that it's possible to have first-class lazy structures in probabilistic programming. For example, we have first-class
