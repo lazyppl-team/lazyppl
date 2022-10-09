@@ -1,11 +1,18 @@
-# lazyppl
+# LazyPPL
 
 This provides a Metropolis-Hastings implementation in Haskell that works with lazy programs, together with some examples.
 
 Various examples are given in Literate Haskell at [https://lazyppl.bitbucket.io/](https://lazyppl.bitbucket.io/). 
 
+
+Docker Image:
+
+```bash
+docker run -it --rm -v ~/images:/opt/lazyppl/images youkad/lazyppl
+```
+
 To try the different examples, use ``stack run wiener-exe`` and so on.
-The source is in ``src/`` .
+The source is in ``src/``.
 
 Docker Image:
 
