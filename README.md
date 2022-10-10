@@ -5,7 +5,7 @@ This provides a Metropolis-Hastings implementation in Haskell that works with la
 Various examples are given in Literate Haskell at [https://lazyppl.bitbucket.io/](https://lazyppl.bitbucket.io/). 
 
 
-A Docker image is [available](https://hub.docker.com/repository/docker/youkad/lazyppl). To start a container, run the following command:
+A Docker image is [available](https://hub.docker.com/r/youkad/lazyppl). To start a container, run the following command:
 
 ```bash
 docker run -it --rm -v ~/images:/opt/lazyppl/images youkad/lazyppl
