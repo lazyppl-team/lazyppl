@@ -4,20 +4,14 @@ This provides a Metropolis-Hastings implementation in Haskell that works with la
 
 Various examples are given in Literate Haskell at [https://lazyppl.bitbucket.io/](https://lazyppl.bitbucket.io/). 
 
+To try the different examples, use ``stack run wiener-exe`` and so on.
+The source is in ``src/``.
 
 A Docker image is [available](https://hub.docker.com/r/youkad/lazyppl). To start a container, run the following command:
 
 ```bash
-docker run -it --rm -v ~/images:/opt/lazyppl/images youkad/lazyppl
-```
-
-To try the different examples, use ``stack run wiener-exe`` and so on.
-The source is in ``src/``.
-
-Docker Image:
-
-```bash
-docker run -it --rm -v ~/images:/opt/lazyppl/images youkad/lazyppl
+docker pull youkad/lazyppl:0.2
+docker run -it --rm -v ~/images:/opt/lazyppl/images youkad/lazyppl:0.2
 ```
 
 Laziness appears to be a useful method for specifying non-parametric models. For example, we often use processes or infinite dimensional functions, and this is fine because only finite parts are explored in practice. 
