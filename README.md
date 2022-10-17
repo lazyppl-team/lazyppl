@@ -63,11 +63,11 @@ The aim of this implementation is to demonstrate that it's possible to have firs
 The system uses Haskell stack.
 You need to [install stack](https://docs.haskellstack.org/en/v1.1.2/install_and_upgrade/) first if you want to use the system in the standard way. 
 
-For plotting, install Python packages required for the `matplotlib` Haskell wrapper: `python3 -m pip install -U matplotlib numpy tk scipy`.
-
 To build, type
 ``stack build``.
 This may take some time (>1 hour) if it is your first time ever using stack.
+
+For plotting, install Python packages required for the `matplotlib` Haskell wrapper: `python3 -m pip install -U matplotlib numpy tk scipy`.
 
 To run, type
 ``stack run wiener-exe`` or ``stack run regression-exe`` or ``stack run clustering-exe``, or explore with ``stack ghci``. 
