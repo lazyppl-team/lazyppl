@@ -70,3 +70,5 @@ This may take some time (>1 hour) if it is your first time ever using stack.
 
 To run, type
 ``stack run wiener-exe`` or ``stack run regression-exe`` or ``stack run clustering-exe``, or explore with ``stack ghci``. 
+
+For the Gaussian process example, the `hmatrix` library requires the GSL, BLAS and LAPACK development packages. On Ubuntu, you can install them with `sudo apt-get install libgsl0-dev liblapack-dev`.
