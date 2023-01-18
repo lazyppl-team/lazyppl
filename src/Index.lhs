@@ -2,7 +2,7 @@
 title: LazyPPL
 ---
 
-LazyPPL is a Haskell library for probabilistic programming. It supports lazy use of probability, and we provide new Metropolis-Hastings algorithms to allow this. LazyPPL is inspired by recent ideas in synthetic probability theory and synthetic measure theory such as [quasi-Borel spaces](https://ncatlab.org/nlab/show/quasi-Borel+space) and [Markov categories](https://ncatlab.org/nlab/show/Markov+category). Laziness appears to be a good paradigm for non-parametric statistics. LazyPPL is inspired by many other languages, including [Church](v1.probmods.org), [Anglican](https://probprog.github.io/anglican/), and [MonadBayes](https://www.tweag.io/blog/2019-09-20-monad-bayes-1/).
+LazyPPL is a Haskell library for probabilistic programming. It supports lazy use of probability, and we provide new Metropolis-Hastings algorithms to allow this. LazyPPL is inspired by recent ideas in synthetic probability theory and synthetic measure theory such as [quasi-Borel spaces](https://ncatlab.org/nlab/show/quasi-Borel+space) and [Markov categories](https://ncatlab.org/nlab/show/Markov+category). Laziness appears to be a good paradigm for non-parametric statistics. LazyPPL is inspired by many other languages, including [Church](v1.probmods.org), [Anglican](https://probprog.github.io/anglican/), and [MonadBayes](https://www.tweag.io/blog/2019-09-20-monad-bayes-1/). Several aspects are now incorporated into MonadBayes (see [here](https://www.tweag.io/blog/2022-10-18-monad-bayes-fellowship/)).
 
 LazyPPL provides two monads:
 
