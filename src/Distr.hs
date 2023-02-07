@@ -54,7 +54,7 @@ poissonPdf rate n = probability (Poisson.poisson rate) (fromIntegral n)
 
 dirichlet :: [Double] -> Prob[Double]
 dirichlet as = do
-  xs <- mapM exponential as
+  xs <- mapM (\a -> gamma a 1) as
   let s = Prelude.sum xs
   let ys = map (/ s) xs
   return ys
