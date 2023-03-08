@@ -1,7 +1,10 @@
 # <img style="height:45px" src="https://user-images.githubusercontent.com/8027127/223598298-21dd4207-612d-4b4e-be9c-4daa2ae2de5b.png" /> LazyPPL
 
 
-This provides a Metropolis-Hastings implementation in Haskell that works with lazy programs, together with some examples.
+LazyPPL is a Haskell library for probabilistic programming, drawing on the fact that lazy data structures are a natural idiom for programming with infinite-dimensional Bayesian methods such as Poisson/Gaussian/Dirichlet processes, etc. 
+The crucial semantic idea, inspired by developments in synthetic probability theory, is to work with two separate monads: an affine monad of probability, which supports laziness, and a commutative, non-affine monad of measures, which does not.
+
+It provides a Metropolis-Hastings implementation in Haskell that works with lazy programs, together with some examples.
 
 Various examples are given in Literate Haskell at [https://lazyppl-team.github.io](https://lazyppl-team.github.io). 
 
@@ -74,3 +77,39 @@ To run, type
 ``stack run wiener-exe`` or ``stack run regression-exe`` or ``stack run clustering-exe``, or explore with ``stack ghci``. 
 
 For the Gaussian process example, the `hmatrix` library requires the GSL, BLAS and LAPACK development packages. On Ubuntu, you can install them with `sudo apt-get install libgsl0-dev liblapack-dev`.
+
+
+### Contributing
+
+The core of the library can be found in `src/LazyPPL.hs` and some useful, common, and interesting distributions can be found in `src/Distr.hs` and `src/Distr/`.
+
+* `src/LazyPPL.hs` contains a likelihood-weighted importance sampling algorithm (`lwis`) and a Metropolis-Hastings algorithm, together with the basic monads. There are two monads, `Prob` and `Meas`. 
+    * `Prob` is to be thought of as an affine monad of probability measures. It comes with various predefined probability distributions such as `uniform` (in `src/LazyPPL.hs`), `normal`, `exponential`, `beta`, `poisson`, `dirichlet`, `iid`, etc (in `src/Distr.hs`). 
+    * `Meas` is to be thought of as a non-affine monad of unnormalized measures. It provides an interface using `sample` (which draws from a `Prob`) and `score` (which multiplies the current trace by a given likelihood weight). 
+    * Our first Metropolis Hastings algorithm `mh` takes as an argument a probability `p` of changing any given site of the rose tree of random seeds. This is different from single-site MH (which picks exactly one site to change each step) and multi-site MH (which changes all sites at each step). The reason for this is that, in the lazy setting, we cannot explore how many active sites there are without triggering more computation (which would require a lot of Haskell hacking). We can approximate single-site MH by putting `p=1/num_sites` and recover multi-site MH by putting `p=1`.
+	* A second Metropolis Hastings algorithm `mh1` implements a single-site proposal kernel by inspecting the Haskell heap.
+    * A key implementation idea is that the underlying sample space is `Tree`, which comprises a lazy tree of `Double`s that is infinitely wide and infinitely deep. Informally, at any moment, if you need some unknown or lazy amount of randomness, you can target just one branch of the tree, without worrying about affecting the other branches. That branch will itself be a `Tree`, so this can all happen recursively without any problems. 
+* `src/Distr.hs` contains common distributions such as, among others, the normal, exponential, gamma, dirichlet distributions. We find that Haskell types are quite illuminating to construct sophisticated distributions. For example, abstract types capture some essence of exchangeability, for example:
+    * in the Chinese Restaurant Process, `newCustomer :: Restaurant -> Prob Table` (`src/Distr/DirichletP.hs`);
+    * in the Indian Buffet Process, `newCustomer :: Restaurant -> Prob [Dish]` (`src/Distr/IBP.hs`).
+
+The rest of the files in the `src/` directory consists of various examples of probabilistic models that we can write using our library.
+
+### Writing your own probabilistic models
+
+If you write your own Haskell module, add it to `package.yaml` first (remembering to change the `main:` and `-main-is` parts accordingly), and then execute `stack run` or `stack ghci` as needed.
+
+For example, if the module is named `ReviewerTest` (saved as `src/ReviewerTest.hs`), you will need to add the following to `package.yaml`:
+  
+    reviewertest-exe:
+      main:                ReviewerTest.hs
+      source-dirs:         src
+      ghc-options:
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+      - -main-is ReviewerTest
+      dependencies:
+      - lazyppl
+
+Then run it with `stack run reviewertest-exe` or open it up in the REPL using `stack ghci src/ReviewerTest.hs`.
