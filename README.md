@@ -3,7 +3,7 @@
 
 This provides a Metropolis-Hastings implementation in Haskell that works with lazy programs, together with some examples.
 
-Various examples are given in Literate Haskell at [https://lazyppl.bitbucket.io/](https://lazyppl.bitbucket.io/). 
+Various examples are given in Literate Haskell at [https://lazyppl-team.github.io](https://lazyppl-team.github.io). 
 
 To try the different examples, use ``stack run wiener-exe`` and so on.
 The source is in ``src/``.
