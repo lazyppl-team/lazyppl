@@ -1,4 +1,4 @@
-# LazyPPL
+# ![logo](https://user-images.githubusercontent.com/8027127/223598298-21dd4207-612d-4b4e-be9c-4daa2ae2de5b.png) LazyPPL
 
 This provides a Metropolis-Hastings implementation in Haskell that works with lazy programs, together with some examples.
 
