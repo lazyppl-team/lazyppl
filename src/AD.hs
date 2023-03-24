@@ -23,7 +23,7 @@ instance (Ord v, Ord d, Num d) => Num (Nagata v d) where
 
 instance (Ord v, Ord d, Fractional d) => Fractional (Nagata v d) where
   fromRational r  = N (fromRational r) empty 
-  recip (N x dx)  = N (recip x) (fmap ((-x * x)*) dx) 
+  recip (N x dx)  = N (recip x) (fmap (recip (-x * x)*) dx) 
   N x dx / N y dy = N (x / y) (let z = y * y in unionWith (+) (fmap ((y / z) *) dx) (fmap ((-x / z) *) dy))
 
 instance (Ord v, Ord d, Floating d) => Floating (Nagata v d) where
@@ -45,3 +45,25 @@ instance (Ord v, Ord d, Floating d) => Floating (Nagata v d) where
    asinh = error "undefined"
    acosh = error "undefined"
    atanh = error "undefined"
+
+{-
+class (RealFrac a, Floating a) => RealFloat a where
+  floatRadix :: a -> Integer
+  floatDigits :: a -> Int
+  floatRange :: a -> (Int, Int)
+  decodeFloat :: a -> (Integer, Int)
+  encodeFloat :: Integer -> Int -> a
+  exponent :: a -> Int
+  significand :: a -> a
+  scaleFloat :: Int -> a -> a
+  isNaN :: a -> Bool
+  isInfinite :: a -> Bool
+  isDenormalized :: a -> Bool
+  isNegativeZero :: a -> Bool
+  isIEEE :: a -> Bool
+  atan2 :: a -> a -> a
+  {-# MINIMAL floatRadix, floatDigits, floatRange, decodeFloat,
+              encodeFloat, isNaN, isInfinite, isDenormalized, isNegativeZero,
+              isIEEE #-}
+  	-- Defined in ‘GHC.Float’
+-}
