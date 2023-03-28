@@ -78,21 +78,21 @@ instance Applicative (Prob d) where {pure = return ; (<*>) = ap}
 {- | An unnormalized measure is represented by a probability distribution over pairs of a weight and a result -}
 -- newtype Meas d a = Meas (WriterT (Product (Log d)) (Prob d) a)
 --  deriving(Functor, Applicative, Monad)
-newtype Meas d a = Meas {unMeas :: (WriterT (Product d) (Prob d) a) }
+newtype Meas d a = Meas {unMeas :: (WriterT (Sum d) (Prob d) a) }
   deriving(Functor, Applicative, Monad)
 
 {- | The two key methods for Meas are sample (from a probability) and score (aka factor, weight) -}
-score :: Num d => d -> Meas d ()
+score :: Floating d => d -> Meas d ()
 -- score r = Meas $ tell $ Product $ (Exp . log) r -- (if r==0 then exp(-300) else r)
-score r = Meas $ tell $ Product $ r -- (if r==0 then exp(-300) else r)
+score r = Meas $ tell $ Sum $ log r -- (if r==0 then exp(-300) else r)
 
 -- scoreLog :: Log d -> Meas d ()
 scoreLog :: d -> Meas d ()
-scoreLog r = Meas $ tell $ Product r
+scoreLog r = Meas $ tell $ Sum r
 
 -- scoreProductLog :: Product (Log d) -> Meas d ()
-scoreProductLog :: Product d -> Meas d ()
-scoreProductLog r = Meas $ tell r
+--scoreProductLog :: Product (Log d) -> Meas d ()
+--scoreProductLog r = Meas $ tell r
 
 sample :: Num d => Prob d a -> Meas d a
 sample p = Meas $ lift p
@@ -110,7 +110,7 @@ runProb (Prob a) = a
 
 -- A minimal example with one dimension. Generates the triangle-shaped histogram. 
 
-minExample :: (Num d) => Meas d d
+minExample :: (Floating d) => Meas d d
 minExample = do
    x <- sample uniform
    score x
@@ -158,7 +158,7 @@ test p =
 -- -------------------------------------------------------------------------------
 -- A variant of minExample that scores based on the distance from 0.5
 
-trivialExample :: (Fractional d) => Meas d d
+trivialExample :: (Floating d) => Meas d d
 trivialExample =
   do x <- sample uniform
      score ((0.5 - x) * (0.5 - x))
@@ -177,7 +177,7 @@ iiduniform = do
 -- use these as steps in a random forwards-only walk 
 -- use score to maximize the distance after the first 10 steps 
 -- in consequence, "a" will be approx 1. 
-minExampleNonParam :: (Fractional d) => Meas d d
+minExampleNonParam :: (Floating d) => Meas d d
 minExampleNonParam = do
   a <- sample uniform
   steps <- sample $ (map (a *)) <$> iiduniform
@@ -191,13 +191,13 @@ testNonParam = gradientAscent 100 0.01 minExampleNonParam
 
 -- | Gradient ascent implementation that takes a number of iterations, a learning factor and
 --   a measurement program. It maximizes the measurement program's score.
-gradientAscent :: Int -> Double -> Meas (Nagata Integer Double) (Nagata Integer Double) -> IO ()
+gradientAscent ::Show a => Int -> Double -> Meas (Nagata Integer Double) a -> IO ()
 gradientAscent = gradientOptimize (+) 
 
-gradientDescent :: Int -> Double -> Meas (Nagata Integer Double) (Nagata Integer Double) -> IO ()
+gradientDescent :: Show a => Int -> Double -> Meas (Nagata Integer Double) a -> IO ()
 gradientDescent = gradientOptimize (-) 
 
-gradientOptimize :: (Double -> Double -> Double) -> Int -> Double -> Meas (Nagata Integer Double) (Nagata Integer Double) -> IO ()
+gradientOptimize :: Show a => (Double -> Double -> Double) -> Int -> Double -> Meas (Nagata Integer Double) a -> IO ()
 gradientOptimize op n alpha p =
   do newStdGen
      g <- getStdGen
@@ -208,15 +208,16 @@ gradientOptimize op n alpha p =
     go i rs = 
      do let hdr = "* Iteration " ++ show (n - i + 1) ++ ":"
         putStr hdr
-        let (objective,score) = (runProb (runWriterT (unMeas p)) rs)
-        putStrLn (" Score = " ++ show (primal objective))
-        let s = getProduct score
+        let (result,score) = (runProb (runWriterT (unMeas p)) rs)
+        putStrLn (" Result = " ++ show result ++ "; Log likelihood = " ++ show (primal $ getSum score))-- (primal objective))
+        let s = getSum score
         go (i-1) (fmap (learn (tangent s)) rs)
 
     learn dr (N x dx) = N (min (max 0 (op x (alpha * M.findWithDefault 0 key dr))) 1) dx
       where key = head (M.keys dx) 
 
-
+-- Typical example: gradientAscent 30 0.01 (primal <$> minExample)
+-- Typical example: gradientAscent 30 0.01 (primal <$> trivialExample)
 
 -- {- | 'weightedsamples' runs a probability measure and gets out a stream of (result,weight) pairs -}
 -- weightedsamples :: forall a d. Meas d a -> IO [(a,Log d)]
