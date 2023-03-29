@@ -46,6 +46,7 @@ dependencies:
 - aeson
 - bytestring
 - hmatrix
+- erf
 
 library:
   source-dirs: src

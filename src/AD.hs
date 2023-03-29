@@ -4,6 +4,7 @@ module AD where
 -}
 
 import Data.Map
+import Data.Number.Erf
 
 -- | Nagata number (aka, generalized dual number) whose second
 --   component is the gradient vector represented as a sparse
@@ -45,6 +46,14 @@ instance (Ord v, Ord d, Floating d) => Floating (Nagata v d) where
    asinh = error "undefined"
    acosh = error "undefined"
    atanh = error "undefined"
+
+-- Standard Normal PDF
+normpdf :: Floating d => d -> d
+normpdf x = exp (negate (x * x) / 2) / (sqrt (2 * pi))
+
+-- Probit function (inv cdf of normal)
+instance (Ord v, Ord d, Floating d, InvErf d) => InvErf (Nagata v d) where
+  invnormcdf (N x dx) = N (invnormcdf x) (fmap (/ (normpdf (invnormcdf x))) dx)
 
 {-
 class (RealFrac a, Floating a) => RealFloat a where

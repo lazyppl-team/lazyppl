@@ -209,7 +209,7 @@ gradientOptimize op n alpha p =
      do let hdr = "* Iteration " ++ show (n - i + 1) ++ ":"
         putStr hdr
         let (result,score) = (runProb (runWriterT (unMeas p)) rs)
-        putStrLn (" Result = " ++ show result ++ "; Log likelihood = " ++ show (primal $ getSum score))-- (primal objective))
+        putStrLn (" Result = " ++ show result ++ "; Log likelihood = " ++ show ({-- primal $--} getSum score))-- (primal objective))
         let s = getSum score
         go (i-1) (fmap (learn (tangent s)) rs)
 
