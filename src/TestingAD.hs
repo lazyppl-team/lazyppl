@@ -31,6 +31,7 @@ regress :: Floating d => d -> Prob d (a,(b -> d)) -> [(b, d)] -> Meas d a
 regress sigma prior dataset =
   do
     (label,f) <- sample prior
+--    forM_ dataset (\(x, y) -> score $ normalPdf (f x) sigma y)
     forM_ dataset (\(x, y) -> scoreLog $ normalLogPdf (f x) sigma y)
     return label
 
