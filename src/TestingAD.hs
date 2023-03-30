@@ -106,6 +106,9 @@ poissonPP lower rate =
     return (x : xs)
 
 
+-- Now we use stepfn with poissonPP.
+-- This is basically regarding the Poisson process as a Levy process. 
+
 testC = do
   f <- gradientAscent 50000 0.00001 $ regress 0.1 (sample $ (\f -> (f,f)) <$> stepfn (poissonPP 0 0.3)) dataset
 --  f <- gradientAscent 50000 0.0000001 $ regress 0.1 (sample $ (\x -> (x,x)) <$> (sigmoidsplice (poissonPP 0 0.1) randConst)) dataset
