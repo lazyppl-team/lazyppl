@@ -186,34 +186,37 @@ minExampleNonParam = do
   score d10 
   return d10
 
-testNonParam :: IO ()
+--testNonParam :: IO ()
 testNonParam = gradientAscent 100 0.01 minExampleNonParam
+
+clamp x = min 1 $ max 0 x
 
 -- | Gradient ascent implementation that takes a number of iterations, a learning factor and
 --   a measurement program. It maximizes the measurement program's score.
-gradientAscent ::Show a => Int -> Double -> Meas (Nagata Integer Double) a -> IO ()
+gradientAscent :: Int -> Double -> Meas (Nagata Integer Double) a -> IO a
 gradientAscent = gradientOptimize (+) 
 
-gradientDescent :: Show a => Int -> Double -> Meas (Nagata Integer Double) a -> IO ()
+gradientDescent :: Int -> Double -> Meas (Nagata Integer Double) a -> IO a
 gradientDescent = gradientOptimize (-) 
 
-gradientOptimize :: Show a => (Double -> Double -> Double) -> Int -> Double -> Meas (Nagata Integer Double) a -> IO ()
+gradientOptimize :: (Double -> Double -> Double) -> Int -> Double -> Meas (Nagata Integer Double) a -> IO a
 gradientOptimize op n alpha p =
   do newStdGen
      g <- getStdGen
      let rs = dualizeTree (randomTree g)
-     go n rs
+     rs' <- go n rs
+     return $ fst $ runProb (runWriterT (unMeas p)) rs'
   where
-    go 0 rs = return ()
+    go 0 rs = return rs
     go i rs = 
      do let hdr = "* Iteration " ++ show (n - i + 1) ++ ":"
         putStr hdr
         let (result,score) = (runProb (runWriterT (unMeas p)) rs)
-        putStrLn (" Result = " ++ show result ++ "; Log likelihood = " ++ show ({-- primal $--} getSum score))-- (primal objective))
+        putStrLn ("Log likelihood = " ++ show ({-- primal $--} getSum score))-- (primal objective))
         let s = getSum score
         go (i-1) (fmap (learn (tangent s)) rs)
 
-    learn dr (N x dx) = N (min (max 0 (op x (alpha * M.findWithDefault 0 key dr))) 1) dx
+    learn dr (N x dx) = N (clamp $ op x (alpha * M.findWithDefault 0 key dr)) dx
       where key = head (M.keys dx) 
 
 -- Typical example: gradientAscent 30 0.01 (primal <$> minExample)
