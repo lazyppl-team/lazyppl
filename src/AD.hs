@@ -47,6 +47,12 @@ instance (Ord v, Ord d, Floating d) => Floating (Nagata v d) where
    acosh = error "undefined"
    atanh = error "undefined"
 
+instance Eq d => Eq (Nagata v d) where
+  (N x _) == (N y _) = x == y
+
+instance Ord d => Ord (Nagata v d) where
+  (N x _) <= (N y _) = x <= y
+
 -- Standard Normal PDF
 normpdf :: Floating d => d -> d
 normpdf x = exp (negate (x * x) / 2) / (sqrt (2 * pi))
