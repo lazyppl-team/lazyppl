@@ -46,6 +46,8 @@ dependencies:
 - aeson
 - bytestring
 - hmatrix
+- normaldistribution
+- random
 
 library:
   source-dirs: src
