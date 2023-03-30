@@ -24,7 +24,8 @@ normalImproper :: InvErf d => d -> d -> Meas d d
 normalImproper m s = do 
   -- If uniform is used just as an initialization point,
   -- shift it a bit so it is roughly in the range of the normal,
-  -- and then use score to actually put in the normal weight. 
+  -- and then use score to actually put in the normal weight.
+  -- You need to remove the clamp on gradientOptimize for this to work. 
   x <- (m + 0.5 - ) <$> sample uniform 
   scoreLog $ normalLogPdf m s x
   return $ x
