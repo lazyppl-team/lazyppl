@@ -61,6 +61,10 @@ normpdf x = exp (negate (x * x) / 2) / (sqrt (2 * pi))
 instance (Ord v, Ord d, Floating d, InvErf d) => InvErf (Nagata v d) where
   invnormcdf (N x dx) = N (invnormcdf x) (fmap (/ (normpdf (invnormcdf x))) dx)
 
+-- Probit function (inv cdf of normal)
+instance (Ord v, Ord d, Floating d, Erf d) => Erf (Nagata v d) where
+  normcdf (N x dx) = N (normcdf x) (fmap (* (normpdf x)) dx)
+
 {-
 class (RealFrac a, Floating a) => RealFloat a where
   floatRadix :: a -> Integer
