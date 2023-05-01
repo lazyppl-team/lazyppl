@@ -105,7 +105,9 @@ sample p = Meas $ lift p
 {- | Preliminaries for the simulation methods. Generate a tree with uniform random labels
     This uses 'split' to split a random seed -}
 randomTree :: RandomGen g => g -> Tree Double
-randomTree g = let (a,g') = random g in Tree (invnormcdf a) (randomTrees g')
+randomTree g = let (a,g') = random g in
+               let x = invnormcdf a in
+               Tree x (randomTrees g')
 randomTrees :: RandomGen g => g -> [Tree Double]
 randomTrees g = let (g1,g2) = split g in randomTree g1 : randomTrees g2
 
@@ -330,12 +332,29 @@ mh k m = do
               then return t' -- trace ("---- Weight: " ++ show w') w')
               else return t -- trace ("---- Weight: " ++ show w) w)
 
+-- | Lightweight MH algorithm from POPL 2023
+mutateTreeLMH :: forall g a. RandomGen g => Double -> g -> Meas (Nagata Integer Double) a -> Tree Double -> Tree Double
+mutateTreeLMH p g m (Tree a ts) =
+  let (a',g') = (random g :: (Double,g)) in
+  let (a'',g'') = (random g' :: (Double,g)) in
+  if a' < p then Tree (invnormcdf a'') (mutateTreesLMH p g'' m ts) else Tree a (mutateTreesLMH p g' m ts)
+mutateTreesLMH :: RandomGen g => Double -> g ->  Meas (Nagata Integer Double) a -> [Tree Double] -> [Tree Double]
+mutateTreesLMH p g m (t:ts) = let (g1,g2) = split g in mutateTreeLMH p g1 m t : mutateTreesLMH p g2 m ts
+
+lmhKernel :: forall g a. RandomGen g => Double -> g -> Meas (Nagata Integer Double) a -> Tree Double -> (Double, Tree Double)
+lmhKernel p g m t = 
+  let t' = mutateTreeLMH p g m t in
+  let (_,N w _) = runMeas m (dualizeTree t) in 
+  let (_,N w' _) = runMeas m (dualizeTree t') in 
+  (w' - w, t')  
+
+
 -- 
 -- | Gaussian Random walk
 mutateTreeGRW :: forall g a. RandomGen g => Double -> g -> Meas (Nagata Integer Double) a -> Tree Double -> Tree Double
 mutateTreeGRW sigma g m (Tree a ts) =
-  let (a,g') = (random g :: (Double,g)) in
-  Tree (a + sigma * (invnormcdf a)) (mutateTreesGRW sigma g' m ts)
+  let (a',g') = (random g :: (Double,g)) in
+  Tree (a + sigma * (invnormcdf a')) (mutateTreesGRW sigma g' m ts)
 mutateTreesGRW :: RandomGen g => Double -> g ->  Meas (Nagata Integer Double) a -> [Tree Double] -> [Tree Double]
 mutateTreesGRW sigma g m (t:ts) = let (g1,g2) = split g in mutateTreeGRW sigma g1 m t : mutateTreesGRW sigma g2 m ts
 
@@ -346,18 +365,43 @@ grwKernel sigma g m t =
   let (_,N w' _) = runMeas m (dualizeTree t') in 
   (w' - w, t')  
 
+-- Lookup a vertex in a tree. Uses the same indexing as dualizeTree.
+lookupTree :: Tree d -> Integer -> d
+lookupTree (Tree x _) 0 = x
+lookupTree (Tree x (t : ts)) n = if n `mod` 2 == 1 then lookupTree t (n `div` 2) else lookupTree (Tree x ts) (n `div` 2) 
 
-{-- malaKernel :: forall g a. RandomGen g => Double -> g -> Meas (Nagata Integer Double) a -> Tree Double -> (Double, Tree Double)
-malaKernel sigma g m t =
+merge [] x = x
+merge x [] = x
+merge (x:xs) (y:ys) | y < x     = y : merge (x:xs) ys
+merge (x:xs) (y:ys) | x==y = merge xs (y:ys)
+merge (x:xs) (y:ys) | x < y = x : merge xs (y:ys)
+
+
+-- | MALA (Metropolis-adjusted Langevin algorithm)
+-- https://en.wikipedia.org/wiki/Metropolis-adjusted_Langevin_algorithm#Further_details
+-- Here, t is X_k and t' is X_{k+1}
+malaKernel :: forall g a. RandomGen g => Double -> g -> Meas (Nagata Integer Double) a -> Tree Double -> (Double, Tree Double)
+malaKernel tau g m t =
   let (_,N w dw) = runMeas m (dualizeTree t) in
-  let t' = mutateTreeGRW sigma g m t in
-  let t'' = fmap (learn dw) (dualizeTree t') in
-  let (_,N w' dw') = runMeas m t'' in 
-  (w' - w, t')
+  let t'' = mutateTreeGRW (sqrt(2 * tau)) g m t in -- X_k + 2\tau Normal 
+  let t' = fmap (gradientStep dw) (dualizeTree t'') in -- X_k + tau grad log pi (X_k) + 2\tau Normal 
+  let (_,N w' dw') = runMeas m t' in
+  -- Calculate log MH ratio
+  -- The q(x'|x) requires calculating the norm of the whole space, which is infinite-dimensional.
+  -- But the ratio of the q's will cancel in all dimensions
+  -- except where one or the other gradients is non-zero.
+  -- Find the union of the sites with non-zero gradient.
+  let sites = merge (M.keys dw) (M.keys dw') in 
+  -- Find the log ratio as the sum of squares. Simplifying a little as the first term cancels. 
+  let qlogratio = Prelude.sum [(primal (lookupTree t' i) - lookupTree t i) * tau * (M.findWithDefault 0 i dw - M.findWithDefault 0 i dw') + tau * ((M.findWithDefault 0 i dw)^2 - (M.findWithDefault 0 i dw')^2) | i <- sites] in 
+  --traceShow [(primal (lookupTree t' i), lookupTree t i, M.findWithDefault 0 i dw, M.findWithDefault 0 i dw') | i <- sites] $ traceShow (w' , w , qlogratio) $
+  (w' - w + qlogratio , fmap primal t') 
   where 
-    learn dr (N x dx) = N (op x (alpha * M.findWithDefault 0 key dr)) dx
+    gradientStep dr (N x dx) = N (x + (tau * M.findWithDefault 0 key dr)) dx
       where key = head (M.keys dx) 
---}
+
+
+
 
 
 -- 
@@ -521,11 +565,11 @@ malaKernel sigma g m t =
 -- trunc :: Tree -> IO PTree
 -- trunc t = helperT $ asBox t
 -- 
--- {-- | Useful function which thins out a list. --}
--- every :: Int -> [a] -> [a]
--- every n xs = case drop (n -1) xs of
---   (y : ys) -> y : every n ys
---   [] -> []
+{-- | Useful function which thins out a list. --}
+every :: Int -> [a] -> [a]
+every n xs = case drop (n -1) xs of
+  (y : ys) -> y : every n ys
+  [] -> []
 -- 
 -- iterateNM :: Int -> (a -> IO a) -> a -> IO [a]
 -- iterateNM 0 f a = return []

@@ -65,6 +65,9 @@ instance (Ord v, Ord d, Floating d, InvErf d) => InvErf (Nagata v d) where
 instance (Ord v, Ord d, Floating d, Erf d) => Erf (Nagata v d) where
   normcdf (N x dx) = N (normcdf x) (fmap (* (normpdf x)) dx)
 
+toNagata :: d -> Nagata v d
+toNagata d = N d empty
+
 {-
 class (RealFrac a, Floating a) => RealFloat a where
   floatRadix :: a -> Integer
