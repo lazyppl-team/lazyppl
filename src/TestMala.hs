@@ -48,7 +48,7 @@ regress sigma prior dataset =
     return f
 
 plotLinReg =
-  do fs' <- mh (malaKernel 0.0001) (regress (toNagata 0.5) linear dataset)
+  do fs' <- mh (malaKernel 0.0005) (regress (toNagata 0.5) linear dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 500 $ fs'
      plotFuns "images/mala/mala-linear-reg.svg" dataset fs 0.05
      fs' <- mh (grwKernel 0.1) (regress (toNagata 0.5) linear dataset)

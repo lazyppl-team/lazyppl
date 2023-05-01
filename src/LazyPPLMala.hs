@@ -393,9 +393,8 @@ malaKernel tau g m t =
   -- Find the union of the sites with non-zero gradient.
   let sites = merge (M.keys dw) (M.keys dw') in 
   -- Find the log ratio as the sum of squares. Simplifying a little as the first term cancels. 
-  let qlogratio = Prelude.sum [(primal (lookupTree t' i) - lookupTree t i) * tau * (M.findWithDefault 0 i dw - M.findWithDefault 0 i dw') + tau * ((M.findWithDefault 0 i dw)^2 - (M.findWithDefault 0 i dw')^2) | i <- sites] in 
-  --traceShow [(primal (lookupTree t' i), lookupTree t i, M.findWithDefault 0 i dw, M.findWithDefault 0 i dw') | i <- sites] $ traceShow (w' , w , qlogratio) $
-  (w' - w + qlogratio , fmap primal t') 
+  let qlogratio = Prelude.sum [(lookupTree t i - primal (lookupTree t' i) - tau * (M.findWithDefault 0 i dw'))^2 | i <- sites] - Prelude.sum [(primal (lookupTree t' i) - lookupTree t i - tau * (M.findWithDefault 0 i dw))^2 | i <- sites] in
+  (w' - w - (1/(4*tau))* qlogratio , fmap primal t') 
   where 
     gradientStep dr (N x dx) = N (x + (tau * M.findWithDefault 0 key dr)) dx
       where key = head (M.keys dx) 

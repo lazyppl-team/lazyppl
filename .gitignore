@@ -89,3 +89,4 @@ cabal.project.local~
 # Ignore all local history of files
 .history
 .ionide
+*.pdf
