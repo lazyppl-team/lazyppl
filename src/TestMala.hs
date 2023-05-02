@@ -96,7 +96,13 @@ randConst =
 plotStepReg =
   do fs' <- mh (malaKernel 0.0005) (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 2000 $ fs'
-     plotFuns "images/mala/mala-step-reg.svg" dataset fs 0.01
+     plotFuns "images/mala/mala-piecewiseconst-reg.svg" dataset fs 0.02
+     fs' <- mh (grwKernel 0.1) (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
+     let fs = map (\f -> primal . f . toNagata) $ take 2000 $ fs'
+     plotFuns "images/mala/grw-piecewiseconst-reg.svg" dataset fs 0.01
+     fs' <- mh (lmhKernel 0.5) (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
+     let fs = map (\f -> primal . f . toNagata) $ take 2000 $ fs'
+     plotFuns "images/mala/lmh-piecewiseconst-reg.svg" dataset fs 0.02
 
 
 
