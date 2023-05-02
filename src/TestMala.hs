@@ -58,6 +58,47 @@ plotLinReg =
      let fs = map (\f -> primal . f . toNagata) $ take 500 $ fs'
      plotFuns "images/mala/lmh-linear-reg.svg" dataset fs 0.05
 
+exponential :: Erf d => d -> Prob d d
+exponential rate = do 
+  x <- uniform
+  return $ - (log x / rate)
+
+-- Poisson point process that extends infinitely in one dimension.
+-- Defined by stepping using exponential distribution.
+poissonPP :: Erf d => d -> d -> Prob d [d]
+poissonPP lower rate =
+  do
+    step <- exponential rate
+    let x = lower + step
+    xs <- poissonPP x rate
+    return (x : xs)
+
+
+splice :: Ord d => Prob d [d] -> Prob d (d -> d) -> Prob d (d -> d)
+splice pointProcess randomFun =
+  do
+    xs <- pointProcess
+    fs <- mapM (const randomFun) xs
+    default_f <- randomFun
+    let -- h :: [(d, d -> d)] -> d -> d
+        h [] x = default_f x
+        h ((a, f) : xfs) x | x <= a = f x
+        h ((a, f) : xfs) x | x > a = h xfs x
+    return (h (zip xs fs))
+
+randConst :: Num d => Prob d (d -> d)
+randConst =
+  do
+    b <- normal 0 3
+    let f = \x -> b
+    return f
+
+plotStepReg =
+  do fs' <- mh (malaKernel 0.0005) (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
+     let fs = map (\f -> primal . f . toNagata) $ take 2000 $ fs'
+     plotFuns "images/mala/mala-step-reg.svg" dataset fs 0.01
+
+
 
 {--
 
