@@ -90,3 +90,4 @@ cabal.project.local~
 .history
 .ionide
 *.pdf
+*.svg
