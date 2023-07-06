@@ -24,14 +24,14 @@ plotLinearPrior =
   do
     fs' <- mh (grwKernel 0.2) (sample linear) 
     let fs = map (\f -> primal . f . toNagata) $ take 1000 $ every 100 $ fs'
-    plotFuns "images/mala-linear-prior.svg" [] fs 0.1
+    plotFuns "images/mala-linear-prior.png" [] fs 0.1
 
 dataset :: Floating d => [(d, d)]
 dataset = [(0,0.6), (1, 0.7), (2,1.2), (3,3.2), (4,6.8), (5, 8.2), (6,8.4)]
 
 plotDataset =
   do
-    plotFuns "images/regression-dataset.svg" dataset [] 0.1
+    plotFuns "images/regression-dataset.png" dataset [] 0.1
 
 normalPdf :: Floating d => d -> d -> d -> d
 normalPdf m s x = let x' = (x - m)/s in  exp (negate (x' * x') / 2) / (sqrt (2 * pi)*s)
@@ -50,13 +50,13 @@ regress sigma prior dataset =
 plotLinReg =
   do fs' <- mh (malaKernel 0.0005) (regress (toNagata 0.5) linear dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 500 $ fs'
-     plotFuns "images/mala/mala-linear-reg.svg" dataset fs 0.05
+     plotFuns "images/mala/mala-linear-reg.png" dataset fs 0.05
      fs' <- mh (grwKernel 0.1) (regress (toNagata 0.5) linear dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 500 $ fs'
-     plotFuns "images/mala/grw-linear-reg.svg" dataset fs 0.05
+     plotFuns "images/mala/grw-linear-reg.png" dataset fs 0.05
      fs' <- mh (lmhKernel 0.5) (regress (toNagata 0.5) linear dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 500 $ fs'
-     plotFuns "images/mala/lmh-linear-reg.svg" dataset fs 0.05
+     plotFuns "images/mala/lmh-linear-reg.png" dataset fs 0.05
 
 exponential :: Erf d => d -> Prob d d
 exponential rate = do 
@@ -96,13 +96,13 @@ randConst =
 plotStepReg =
   do fs' <- mh (malaKernel 0.0005) (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 2000 $ fs'
-     plotFuns "images/mala/mala-piecewiseconst-reg.svg" dataset fs 0.02
+     plotFuns "images/mala/mala-piecewiseconst-reg.png" dataset fs 0.02
      fs' <- mh (grwKernel 0.1) (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 2000 $ fs'
-     plotFuns "images/mala/grw-piecewiseconst-reg.svg" dataset fs 0.01
+     plotFuns "images/mala/grw-piecewiseconst-reg.png" dataset fs 0.01
      fs' <- mh (lmhKernel 0.5) (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 2000 $ fs'
-     plotFuns "images/mala/lmh-piecewiseconst-reg.svg" dataset fs 0.02
+     plotFuns "images/mala/lmh-piecewiseconst-reg.png" dataset fs 0.02
 
 
 
@@ -132,7 +132,7 @@ poissonPP lower rate =
     return (x : xs)
 \end{code}
 Here are five draws from the process. Each draw is really an infinite set of points, but we have truncated the display to the viewport [0,20]. Laziness then takes care of truncating the infinite sequences appropriately.
-![](images/regression-poissonpp.svg)
+![](images/regression-poissonpp.png)
 <details class="code-details">
 <summary>(Plotting code)</summary>
 \begin{code}
@@ -140,7 +140,7 @@ plotPoissonPP =
   do
     pws <- mh 1 $ sample $ poissonPP 0 0.1
     let ps = map (takeWhile (20>)) $ map fst $ take 5 $ pws
-    let filename = "images/regression-poissonpp.svg"
+    let filename = "images/regression-poissonpp.png"
     putStrLn $ "Plotting " ++ filename ++ "..."
     let myscatter mpl i = mpl % setSubplot i % scatter (ps !! i) (map (const (0::Double)) (ps !! i)) @@ [o2 "s" (10::Int),o2 "c" "black"]  % xlim (0::Int) (20::Int) % ylim (-1 :: Int) (1::Int) % mp # "ax.yaxis.set_major_formatter(mticker.NullFormatter())"
     let myscatteraxes mpl i = if i < (length ps - 1) then myscatter mpl i % mp # "ax.xaxis.set_major_formatter(mticker.NullFormatter())" else myscatter mpl i
@@ -153,7 +153,7 @@ plotPoissonPP =
 We can now invoke a random piecewise linear function by calling `splice (poissonPP 0 0.1) linear`{.haskell}. 
 Here are ten draws from this distribution. Because the viewport is bounded, laziness takes care of truncations to the point process that we passed to `splice`.
 
-![](images/regression-piecewise-prior.svg)
+![](images/regression-piecewise-prior.png)
 
 <details class="code-details">
 <summary>(Plotting code)</summary>
@@ -162,7 +162,7 @@ plotPiecewisePrior =
   do
     fs' <- mh 1 $ sample $ splice (poissonPP 0 0.1) linear
     let fs = map fst $ take 10 $ fs'
-    plotFuns "images/regression-piecewise-prior.svg" [] fs 1
+    plotFuns "images/regression-piecewise-prior.png" [] fs 1
 \end{code}
 </details>
 <br></br>
@@ -172,9 +172,9 @@ plotPiecewiseReg =
   do
     fs' <- mhirreducible 0.2 0.1 (regress 0.1 (splice (poissonPP 0 0.1) linear) dataset)
     let fs = map fst $ take 1000 $ every 1000 $ drop 10000 fs'
-    plotFuns "images/regression-piecewise-reg.svg" dataset fs 0.01
+    plotFuns "images/regression-piecewise-reg.png" dataset fs 0.01
 \end{code}
-![](images/regression-piecewise-reg.svg)
+![](images/regression-piecewise-reg.png)
 
 Finally, we can also do our regression using piecewise constant functions. Our prior will now be `randConst`{.haskell}, a random linear function with slope 0.
 \begin{code}
@@ -191,9 +191,9 @@ plotPiecewiseConst =
   do
     fs' <- mhirreducible 0.2 0.1 (regress 0.1 (splice (poissonPP 0 0.1) randConst) dataset)
     let fs = map fst $ take 1000 $ every 1000 $ drop 10000 fs'
-    plotFuns "images/regression-piecewise-const.svg" dataset fs 0.01
+    plotFuns "images/regression-piecewise-const.png" dataset fs 0.01
 \end{code}
-![](images/regression-piecewise-const.svg)
+![](images/regression-piecewise-const.png)
 
 
 <details class="code-details">
@@ -227,3 +227,6 @@ plotFuns filename dataset funs alpha =
 
 -- main :: IO ()
 -- main = do {plotLinearPrior ; plotDataset ; plotLinReg ; plotPiecewisePrior ; plotPoissonPP ; plotPiecewiseReg ; plotPiecewiseConst }
+
+main :: IO ()
+main = plotStepReg
