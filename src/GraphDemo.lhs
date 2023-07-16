@@ -34,6 +34,7 @@ instance MonadMemo Prob Double where
 Graph inference problem
 -----------------------
 Consider the following graph. We will ask, which kinds of vertices and distribution on vertices likely generated it? 
+
 ![](images/graph-data.svg)
 
 <details class="code-details">
