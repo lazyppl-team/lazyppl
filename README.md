@@ -112,4 +112,4 @@ For example, if the module is named `ReviewerTest` (saved as `src/ReviewerTest.h
       dependencies:
       - lazyppl
 
-Then run it with `stack run reviewertest-exe` or open it up in the REPL using `stack ghci src/ReviewerTest.hs`.
+Then, run it with `stack run reviewertest-exe` or open it up in the REPL using `stack ghci src/ReviewerTest.hs`.
