@@ -199,3 +199,6 @@ div.csl-indent {
   margin-left: 2em;
 }
 $endif$
+#title-logo {
+  margin-right: 30px;
+}
