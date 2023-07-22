@@ -1,0 +1,31 @@
+name: Publish Website
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Setup pandoc
+      uses: pandoc/core-setup@1
+
+    - name: Generate website
+      run: bash generate_website.sh
+
+    - name: Push to website repository
+      run: |
+        git config --global user.name 'Younesse Kaddar'
+        git config --global user.email 'younesse.kaddar@chch.ox.ac.uk'
+        git clone https://${{ secrets.YOUQAD_TOKEN }}@github.com/lazyppl-team/lazyppl-team.github.io.git
+        cp -r website/* lazyppl-team.github.io/
+        cd lazyppl-team.github.io
+        git add .
+        git commit -m "Update website from $GITHUB_SHA in $GITHUB_REPOSITORY (github action: $GITHUB_ACTION)"
+        git push
