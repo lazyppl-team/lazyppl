@@ -13,8 +13,9 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Setup pandoc
-      uses: pandoc/core-setup@1
+    - uses: nikeee/setup-pandoc@v1
+    #   with:
+    #     pandoc-version: '2.19.2'
 
     - name: Generate website
       run: bash generate_website.sh
