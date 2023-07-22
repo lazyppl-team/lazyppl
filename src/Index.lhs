@@ -15,7 +15,7 @@ LazyPPL provides two monads:
 Simple example
 ---
 
-To illustrate the basic usage, here is a very simple first example, that doesn't use laziness. More advanced examples are in the menu above and further examples in the [GitHub repository](https://github.com/lazyppl-team/lazyppl).
+To illustrate the basic usage, here is a very simple first example, that doesn't use laziness. More advanced examples are in the menu above, and further examples in the [GitHub repository](https://github.com/lazyppl-team/lazyppl).
 
 
 <details class="code-details">
