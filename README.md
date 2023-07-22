@@ -20,7 +20,7 @@ docker run -it --rm -v ~/images:/opt/lazyppl/images youkad/lazyppl:0.2
 
 Laziness appears to be a useful method for specifying non-parametric models. For example, we often use processes or infinite dimensional functions, and this is fine because only finite parts are explored in practice. 
 
-The aim of this implementation is to demonstrate that it's possible to have first-class lazy structures in probabilistic programming. For example, we have first-class
+The aim of this implementation is to demonstrate that it is possible to have first-class lazy structures in probabilistic programming. For example, we have first-class
 
 * stochastic memoization: `memoize :: (a -> Prob b) -> Prob (a -> b)`
 * Gaussian processes: `wiener :: Prob (Double -> Double)`
