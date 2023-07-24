@@ -52,73 +52,83 @@ library:
   source-dirs: src
 
 executables:
-  ibp-exe:
-    main:                AdditiveClustering.hs
+  # ibp-exe:
+  #   main:                AdditiveClustering.hs
+  #   source-dirs:         src
+  #   ghc-options:
+  #   - -threaded
+  #   - -rtsopts
+  #   - -with-rtsopts=-N
+  #   - -main-is AdditiveClustering
+  #   dependencies:
+  #   - lazyppl
+  # wiener-exe:
+  #   main:                WienerDemo.lhs
+  #   source-dirs:         src
+  #   ghc-options:
+  #   - -threaded
+  #   - -rtsopts
+  #   - -with-rtsopts=-N
+  #   - -main-is WienerDemo
+  #   dependencies:
+  #   - lazyppl
+  # regression-exe:
+  #   main:                RegressionDemo.lhs
+  #   source-dirs:         src
+  #   ghc-options:
+  #   - -threaded
+  #   - -rtsopts
+  #   - -with-rtsopts=-N
+  #   - -main-is RegressionDemo
+  #   dependencies:
+  #   - lazyppl
+  # clustering-exe:
+  #   main:                ClusteringDemo.lhs
+  #   source-dirs:         src
+  #   ghc-options:
+  #   - -threaded
+  #   - -rtsopts
+  #   - -with-rtsopts=-N
+  #   - -main-is ClusteringDemo
+  #   dependencies:
+  #   - lazyppl
+  # programinduction-exe:
+  #   main:                ProgramInductionDemo.lhs
+  #   source-dirs:         src
+  #   ghc-options:
+  #   - -threaded
+  #   - -rtsopts
+  #   - -with-rtsopts=-N
+  #   - -main-is ProgramInductionDemo
+  #   dependencies:
+  #   - lazyppl
+  # mondrian-exe:
+  #   main:                MondrianExample.hs
+  #   source-dirs:         src
+  #   ghc-options:
+  #   - -threaded
+  #   - -rtsopts
+  #   - -with-rtsopts=-N
+  #   - -main-is MondrianExample
+  #   dependencies:
+  #   - lazyppl
+  # gaussianprocess-exe:
+  #   main:                GaussianProcessDemo.lhs
+  #   source-dirs:         src
+  #   ghc-options:
+  #   - -threaded
+  #   - -rtsopts
+  #   - -with-rtsopts=-N
+  #   - -main-is GaussianProcessDemo
+  #   dependencies:
+  #   - lazyppl
+  testmala-exe:
+    main:                TestMala.hs
     source-dirs:         src
     ghc-options:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-    - -main-is AdditiveClustering
-    dependencies:
-    - lazyppl
-  wiener-exe:
-    main:                WienerDemo.lhs
-    source-dirs:         src
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    - -main-is WienerDemo
-    dependencies:
-    - lazyppl
-  regression-exe:
-    main:                RegressionDemo.lhs
-    source-dirs:         src
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    - -main-is RegressionDemo
-    dependencies:
-    - lazyppl
-  clustering-exe:
-    main:                ClusteringDemo.lhs
-    source-dirs:         src
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    - -main-is ClusteringDemo
-    dependencies:
-    - lazyppl
-  programinduction-exe:
-    main:                ProgramInductionDemo.lhs
-    source-dirs:         src
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    - -main-is ProgramInductionDemo
-    dependencies:
-    - lazyppl
-  mondrian-exe:
-    main:                MondrianExample.hs
-    source-dirs:         src
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    - -main-is MondrianExample
-    dependencies:
-    - lazyppl
-  gaussianprocess-exe:
-    main:                GaussianProcessDemo.lhs
-    source-dirs:         src
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    - -main-is GaussianProcessDemo
+    - -main-is TestMala
     dependencies:
     - lazyppl

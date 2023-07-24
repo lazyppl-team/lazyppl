@@ -45,7 +45,7 @@ import Data.Number.Erf
 -- | Often people would just use a list or stream instead of a tree.
 -- | But a tree allows us to be lazy about how far we are going all the time.
 data Tree d = Tree d [Tree d]
-  deriving (Functor, Show, Applicative)
+  deriving (Functor, Show)
 
 -- | A probability distribution over a is 
 -- | a function 'Tree d -> a'
@@ -353,13 +353,7 @@ malaKernel tau g m t =
   let sites = merge (M.keys dw) (M.keys dw') in
   -- Find the log ratio as the sum of squares.
   -- It's ok to ignore dimensions where both gradients are zero. 
-  let qlogratio = (1/(4*tau))* 
-    (Prelude.sum [(lookupTree t i 
-                    - primal (lookupTree t' i) 
-                    - tau * (M.findWithDefault 0 i dw'))^2 | i <- sites] 
-      - Prelude.sum [(primal (lookupTree t' i) 
-                      - lookupTree t i 
-                      - tau * (M.findWithDefault 0 i dw))^2 | i <- sites]) in
+  let qlogratio = (1/(4*tau))* (Prelude.sum [(lookupTree t i - primal (lookupTree t' i) - tau * (M.findWithDefault 0 i dw'))^2 | i <- sites] - Prelude.sum [(primal (lookupTree t' i)  - lookupTree t i  - tau * (M.findWithDefault 0 i dw))^2 | i <- sites]) in
   (w' - w - qlogratio , fmap primal t') 
   where 
     gradientStep dr (N x dx) = N (x + (tau * M.findWithDefault 0 key dr)) dx
@@ -374,63 +368,64 @@ updateQP dV_dq eps (q, p) = let
         p' = p_half - eps/2 * (dV_dq q') -- finish half step
     in (q', p')
 
-simpleLeapfrog :: (Floating a, Ord a, Show a) => (a -> a) -> (LFConfig a) -> (a, a) -> (a, a)
-simpleLeapfrog dV_dq (LFConfig eps steps selected) (q, p) = let
-        qps = take steps $ iterate (updateQP dV_dq eps) (q, p)
-        qs = map fst qps
-        ps = map snd qps
-    -- TODO make use of selected instead of just taking the last one
-    in (last qs, last ps)
 
-hmcProposal :: (Floating a, Ord a, Show a) => (LFConfig a) -> (a, a) -> (a, a)
-hmcProposal lfc (q, p) = let
-        (q', p') = simpleLeapfrog dV_dq lfc (q, p)
-    in (q', -p')
+-- simpleLeapfrog :: (Floating a, Ord a, Show a) => (a -> a) -> (LFConfig a) -> (a, a) -> (a, a)
+-- simpleLeapfrog dV_dq (LFConfig eps steps selected) (q, p) = let
+--         qps = take steps $ iterate (updateQP dV_dq eps) (q, p)
+--         qs = map fst qps
+--         ps = map snd qps
+--     -- TODO make use of selected instead of just taking the last one
+--     in (last qs, last ps)
 
-hmcAcceptReject :: (RandomGen g, Floating a, Ord a, Random a, Show a) => LFConfig a -> ((a, a), g) -> ((a, a), g)
-hmcAcceptReject lfc ((q, _), rng) = let
-        (p, rng') = normal rng -- assume the proposal distribution for momentum is N(0, 1)
-        (new_q, new_p) = hmcProposal lfc (q, p)
-        (u, rng'') = randomR (0.0, 1.0) rng'
-        (q', p') = if (log u) < (-(h new_q new_p) + (h q p)) then (new_q, new_p) else (q, p)
-    in ((q', p'), rng'')
+-- hmcProposal :: (Floating a, Ord a, Show a) => (LFConfig a) -> (a, a) -> (a, a)
+-- hmcProposal lfc (q, p) = let
+--         (q', p') = simpleLeapfrog dV_dq lfc (q, p)
+--     in (q', -p')
 
--- | Gaussian Random walk
-mutateTreeHMC :: forall g a. RandomGen g => (LFConfig a) -> g -> Meas (Nagata Integer Double) a -> Tree Double -> Tree Double
-mutateTreeHMC lfc g m (Tree p ts) =
-  let (a', g') = (random g :: (Double,g)) in
-  let (new_q, new_p) = hmcProposal lfc (q, p) in
-  Tree (new_q, new_p) (mutateTreeHMC lfc g' m ts)
+-- hmcAcceptReject :: (RandomGen g, Floating a, Ord a, Random a, Show a) => LFConfig a -> ((a, a), g) -> ((a, a), g)
+-- hmcAcceptReject lfc ((q, _), rng) = let
+--         (p, rng') = normal rng -- assume the proposal distribution for momentum is N(0, 1)
+--         (new_q, new_p) = hmcProposal lfc (q, p)
+--         (u, rng'') = randomR (0.0, 1.0) rng'
+--         (q', p') = if (log u) < (-(h new_q new_p) + (h q p)) then (new_q, new_p) else (q, p)
+--     in ((q', p'), rng'')
 
-mutateTreesHMC :: RandomGen g => Double -> g ->  Meas (Nagata Integer Double) a -> [Tree Double] -> [Tree Double]
-mutateTreesHMC lfc g m (t:ts) = let (g1,g2) = split g in mutateTreeHMC lfc g1 m t : mutateTreesGRW lfc g2 m ts
+-- -- | Gaussian Random walk
+-- mutateTreeHMC :: forall g a. RandomGen g => (LFConfig a) -> g -> Meas (Nagata Integer Double) a -> Tree Double -> Tree Double
+-- mutateTreeHMC lfc g m (Tree p ts) =
+--   let (a', g') = (random g :: (Double,g)) in
+--   let (new_q, new_p) = hmcProposal lfc (q, p) in
+--   Tree (new_q, new_p) (mutateTreeHMC lfc g' m ts)
 
-hmcKernel :: forall g a. RandomGen g => Double -> g -> Meas (Nagata Integer Double) a -> Tree Double -> (Double, Tree Double)
-hmcKernel tau g m t =
-  t :: Tree Double
-  (dualizeTree t) :: Tree (Nagata Integer Double)
-  (runMeas m (dualizeTree t)) :: (Nagata Integer Double, Nagata Integer Double)
-  w :: Double
-  dw :: (Map Integer Double)
+-- mutateTreesHMC :: RandomGen g => Double -> g ->  Meas (Nagata Integer Double) a -> [Tree Double] -> [Tree Double]
+-- mutateTreesHMC lfc g m (t:ts) = let (g1,g2) = split g in mutateTreeHMC lfc g1 m t : mutateTreesGRW lfc g2 m ts
 
-  let (_,N w dw) = runMeas m (dualizeTree t) in
-  let t'' = mutateTreeHMC (sqrt(2 * tau)) g m t in -- X_k + 2\tau Normal 
-  let t' = fmap (gradientStep dw) (dualizeTree t'') in -- X_k + tau grad log pi (X_k) + 2\tau Normal 
-  let (_,N w' dw') = runMeas m t' in
-  -- Calculate log MH ratio
-  -- The q(x'|x) requires calculating the l2 norm of the whole space, which is infinite-dimensional.
-  -- But the ratio of the q's will cancel in all dimensions
-  -- except where one or the other gradients is non-zero.
-  -- Find the union of the sites with non-zero gradient.
-  let sites = merge (M.keys dw) (M.keys dw') in
-  -- Find the log ratio as the sum of squares.
-  -- It's ok to ignore dimensions where both gradients are zero. 
-  let qlogratio = (1/(4*tau))* (Prelude.sum [(lookupTree t i - primal (lookupTree t' i) - tau * (M.findWithDefault 0 i dw'))^2 | i <- sites] 
-                                - Prelude.sum [(primal (lookupTree t' i) - lookupTree t i - tau * (M.findWithDefault 0 i dw))^2 | i <- sites]) in
-  (w' - w - qlogratio , fmap primal t') 
-  where 
-    gradientStep dr (N x dx) = N (x + (tau * M.findWithDefault 0 key dr)) dx
-      where key = head (M.keys dx) 
+-- hmcKernel :: forall g a. RandomGen g => Double -> g -> Meas (Nagata Integer Double) a -> Tree Double -> (Double, Tree Double)
+-- hmcKernel tau g m t =
+--   -- t :: Tree Double
+--   -- (dualizeTree t) :: Tree (Nagata Integer Double)
+--   -- (runMeas m (dualizeTree t)) :: (Nagata Integer Double, Nagata Integer Double)
+--   -- w :: Double
+--   -- dw :: (Map Integer Double)
+
+--   let (_,N w dw) = runMeas m (dualizeTree t) in
+--   let t'' = mutateTreeHMC (sqrt(2 * tau)) g m t in -- X_k + 2\tau Normal 
+--   let t' = fmap (gradientStep dw) (dualizeTree t'') in -- X_k + tau grad log pi (X_k) + 2\tau Normal 
+--   let (_,N w' dw') = runMeas m t' in
+--   -- Calculate log MH ratio
+--   -- The q(x'|x) requires calculating the l2 norm of the whole space, which is infinite-dimensional.
+--   -- But the ratio of the q's will cancel in all dimensions
+--   -- except where one or the other gradients is non-zero.
+--   -- Find the union of the sites with non-zero gradient.
+--   let sites = merge (M.keys dw) (M.keys dw') in
+--   -- Find the log ratio as the sum of squares.
+--   -- It's ok to ignore dimensions where both gradients are zero. 
+--   let qlogratio = (1/(4*tau))* (Prelude.sum [(lookupTree t i - primal (lookupTree t' i) - tau * (M.findWithDefault 0 i dw'))^2 | i <- sites] 
+--                                 - Prelude.sum [(primal (lookupTree t' i) - lookupTree t i - tau * (M.findWithDefault 0 i dw))^2 | i <- sites]) in
+--   (w' - w - qlogratio , fmap primal t') 
+--   where 
+--     gradientStep dr (N x dx) = N (x + (tau * M.findWithDefault 0 key dr)) dx
+--       where key = head (M.keys dx) 
 
 
 -- | Utilities for running MH
@@ -447,7 +442,7 @@ iterateNM n f a = do
   as <- iterateNM (n -1) f a'
   return $ a : as
 
--- | Take eagerly from a list and print the current progress. 
+-- | Take eagerly from a list and print the current progress.
 takeWithProgress :: Int -> [a] -> IO [a]
 takeWithProgress n = helper n n
   where
