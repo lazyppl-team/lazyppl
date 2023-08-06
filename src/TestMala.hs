@@ -1,10 +1,10 @@
 module TestMala where
-import LazyPPLMala
 import AD
 import Data.Colour
 import Data.Colour.Names
 import Control.Monad
 import Data.Number.Erf
+import LazyPPLHMC
 
 import Debug.Trace
 
@@ -48,7 +48,10 @@ regress sigma prior dataset =
     return f
 
 plotLinReg =
-  do fs' <- mh (malaKernel 0.0005) (regress (toNagata 0.5) linear dataset)
+  do fs' <- mh (hmcKernel (LFConfig 0.001 10 0)) (regress (toNagata 0.5) linear dataset)
+     let fs = map (\f -> primal . f . toNagata) $ take 1000 fs'
+     plotFuns "images/mala/hmc-linear-reg.png" dataset fs 0.05
+     fs' <- mh (malaKernel 0.0005) (regress (toNagata 0.5) linear dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 500 $ fs'
      plotFuns "images/mala/mala-linear-reg.png" dataset fs 0.05
      fs' <- mh (grwKernel 0.1) (regress (toNagata 0.5) linear dataset)
@@ -57,6 +60,21 @@ plotLinReg =
      fs' <- mh (lmhKernel 0.5) (regress (toNagata 0.5) linear dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 500 $ fs'
      plotFuns "images/mala/lmh-linear-reg.png" dataset fs 0.05
+     
+  
+plotLinRegHMC (eps, steps) = 
+  do fs' <- mh (hmcKernel (LFConfig eps steps 0)) (regress (toNagata 0.5) linear dataset)
+     let fs = map (\f -> primal . f . toNagata) $ take 1000 $ fs'
+     let name = "images/mala/hmc-linear-reg-eps-" ++ show eps ++ "steps-" ++ show steps ++ ".png"
+     --print ("done with eps: " ++ show eps ++ " steps: " ++ show steps)
+     plotFuns name dataset fs 0.02 
+
+plotLinRegHMCAll =
+  do let configs = [(e, s) | e <- [0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05], s <- [1, 5, 10, 15, 20]]
+     let configs = [(0.001, 10)]
+     let x = map plotLinRegHMC configs
+     sequence_ x
+
 
 exponential :: Erf d => d -> Prob d d
 exponential rate = do 
@@ -94,8 +112,12 @@ randConst =
     return f
 
 plotStepReg =
-  do fs' <- mh (malaKernel 0.0005) (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
-     let fs = map (\f -> primal . f . toNagata) $ take 2000 $ fs'
+  -- eps, steps = (0.0005, 25), (0.005, 30), (0.005, 20)
+  do fs' <- mh (hmcKernel (LFConfig 0.005 30 0)) (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
+     let fs = map (\f -> primal . f . toNagata) $ take 2000 fs'
+     plotFuns "images/mala/hmc-piecewiseconst-reg.png" dataset fs 0.02 
+     fs' <- mh (malaKernel 0.0005) (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
+     let fs = map (\f -> primal . f . toNagata) $ take 2000 fs'
      plotFuns "images/mala/mala-piecewiseconst-reg.png" dataset fs 0.02
      fs' <- mh (grwKernel 0.1) (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 2000 $ fs'
@@ -103,8 +125,21 @@ plotStepReg =
      fs' <- mh (lmhKernel 0.5) (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 2000 $ fs'
      plotFuns "images/mala/lmh-piecewiseconst-reg.png" dataset fs 0.02
+     
 
+plotStepRegHMC (eps, steps) = 
+  do fs' <- mh (hmcKernel (LFConfig eps steps 0)) (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
+     let fs = map (\f -> primal . f . toNagata) $ take 4000 $ drop 1000 fs'
+     let name = "images/mala/hmc-piecewiseconst-reg-eps-" ++ show eps ++ "steps-" ++ show steps ++ ".png"
+     --print ("done with eps: " ++ show eps ++ " steps: " ++ show steps)
+     plotFuns name dataset fs 0.02 
 
+plotStepRegHMCAll =
+  do let configs = [(e, s) | e <- [0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5], s <- [15, 20, 25, 30, 35, 40]]
+     let configs = [ (0.005, 15),  (0.005, 20), (0.005, 25), (0.005, 30), (0.001, 15),  (0.001, 20), (0.001, 25), (0.001, 30)]
+     --let configs = [(0.005, 30)]
+     let x = map plotStepRegHMC configs
+     sequence_ x
 
 {--
 

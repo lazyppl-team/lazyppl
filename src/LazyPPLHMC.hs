@@ -265,8 +265,12 @@ mh k m = do
     newStdGen
     g <- getStdGen
     let (g1,g2) = split g
+    --let (g3, g4) = split g2
     let t = randomTree g1
+    let (_,N w dw) = runMeas m (dualizeTree t)
+    --let (logratio,t') = k g3 m t
     -- Now run step over and over to get a stream of (tree,result,weight)s.
+    -- let (samples,_) = trace ("initialW:"++ show w ++ "lengthInitialTrace" ++ show (length (M.keys dw))) (runState (iterateM step t) g2)
     let (samples,_) = runState (iterateM step t) g2
     -- The stream of seeds is used to produce a stream of result/weight pairs.
     return $ map fst $ map (runMeas m) $ map dualizeTree samples
@@ -285,7 +289,7 @@ mh k m = do
             let (logratio,t') = k g1 m t
             let (r, g2') = random g2
             put g2'
-            if r < min 1 (exp $ logratio) -- (trace ("-- Ratio: " ++ show ratio) ratio))
+            if r < min 1 (exp $ logratio) -- (trace ("-- Ratio: " ++ show logratio) (exp $ logratio))
               then return t' -- trace ("---- Weight: " ++ show w') w')
               else return t -- trace ("---- Weight: " ++ show w) w)
 
@@ -350,6 +354,7 @@ malaKernel tau g m t =
   -- But the ratio of the q's will cancel in all dimensions
   -- except where one or the other gradients is non-zero.
   -- Find the union of the sites with non-zero gradient.
+  -- let sites = trace (show (M.keys dw) ++ "proposedMALA:" ++ show (M.keys dw')) (merge (M.keys dw) (M.keys dw')) in
   let sites = merge (M.keys dw) (M.keys dw') in
   -- Find the log ratio as the sum of squares.
   -- It's ok to ignore dimensions where both gradients are zero. 
@@ -361,13 +366,71 @@ malaKernel tau g m t =
 
 data LFConfig a = LFConfig {eps :: a , leapfrogSteps :: Int , selected :: Int}
 
-updateQP :: (Floating a, Ord a, Show a) => (a -> a) -> a -> (a, a) -> (a, a)
-updateQP dV_dq eps (q, p) = let
-        p_half = p - eps/2 * (dV_dq q) -- half step
-        q' = q + eps * p_half -- full step
-        p' = p_half - eps/2 * (dV_dq q') -- finish half step
-    in (q', p')
+simpleLeapfrog :: Double -> Int -> Meas (Nagata Integer Double) a -> Tree (Nagata Integer Double) -> Tree (Nagata Integer Double) -> (Tree (Nagata Integer Double), Tree (Nagata Integer Double))
+simpleLeapfrog _ 0 m q p = (q,p)
+simpleLeapfrog eps steps m q p = let
+        q' = gradientStepQ eps p q
+        (_,N w dU_dq) = runMeas m q
+        p' = fmap (gradientStepP 1 eps dU_dq) p
+    in if (steps == 1) then (q', p) else (simpleLeapfrog eps (steps-1) m q' p')
 
+gradientStepQ :: Double -> Tree (Nagata Integer Double) -> Tree (Nagata Integer Double) -> Tree (Nagata Integer Double)
+gradientStepQ eps (Tree x xs) (Tree y ys)= let
+        (N p _) = x
+        (N q dq) = y
+        q' = q + eps*p
+        ts = zipWith (gradientStepQ eps) xs ys
+      in (Tree (N q' dq) ts)
+
+gradientStepP :: Double -> Double -> M.Map Integer Double -> Nagata Integer Double -> Nagata Integer Double
+gradientStepP a eps dr (N x dx) = N (x + a * (eps * M.findWithDefault 0 key dr)) dx
+-- gradientStepP a eps dr (N x dx) = trace (show key ++ "grad:"++show (M.findWithDefault 0 key dr)) (N (x + a * (eps * M.findWithDefault 0 key dr)) dx)
+      where key = head (M.keys dx)
+
+
+hmcKernel :: forall g a. RandomGen g => LFConfig Double -> g -> Meas (Nagata Integer Double) a -> Tree Double -> (Double, Tree Double)
+hmcKernel lfc g m q =
+  -- t :: Tree Double
+  -- (dualizeTree t) :: Tree (Nagata Integer Double)
+  -- (runMeas m (dualizeTree t)) :: (Nagata Integer Double, Nagata Integer Double)
+  -- w :: Double
+  -- dw :: (Map Integer Double)
+  let (LFConfig eps' steps' selected) = lfc in
+  let (_,N w dU_dq) = runMeas m (dualizeTree q) in
+  let (a, g') = random g :: (Double, g) in
+  --let eps = (invnormcdf a)* (eps'/5) + eps' in
+  --let eps = a* 0.05 + 0.00075 in 
+  let eps = eps'
+  let (b, g'') = random g' :: (Double, g) in
+  --let steps = (floor (11*b) - 6)*1 + steps' in
+  --let steps = floor (41*b) + 10 in 
+  let steps = steps'
+  let p = randomTree g'' in 
+  let p' = fmap (gradientStepP 0.5 eps dU_dq) (dualizeTree p) in -- p_k - 1/2 epsilon grad log pi (q_k)
+  let (q_prop, p'') = simpleLeapfrog eps steps m (dualizeTree q) p' in
+  let (_,N w' dU_dq') = runMeas m q_prop in
+  -- let p_prop = fmap (\(N x xd) -> (N -x xd)) (fmap (gradientStepP 0.5 eps dU_dq') p'') in
+  let p_prop = (fmap (gradientStepP 0.5 eps dU_dq') p'') in
+  -- let p_prop' = fmap (\(N x xd) -> (N -x xd)) p_prop in 
+  -- Calculate log MH ratio
+  -- Find the union of the sites with non-zero gradient.
+  -- let sites = trace (show (M.keys dU_dq) ++ "proposed:" ++ show (M.keys dU_dq')) (merge (M.keys dU_dq) (M.keys dU_dq')) in
+  let sites = merge (M.keys dU_dq) (M.keys dU_dq') in
+  -- Find the log ratio for p as the sum of squares.
+  -- It's ok to ignore dimensions where both gradients are zero. 
+  --let plogratio = trace ("initial: " ++ show (map (lookupTree p) (M.keys dU_dq)) ++ "proposed: " ++ show (map primal (map (lookupTree p_prop) (M.keys dU_dq')))) (Prelude.sum [(lookupTree p i)^2| i <- sites] - Prelude.sum [(primal (lookupTree p_prop i))^2 | i <- sites]) in
+  let plogratio = Prelude.sum [(lookupTree p i)^2| i <- sites] - Prelude.sum [(primal (lookupTree p_prop i))^2 | i <- sites] in
+  (w' - w + plogratio/2, fmap primal q_prop) 
+  --trace ("initial w:"++show w ++ " proposed w " ++ show w' ++ " pdiff: " ++ show (plogratio/2)++" log ratio: "++ show (w' - w + plogratio/2) ++ " ratio "++ show (exp (w' - w + plogratio/2))) (w' - w + plogratio/2, fmap primal q_prop)
+
+
+
+-- updateQP :: (Floating a, Ord a, Show a) => (a -> a) -> a -> (a, a) -> (a, a)
+-- updateQP dV_dq eps (q, p) = let
+--         p_half = p - eps/2 * (dV_dq q) -- half step
+--         q' = q + eps * p_half -- full step
+--         p' = p_half - eps/2 * (dV_dq q') -- finish half step
+--     in (q', p')
 
 -- simpleLeapfrog :: (Floating a, Ord a, Show a) => (a -> a) -> (LFConfig a) -> (a, a) -> (a, a)
 -- simpleLeapfrog dV_dq (LFConfig eps steps selected) (q, p) = let
