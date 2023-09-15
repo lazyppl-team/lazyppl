@@ -83,7 +83,7 @@ instance Applicative (Prob d) where {pure = return ; (<*>) = ap}
 {- | An unnormalized measure is represented by a probability distribution over pairs of a weight and a result 
      In contrast to original LazyPPL, we use a log weight here, rather than using log numbers.
 -}
-newtype Meas d a = Meas {unMeas :: (WriterT (Sum d) (Prob d) a) }
+newtype Meas d a = Meas {unMeas :: WriterT (Sum d) (Prob d) a }
   deriving(Functor, Applicative, Monad)
 
 {- | The two key methods for Meas are sample (from a probability) and score (aka factor, weight) -}
@@ -158,7 +158,7 @@ test p =
   do newStdGen
      g <- getStdGen
      let rs = dualizeTree (randomTree g)
-     let r = (runProb (runWriterT (unMeas p)) rs)
+     let r = runProb (runWriterT (unMeas p)) rs
      print r
      
 -- -------------------------------------------------------------------------------
@@ -186,7 +186,7 @@ iiduniform = do
 minExampleNonParam :: (Floating d , Erf d) => Meas d d
 minExampleNonParam = do
   a <- sample uniform
-  steps <- sample $ (map (a *)) <$> iiduniform
+  steps <- sample $ map (a *) <$> iiduniform
   let xs = scanl1 (+) steps
   let d10 = xs !! 10
   score d10 
@@ -211,8 +211,8 @@ gradientOptimize op alpha p =
      return $ go rs
   where
     go rs =
-       let (result,score) = (runProb (runWriterT (unMeas p)) rs) in
-       (result,getSum score) : (go $ fmap (learn $ tangent $ getSum score) rs)
+       let (result,score) = runProb (runWriterT (unMeas p)) rs in
+       (result,getSum score) : go $ fmap (learn $ tangent $ getSum score) rs
 
     learn dr (N x dx) = N (op x (alpha * M.findWithDefault 0 key dr)) dx
       where key = head (M.keys dx)
@@ -273,7 +273,7 @@ mh k m = do
     -- let (samples,_) = trace ("initialW:"++ show w ++ "lengthInitialTrace" ++ show (length (M.keys dw))) (runState (iterateM step t) g2)
     let (samples,_) = runState (iterateM step t) g2
     -- The stream of seeds is used to produce a stream of result/weight pairs.
-    return $ map fst $ map (runMeas m) $ map dualizeTree samples
+    return $ map (fst . runMeas m . dualizeTree) samples
     {- NB There are three kinds of randomness in the step function.
     1. The start tree 't', which is the source of randomness for simulating the
     program m to start with. This is sort-of the point in the "state space".
@@ -289,7 +289,7 @@ mh k m = do
             let (logratio,t') = k g1 m t
             let (r, g2') = random g2
             put g2'
-            if r < min 1 (exp $ logratio) -- (trace ("-- Ratio: " ++ show logratio) (exp $ logratio))
+            if r < min 1 (exp logratio) -- (trace ("-- Ratio: " ++ show logratio) (exp $ logratio))
               then return t' -- trace ("---- Weight: " ++ show w') w')
               else return t -- trace ("---- Weight: " ++ show w) w)
 
@@ -316,7 +316,7 @@ lmhKernel p g m t =
 mutateTreeGRW :: forall g a. RandomGen g => Double -> g -> Meas (Nagata Integer Double) a -> Tree Double -> Tree Double
 mutateTreeGRW sigma g m (Tree a ts) =
   let (a',g') = (random g :: (Double,g)) in
-  Tree (a + sigma * (invnormcdf a')) (mutateTreesGRW sigma g' m ts)
+  Tree (a + sigma * invnormcdf a') (mutateTreesGRW sigma g' m ts)
 
 mutateTreesGRW :: RandomGen g => Double -> g ->  Meas (Nagata Integer Double) a -> [Tree Double] -> [Tree Double]
 mutateTreesGRW sigma g m (t:ts) = let (g1,g2) = split g in mutateTreeGRW sigma g1 m t : mutateTreesGRW sigma g2 m ts
@@ -358,7 +358,7 @@ malaKernel tau g m t =
   let sites = merge (M.keys dw) (M.keys dw') in
   -- Find the log ratio as the sum of squares.
   -- It's ok to ignore dimensions where both gradients are zero. 
-  let qlogratio = (1/(4*tau))* (Prelude.sum [(lookupTree t i - primal (lookupTree t' i) - tau * (M.findWithDefault 0 i dw'))^2 | i <- sites] - Prelude.sum [(primal (lookupTree t' i)  - lookupTree t i  - tau * (M.findWithDefault 0 i dw))^2 | i <- sites]) in
+  let qlogratio = (1/(4*tau))* (Prelude.sum [(lookupTree t i - primal (lookupTree t' i) - tau * M.findWithDefault 0 i dw')^2 | i <- sites] - Prelude.sum [(primal (lookupTree t' i)  - lookupTree t i  - tau * M.findWithDefault 0 i dw)^2 | i <- sites]) in
   (w' - w - qlogratio , fmap primal t') 
   where 
     gradientStep dr (N x dx) = N (x + (tau * M.findWithDefault 0 key dr)) dx
@@ -372,7 +372,7 @@ simpleLeapfrog eps steps m q p = let
         q' = gradientStepQ eps p q
         (_,N w dU_dq) = runMeas m q
         p' = fmap (gradientStepP 1 eps dU_dq) p
-    in if (steps == 1) then (q', p) else (simpleLeapfrog eps (steps-1) m q' p')
+    in if steps == 1 then (q', p) else simpleLeapfrog eps (steps-1) m q' p'
 
 gradientStepQ :: Double -> Tree (Nagata Integer Double) -> Tree (Nagata Integer Double) -> Tree (Nagata Integer Double)
 gradientStepQ eps (Tree x xs) (Tree y ys)= let
@@ -380,7 +380,7 @@ gradientStepQ eps (Tree x xs) (Tree y ys)= let
         (N q dq) = y
         q' = q + eps*p
         ts = zipWith (gradientStepQ eps) xs ys
-      in (Tree (N q' dq) ts)
+      in Tree (N q' dq) ts
 
 gradientStepP :: Double -> Double -> M.Map Integer Double -> Nagata Integer Double -> Nagata Integer Double
 gradientStepP a eps dr (N x dx) = N (x + a * (eps * M.findWithDefault 0 key dr)) dx
@@ -400,17 +400,17 @@ hmcKernel lfc g m q =
   let (a, g') = random g :: (Double, g) in
   --let eps = (invnormcdf a)* (eps'/5) + eps' in
   --let eps = a* 0.05 + 0.00075 in 
-  let eps = eps'
+  let eps = eps' in
   let (b, g'') = random g' :: (Double, g) in
   --let steps = (floor (11*b) - 6)*1 + steps' in
   --let steps = floor (41*b) + 10 in 
-  let steps = steps'
+  let steps = steps' in
   let p = randomTree g'' in 
   let p' = fmap (gradientStepP 0.5 eps dU_dq) (dualizeTree p) in -- p_k - 1/2 epsilon grad log pi (q_k)
   let (q_prop, p'') = simpleLeapfrog eps steps m (dualizeTree q) p' in
   let (_,N w' dU_dq') = runMeas m q_prop in
   -- let p_prop = fmap (\(N x xd) -> (N -x xd)) (fmap (gradientStepP 0.5 eps dU_dq') p'') in
-  let p_prop = (fmap (gradientStepP 0.5 eps dU_dq') p'') in
+  let p_prop = fmap (gradientStepP 0.5 eps dU_dq') p'' in
   -- let p_prop' = fmap (\(N x xd) -> (N -x xd)) p_prop in 
   -- Calculate log MH ratio
   -- Find the union of the sites with non-zero gradient.
@@ -419,7 +419,7 @@ hmcKernel lfc g m q =
   -- Find the log ratio for p as the sum of squares.
   -- It's ok to ignore dimensions where both gradients are zero. 
   --let plogratio = trace ("initial: " ++ show (map (lookupTree p) (M.keys dU_dq)) ++ "proposed: " ++ show (map primal (map (lookupTree p_prop) (M.keys dU_dq')))) (Prelude.sum [(lookupTree p i)^2| i <- sites] - Prelude.sum [(primal (lookupTree p_prop i))^2 | i <- sites]) in
-  let plogratio = Prelude.sum [(lookupTree p i)^2| i <- sites] - Prelude.sum [(primal (lookupTree p_prop i))^2 | i <- sites] in
+  let plogratio = Prelude.sum [lookupTree p i ^2| i <- sites] - Prelude.sum [primal (lookupTree p_prop i) ^2 | i <- sites] in
   (w' - w + plogratio/2, fmap primal q_prop) 
   --trace ("initial w:"++show w ++ " proposed w " ++ show w' ++ " pdiff: " ++ show (plogratio/2)++" log ratio: "++ show (w' - w + plogratio/2) ++ " ratio "++ show (exp (w' - w + plogratio/2))) (w' - w + plogratio/2, fmap primal q_prop)
 
