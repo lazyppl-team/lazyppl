@@ -9,7 +9,7 @@ cd src
 convert_file() {
     # remove .lhs extension if it exists
     filename=${1%.lhs}
-    pandoc -f markdown+lhs -s "$filename.lhs" -t html -o "../website/${filename}.html" --template=../pandoc/lazyppltemplate.html
+    pandoc -f markdown+lhs -s "$filename.lhs" -t html -o "../website/${filename}.html" --template=../pandoc/lazyppltemplate.html --mathjax --highlight-style tango 
     
     # make sure index.html is in lowercase:
     if [ "$filename" == "Index" ]; then
