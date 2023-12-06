@@ -103,7 +103,7 @@ findMaxLower d (x:xs) = let y = findMaxLower d xs in
 
 We can apply the splice function `Prob (Double -> Double) -> Prob (Double -> Double)`
 from [the linear regression example](RegressionDemo.html)
-to the Wiener process, to get a jump process. 
+to the Wiener process, to get a jump diffusion process. 
 
 <details class="code-details">
 <summary>Recalling splice function and Poisson point process</summary>
