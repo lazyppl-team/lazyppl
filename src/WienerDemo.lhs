@@ -101,9 +101,8 @@ findMaxLower d (x:xs) = let y = findMaxLower d xs in
 \end{code}
 </details>
 
-We can apply the splice function `Prob (Double -> Double) -> Prob (Double -> Double)`
-from [the linear regression example](RegressionDemo.html)
-to the Wiener process, to get a jump diffusion process. 
+Recall the splice function `splice :: Prob [Double] -> Prob (Double -> Double) -> Prob (Double -> Double)` from [the linear regression example](RegressionDemo.html), which pieces together draws from a random function using a point process.
+We can immediately apply this to the Wiener process, to get a jump diffusion process.
 
 <details class="code-details">
 <summary>Recalling splice function and Poisson point process</summary>
