@@ -100,6 +100,62 @@ findMaxLower d (x:xs) = let y = findMaxLower d xs in
                                           if x > m && x < d then Just x else Just m 
 \end{code}
 </details>
+
+We can apply the splice function `Prob (Double -> Double) -> Prob (Double -> Double)`
+from [the linear regression example](Regression.html)
+to the Wiener process, to get a jump process. 
+
+<details class="code-details">
+<summary>Recalling splice function and Poisson point process</summary>
+\begin{code}
+splice :: Prob [Double] -> Prob (Double -> Double) -> Prob (Double -> Double)
+splice pointProcess randomFun =
+  do
+    xs <- pointProcess
+    fs <- mapM (const randomFun) xs
+    default_f <- randomFun
+    let h :: [(Double, Double -> Double)] -> Double -> Double
+        h [] x = default_f x
+        h ((a, f) : xfs) x | x <= a = f x
+        h ((a, f) : xfs) x | x > a = h xfs x
+    return (h (zip xs fs))
+
+poissonPP :: Double -> Double -> Prob [Double]
+poissonPP lower rate =
+  do
+    step <- exponential rate
+    let x = lower + step
+    xs <- poissonPP x rate
+    return (x : xs)
+
+regress :: Double -> Prob (a -> Double) -> [(a, Double)] -> Meas (a -> Double)
+regress sigma prior dataset =
+  do
+    f <- sample prior
+    forM_ dataset (\(x, y) -> score $ normalPdf (f x) sigma y)
+    return f
+\end{code}
+</details>
+We use a slightly different dataset to illustrate this.
+\begin{code}
+datasetB :: [(Double, Double)]
+datasetB = [(0,0.6), (1, 0.7), (2,8.2), (3,9.1), (4,3.2), (5,4.9), (6,2.9)]
+
+jump :: Prob (Double -> Double)
+jump = let p = do f <- wiener
+                  a <- normal 0 3
+                  return $ \x -> a + f x
+       in splice (poissonPP 0 0.2) p
+
+plotJump =
+  do
+    fws <- mhirreducible 0.2 0.1 (regress 0.3 jump datasetB)
+    let xys = map (\f -> map (\x -> (x,f x)) [0,0.02..6]) $ map fst $ take 100 $ every 1000 $ drop 300000 $ fws
+    plotCoords "images/wiener-jump-reg.svg" datasetB xys (-2) 10 0.1
+\end{code}
+![](images/wiener-jump-reg.svg)
+
+
 <details class="code-details">
 <summary>Graphing routines</summary>
 \begin{code}
@@ -112,6 +168,6 @@ plotCoords filename dataset xyss ymin ymax alpha =
     
 
 main :: IO ()
-main = do { plotWienerPrior ; plotWienerRegression } 
+main = do { plotWienerPrior ; plotWienerRegression ; plotJump } 
 \end{code}
 </details>
