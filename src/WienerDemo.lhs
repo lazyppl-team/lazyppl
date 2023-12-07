@@ -149,6 +149,7 @@ jump = let p = do f <- wiener
        in splice (poissonPP 0 0.2) p
 \end{code}
 Here are six samples from this distribution.
+
 ![](images/wiener-jump-prior.svg)
 <details class="code-details">
 <summary>(Plotting code)</summary>
