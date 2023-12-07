@@ -101,7 +101,12 @@ findMaxLower d (x:xs) = let y = findMaxLower d xs in
 \end{code}
 </details>
 
-Recall the splice function `splice :: Prob [Double] -> Prob (Double -> Double) -> Prob (Double -> Double)` from [the linear regression example](RegressionDemo.html), which pieces together draws from a random function using a point process.
+
+Jump diffusion compositionally {#jump}
+-----
+
+
+Recall the splice function `splice :: Prob [Double] -> Prob (Double -> Double) -> Prob (Double -> Double)` from [the linear regression example](RegressionDemo.html#piecewiseLinearRegression), which pieces together draws from a random function using a point process.
 We can immediately apply this to the Wiener process, to get a jump diffusion process.
 
 <details class="code-details">
@@ -135,18 +140,33 @@ regress sigma prior dataset =
     return f
 \end{code}
 </details>
-We use a slightly different dataset to illustrate this.
-\begin{code}
-datasetB :: [(Double, Double)]
-datasetB = [(0,0.6), (1, 0.7), (2,8.2), (3,9.1), (4,3.2), (5,4.9), (6,2.9)]
 
+\begin{code}
 jump :: Prob (Double -> Double)
 jump = let p = do f <- wiener
                   a <- normal 0 3
                   return $ \x -> a + f x
        in splice (poissonPP 0 0.2) p
+\end{code}
+Here are six samples from this distribution.
+![](images/wiener-jump-prior.svg)
+<details class="code-details">
+<summary>(Plotting code)</summary>
+\begin{code}
+plotJumpPrior =
+  do
+    fws <- mh 1 $ sample jump
+    let xys = map (\f -> map (\x -> (x,f x)) [0,0.02..6]) $ map fst $ take 6 $ fws
+    plotCoords "images/wiener-jump-prior.svg" [] xys (-7) 7 1
+\end{code}
+</details>
 
-plotJump =
+We use a slightly different dataset to illustrate regression with this.
+\begin{code}
+datasetB :: [(Double, Double)]
+datasetB = [(0,0.6), (1, 0.7), (2,8.2), (3,9.1), (4,3.2), (5,4.9), (6,2.9)]
+
+plotJumpRegression =
   do
     fws <- mhirreducible 0.2 0.1 (regress 0.3 jump datasetB)
     let xys = map (\f -> map (\x -> (x,f x)) [0,0.02..6]) $ map fst $ take 100 $ every 1000 $ drop 300000 $ fws
@@ -167,6 +187,6 @@ plotCoords filename dataset xyss ymin ymax alpha =
     
 
 main :: IO ()
-main = do { plotWienerPrior ; plotWienerRegression ; plotJump } 
+main = do { plotWienerPrior ; plotWienerRegression ; plotJumpPrior ; plotJumpRegression } 
 \end{code}
 </details>
