@@ -4,6 +4,7 @@ module MondrianExample where
 import Distr
 import Distr.Mondrian
 import LazyPPL
+import Helpers
 import Graphics.Matplotlib
 import Data.Map (Map,empty,lookup,insert,size,keys,findWithDefault,fromList,(!))
 import qualified Data.List

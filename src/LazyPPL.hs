@@ -7,26 +7,10 @@ import Control.Monad.Trans.Writer
 import Control.Monad.Trans.Class
 import Data.Monoid
 import System.Random hiding (uniform)
-import qualified System.Random as R
 import Control.Monad
 import Control.Monad.Extra
 import Control.Monad.State.Lazy (State, state , put, get, runState)
 import Numeric.Log
-
-import Control.DeepSeq
-import Control.Exception (evaluate)
-
-import System.IO.Unsafe
-
-import GHC.Exts.Heap
-import System.Mem
-import Unsafe.Coerce
-import Data.Maybe
-
-import qualified Data.Map as M
-import qualified Data.List as L (lookup)
-
-import Debug.Trace
 
 {- | This file defines
     1. Two monads: 'Prob' (for probabilities) and 'Meas' (for unnormalized probabilities)
@@ -56,7 +40,7 @@ uniform :: Prob Double
 uniform = Prob $ \(Tree r _) -> r
 
 
--- | Probabilities for a monad.
+-- | Probabilities form a monad.
 -- | Sequencing is done by splitting the tree
 -- | and using different bits for different computations.
 instance Monad Prob where
@@ -73,6 +57,9 @@ newtype Meas a = Meas (WriterT (Product (Log Double)) Prob a)
   deriving(Functor, Applicative, Monad)
 
 {- | The two key methods for Meas are sample (from a probability) and score (aka factor, weight) -}
+sample :: Prob a -> Meas a
+sample p = Meas $ lift p
+
 score :: Double -> Meas ()
 score r = Meas $ tell $ Product $ (Exp . log) (if r==0 then exp(-300) else r)
 
@@ -82,8 +69,6 @@ scoreLog r = Meas $ tell $ Product r
 scoreProductLog :: Product (Log Double) -> Meas ()
 scoreProductLog r = Meas $ tell r
 
-sample :: Prob a -> Meas a
-sample p = Meas $ lift p
 
 {- | Preliminaries for the simulation methods. Generate a tree with uniform random labels
     This uses 'split' to split a random seed -}
@@ -122,9 +107,8 @@ lwis n m = do
   g <- getStdGen
   let rs = (randoms g :: [Double])
   return $ map (\r -> fst $ head $ filter (\(x, w) -> w >= Exp (log r) * max) xws') rs
-
-accumulate ((x, w) : xws) a = (x, w + a) : (x, w + a) : accumulate xws (w + a)
-accumulate [] a = []
+  where accumulate ((x, w) : xws) a = (x, w + a) : (x, w + a) : accumulate xws (w + a)
+        accumulate [] a = []
 
 {-- | __Metropolis-Hastings__ (MH): Produce a stream of samples, using Metropolis Hastings
     We use 'mutatetree p' to propose different distributions.
@@ -254,201 +238,9 @@ mhirreducible p q (Meas m) = do
 
 
 
-{-- | Single-site Metropolis-Hastings --}
-
--- | A partial tree, used for examining finite evaluated subtrees of the working infinite
--- | random tree.
-data PTree = PTree (Maybe Double) [Maybe PTree] deriving Show
-
-type Site = [Int]
-type Subst = M.Map Site Double
-
-getSites :: PTree -> [Site]
-getSites p = getSites' p []
-
-getSites' :: PTree -> Site  -> [Site]
-getSites' (PTree (Just v) ts) site = site : concat [ getSites' t (n:site)  | (n, Just t) <- zip [0..] ts ]
-getSites' (PTree Nothing  ts) site = concat [ getSites' t (n:site) | (n, Just t) <- zip [0..] ts ]
-
-mutateNode :: Tree -> Site -> Double -> Tree
-mutateNode (Tree _ ts) []     d = Tree d ts
-mutateNode (Tree v ts) (n:ns) d = Tree v $ take n ts ++ mutateNode (ts!!n) ns d : drop (n+1) ts
-
-mutateNodes :: Tree -> Subst -> Tree
-mutateNodes = M.foldrWithKey (\k d t -> mutateNode t k d)
-
-randomElement :: RandomGen g => g -> [a] -> (g, a)
-randomElement g xs = if null xs then error "0d sample space" else (g', xs !! n)
-  where (n, g') = uniformR (0, length xs - 1) g
-               -- ^^^^^^^^ 
-               -- Depending on the version of `random` this can be either uniformR or randomR.
-
-mh1 :: forall a. NFData a => Meas a -> IO [(a, Product (Log Double))]
-mh1 (Meas m) = do
-    newStdGen
-    g <- getStdGen
-    let (gTree,g') = split g
-        tree = randomTree gTree
-        (x0, w0) = runProb (runWriterT m) tree
-        p = unsafePerformIO $ do { evaluate (rnf x0); evaluate (rnf w0) ; trunc tree }
-        samples = map (\(_,_,_,_,s) -> s) $ iterate step (gTree, g', M.empty, p, (x0, w0))
-    return samples
-  where step :: RandomGen g => (g, g, Subst, PTree, (a, Product (Log Double))) -> (g, g, Subst, PTree, (a, Product (Log Double)))
-        step (treeSeed, seed, sub, ptree, (x,w)) =
-            let (seed1, seed2) = split seed
-                sites = getSites ptree
-                (seed1', randSite) = (\(x,y) -> (x, reverse y)) $ randomElement seed1 sites
-                (newNode :: Double, seed1'') = random seed1'
-                (u :: Double, _) = random seed1'' 
-                sub' = M.insert randSite newNode sub
-                t' = mutateNodes (randomTree treeSeed) sub'
-                (x',w') = runProb (runWriterT m) t'
-                ptree' = unsafePerformIO $ do { evaluate (rnf x'); evaluate (rnf w'); trunc t' }
-                sites' = getSites ptree'
-                alpha = fromIntegral (length sites) / fromIntegral (length sites')
-                      * exp (ln (getProduct w' / getProduct w))
-            in if u <= alpha
-              then (treeSeed, seed2, sub', ptree', (x',w'))
-              else (treeSeed, seed2, sub,  ptree,  (x,w))
-
--- Functions for truncating a tree.
-getGCClosureData b = do c <- getBoxedClosureData b
-                        case c of
-                          BlackholeClosure _ n -> getGCClosureData n
-                          -- SelectorClosure _ n -> getGCClosureData n
-                          _ -> return c
-
-helperT :: Box -> IO PTree
-helperT b = do
-  c <- getGCClosureData b
-  case c of
-    ConstrClosure _ [n,l] [] _ _ "Tree" ->
-      do  n' <- getGCClosureData n
-          l' <- getGCClosureData l
-          -- performGC
-          case (n',l') of
-            (ConstrClosure {dataArgs = [d], name = "D#"}, ConstrClosure {name = ":"}) ->
-              do  l'' <- helperB l
-                  return $ PTree (Just $ unsafeCoerce d) l''
-            (ThunkClosure {}, ConstrClosure {name = ":"}) ->
-              do  l'' <- helperB l
-                  return $ PTree Nothing l''
-            (ConstrClosure {dataArgs = [d], name = "D#"}, ThunkClosure {}) ->
-                  return $ PTree (Just $ unsafeCoerce d) []
-            (SelectorClosure {}, ThunkClosure {}) ->
-              return $ PTree Nothing []
-            (SelectorClosure {}, ConstrClosure {name = ":"}) ->
-              do  l'' <- helperB l
-                  return $ PTree Nothing l''
-            _ -> return $ error $ "Missing case:\n" ++ show n' ++ "\n" ++ show l'
-    ThunkClosure {} -> return $ PTree Nothing []
-
-helperB :: Box -> IO [Maybe PTree]
-helperB b = do
-  c <- getGCClosureData b
-  case c of
-    ConstrClosure _ [n,l] [] _ _ ":" ->
-      do  n' <- getGCClosureData n
-          l' <- getGCClosureData l
-          case (n',l') of
-            (ConstrClosure {name = "Tree"}, ConstrClosure {name = ":"}) ->
-              do  n'' <- helperT n
-                  l'' <- helperB l
-                  return $ Just n'' : l''
-            (ConstrClosure {name = "Tree"}, ThunkClosure {}) ->
-              do  n'' <- helperT n
-                  return [Just n'']
-            (ThunkClosure {}, ConstrClosure {name = ":"}) ->
-              do  l'' <- helperB l
-                  return $ Nothing : l''
-            (ThunkClosure {}, ThunkClosure {}) ->
-              return [] -- alternatively, Nothing : []
-            _ -> return $ error $ "Missing case:\n" ++ show n' ++ "\n" ++ show l'
-    ThunkClosure {} -> return []
-
-trunc :: Tree -> IO PTree
-trunc t = helperT $ asBox t
-
-{-- | Useful function which thins out a list. --}
+-- | Useful function which thins out a list. --
 every :: Int -> [a] -> [a]
 every n xs = case drop (n -1) xs of
   (y : ys) -> y : every n ys
   [] -> []
-
-iterateNM :: Int -> (a -> IO a) -> a -> IO [a]
-iterateNM 0 f a = return []
-iterateNM n f a = do
-  a' <- f a
-  as <- iterateNM (n -1) f a'
-  return $ a : as
-
--- | Take eagerly from a list and print the current progress. 
-takeWithProgress :: Int -> [a] -> IO [a]
-takeWithProgress n = helper n n
-  where
-    helper :: Int -> Int -> [a] -> IO [a]
-    helper _ i _ | i <= 0 = return []
-    helper _ _ []        = return []
-    helper n i ((!x):xs)    = do
-      putStrLn $ "Progress: " ++ show (fromIntegral (100*(n-i)) / fromIntegral n) ++ "%"
-      xs' <- helper n (i-1) xs
-      return $ x : xs'
-
--- | Take as eagerly as possible from a list of tuples and print the current progress. 
-hardTakeWithProgress :: NFData a => Int -> [a] -> IO [a]
-hardTakeWithProgress n = helper n n
-  where
-    helper :: NFData a =>  Int -> Int -> [a] -> IO [a]
-    helper _ i _ | i <= 0 = return []
-    helper _ _ []        = return []
-    helper n i (x:xs)    = do
-      putStrLn $ x `deepseq` ("Progress: " ++ show (fromIntegral (100*(n-i)) / fromIntegral n) ++ "%")
-      xs' <- helper n (i-1) xs
-      return $ x : xs'
-
-takeEager :: Int -> [a] -> [a]
-takeEager n = helper n n
-  where
-    helper :: Int -> Int -> [a] -> [a]
-    helper _ i _ | i <= 0 = []
-    helper _ _ []        = []
-    helper n i ((!x):xs) = x : helper n (i-1) xs
-
-takeEveryDrop :: Int -> Int -> Int -> [a] -> [a]
-takeEveryDrop nTake nEvery nDrop stream = 
-  take nTake $ every nEvery $ drop nDrop stream
-
-takeEagerEveryDrop :: Int -> Int -> Int -> [a] -> [a]
-takeEagerEveryDrop nTake nEvery nDrop stream = 
-  takeEager nTake $ every nEvery $ drop nDrop stream
-
-takeProgressEveryDrop :: Int -> Int -> Int -> [a] -> IO [a]
-takeProgressEveryDrop nTake nEvery nDrop stream = 
-  takeWithProgress nTake $ every nEvery $ drop nDrop stream
-
-maxWeightElement :: Ord w => [(a, w)] -> a
-maxWeightElement aws =
-  let maxw = maximum $ map snd aws
-      (Just a) = L.lookup maxw $ map (\(a, w) -> (w, a)) aws in
-  a
-
-maxWeightPair :: Ord w => [(a, w)] -> (a, w)
-maxWeightPair aws =
-  let maxw = maximum $ map snd aws
-      (Just a) = L.lookup maxw $ map (\(a, w) -> (w, a)) aws in
-  (a, maxw)
-
--- | An example probability distribution.
-exampleProb :: Prob Double
-exampleProb = do
-  choice <- uniform
-  w <- uniform
-  x <- uniform
-  y <- uniform
-  z <- uniform
-  case floor (choice * 4.0) of
-    0 -> return w
-    1 -> return x
-    2 -> return y
-    3 -> return z
 

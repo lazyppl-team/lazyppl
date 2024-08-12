@@ -20,6 +20,7 @@ import Distr
 import Distr.DirichletP
 import Distr.Memoization
 import LazyPPL
+import SingleSite
 import Numeric.Log
 import Graphics.Matplotlib hiding (density)
 

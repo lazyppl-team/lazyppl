@@ -7,14 +7,6 @@ import Statistics.Distribution.Beta (betaDistr)
 import Statistics.Distribution.Gamma (gammaDistr)
 import qualified Statistics.Distribution.Poisson as Poisson
 import Data.List
-import Data.Map (empty,lookup,insert,size,keys)
-import Data.IORef
-import Control.Monad
-import Control.Monad.Extra
-import System.IO.Unsafe
-import Control.Monad.State.Lazy (State, state , put, get, runState)
-import Debug.Trace
-
 
 normal :: Double -> Double -> Prob Double
 normal m s = do 
