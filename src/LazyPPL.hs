@@ -1,6 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, 
-    ScopedTypeVariables,
-    RankNTypes, BangPatterns #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, ScopedTypeVariables #-}
 module LazyPPL where
 
 import Control.Monad.Trans.Writer
@@ -32,10 +30,10 @@ newtype Prob a = Prob (Tree -> a)
 
 -- | Two key things to do with trees:
 -- | Split tree splits a tree in two (bijectively)
--- | Get the label at the head of the tree and discard the rest
 splitTree :: Tree -> (Tree , Tree)
 splitTree (Tree r (t : ts)) = (t , Tree r ts)
 
+-- | Get the label at the head of the tree and discard the rest
 uniform :: Prob Double
 uniform = Prob $ \(Tree r _) -> r
 

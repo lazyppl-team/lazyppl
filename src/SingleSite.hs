@@ -1,7 +1,6 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, 
-    ScopedTypeVariables,
-    RankNTypes, BangPatterns #-}
-module SingleSite where
+{-# LANGUAGE ScopedTypeVariables
+ #-}
+module SingleSite (mh1) where
 
 import LazyPPL
 import Control.Monad.Trans.Writer
