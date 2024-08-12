@@ -8,6 +8,7 @@ title: Wiener process regression in LazyPPL
 module WienerDemo where
 import LazyPPL
 import Distr
+import Distr.GP (wiener)
 
 import Data.List
 import Data.Map (empty,lookup,insert,size,keys)
@@ -60,46 +61,6 @@ plotWienerRegression =
     plotCoords "images/wiener-reg.svg" dataset xys (-2) 10 0.1
 \end{code}
 ![](images/wiener-reg.svg)
-
-The Wiener function itself is defined by using a Brownian bridge and a hidden memo table.
-Although it uses hidden state, it is still safe, i.e. statistically commutative and discardable. 
-<details class="code-details">
-<summary>Definition of Wiener function</summary>
-\begin{code}
-wiener :: Prob (Double -> Double)
-wiener = Prob $ \(Tree r gs) ->
-                   unsafePerformIO $ do
-                                 ref <- newIORef Data.Map.empty
-                                 modifyIORef' ref (Data.Map.insert 0 0)
-                                 return $ \x -> unsafePerformIO $ do
-                                        table <- readIORef ref
-                                        case Data.Map.lookup x table of
-                                             Just y -> do {return y}
-                                             Nothing -> do let lower = do {l <- findMaxLower x (keys table) ;
-                                                                           v <- Data.Map.lookup l table ; return (l,v) }
-                                                           let upper = do {u <- find (> x) (keys table) ;
-                                                                           v <- Data.Map.lookup u table ; return (u,v) }
-                                                           let m = bridge lower x upper
-                                                           let y = runProb m (gs !! (1 + size table))
-                                                           modifyIORef' ref (Data.Map.insert x y)
-                                                           return y
-
-bridge :: Maybe (Double,Double) -> Double -> Maybe (Double,Double) -> Prob Double
--- not needed since the table is always initialized with (0, 0)
--- bridge Nothing y Nothing = if y==0 then return 0 else normal 0 (sqrt y) 
-bridge (Just (x,x')) y Nothing = normal x' (sqrt (y-x))
-bridge Nothing y (Just (z,z')) = normal z' (sqrt (z-y))
-bridge (Just (x,x')) y (Just (z,z')) = normal (x' + ((y-x)*(z'-x')/(z-x))) (sqrt ((z-y)*(y-x)/(z-x)))
-
-findMaxLower :: Double -> [Double] -> Maybe Double 
-findMaxLower d [] = Nothing
-findMaxLower d (x:xs) = let y = findMaxLower d xs in
-                       case y of 
-                           Nothing -> if x < d then Just x else Nothing 
-                           Just m -> do 
-                                          if x > m && x < d then Just x else Just m 
-\end{code}
-</details>
 
 
 Jump diffusion compositionally {#jump}

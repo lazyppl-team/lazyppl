@@ -7,16 +7,9 @@ title: Gaussian process regression in LazyPPL
 \begin{code}
 module GaussianProcessDemo where
 import LazyPPL
-import Distr
-import Prelude hiding ((<>))
-import Data.List
-import Data.Map (empty,lookup,insert,size,keys,elems,Map)
-import Numeric.LinearAlgebra hiding (step,size)
-import Numeric.LinearAlgebra.Data hiding (step,size)
+import Distr (normal, normalPdf)
+import Distr.GP
 import Control.Monad
-import Data.IORef
-import System.IO.Unsafe
-import Debug.Trace
 import Graphics.Matplotlib hiding (density)
 \end{code}
 </details>
@@ -67,36 +60,6 @@ plotGPRegression =
 \end{code}
 ![](images/gp-reg.svg)
 
-The GP function itself is defined by using linear algebra and a hidden memo table.
-Although it uses hidden state, it is still safe, i.e. statistically commutative and discardable. 
-<details class="code-details">
-<summary>Definition of GP function</summary>
-\begin{code}
-step :: (Double -> Double -> Double) -> Data.Map.Map Double Double -> Double -> Double -> Double
-step cov table x seed =
-       let sig11 = cov x x 
-           sig12 = matrix (size table) [cov x b | b <-keys table] 
-           sig21 = matrix 1 [cov a x | a <-keys table] 
-           sig22 = matrix (size table) [cov a b | a <- keys table , b <-keys table] 
-           regCoeff = sig12 <> (pinvTol 1E8 sig22)
-           mu = (regCoeff <> (matrix 1 $ elems table)) `atIndex` (0,0)
-           var = sig11 - ((regCoeff <> sig21) `atIndex` (0,0)) in
-       mu + seed * (sqrt $ if var > -0.01 then (abs var) else trace (show var) $ abs var)
-
-gp :: (Double -> Double -> Double) -> Prob (Double -> Double)
-gp cov = do ns <- iid $ normal 0 1
-            return $ unsafePerformIO $ do
-                                 ref <- newIORef Data.Map.empty
-                                 modifyIORef' ref (Data.Map.insert 0 0)
-                                 return $ \x -> unsafePerformIO $ do
-                                        table <- readIORef ref
-                                        case Data.Map.lookup x table of
-                                             Just y -> do {return y}
-                                             Nothing -> do let y = step cov table x $ ns !! (1 + size table)
-                                                           modifyIORef' ref (Data.Map.insert x y)
-                                                           return y
-\end{code}
-</details>
 <details class="code-details">
 <summary>Graphing routines</summary>
 \begin{code}
