@@ -1,8 +1,14 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
--- module Distr.IBP (Restaurant,Dish,newCustomer,newRestaurant) where
-module Distr.IBP where
+{-|
+An implementation of the Indian buffet process by [Griffiths and Ghahramani](https://papers.nips.cc/paper_files/paper/2005/file/2ef35a8b78b572a47f56846acbeef5d3-Paper.pdf).
 
+We are using abstract types to hide the implementation details, inspired by [Exchangeable Random Processes and Data Abstraction](https://www.cs.ox.ac.uk/people/hongseok.yang/paper/pps17a.pdf). 
+
+Illustration: [Feature extraction example](https://lazyppl-team.github.io/AdditiveClusteringDemo.html). 
+-} 
+
+module Distr.IBP where
 
 import LazyPPL
 import Distr
@@ -11,18 +17,6 @@ import Distr.Memoization
 
 import Data.List
 
-{-- 
-An implementation of the indian buffet process. 
-Griffiths and Ghahramani. 
-Infinite latent feature models and the Indian buffet process. NeurIPS 2006.
-
-Using abstract types here:
-e.g. 
-S. Staton, H. Yang, N. L.. Ackerman, C. Freer, D. Roy. 
-Exchangeable random process and data abstraction. 
-Workshop on probabilistic programming semantics (PPS 2017).
-
---} 
 
  
 -- Some abstract types 

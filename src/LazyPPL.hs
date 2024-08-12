@@ -2,6 +2,8 @@
 
 {- | LazyPPL is a library for Bayesian probabilistic programming. It supports lazy use of probability, and we provide new Metropolis-Hastings simulation algorithms to allow this. Laziness appears to be a good paradigm for non-parametric statistics. 
 
+Reference: [Affine Monads and Lazy Structures for Bayesian Programming](https://arxiv.org/abs/2212.07250). POPL 2023.
+
 LazyPPL is inspired by recent ideas in synthetic probability theory and synthetic measure theory, such as [quasi-Borel spaces](https://ncatlab.org/nlab/show/quasi-Borel+space) and [Markov categories](https://ncatlab.org/nlab/show/Markov+category). LazyPPL is inspired by many other languages, including [Church](http://v1.probmods.org), [Anglican](https://probprog.github.io/anglican/), and [Monad-Bayes](https://hackage.haskell.org/package/monad-bayes). Monad-Bayes now includes a LazyPPL-inspired simulation algorithm.
 
 This module defines
@@ -26,7 +28,7 @@ This module defines
     import LazyPPL (Prob, Meas, uniform, sample, score, mh, every)
 @
 
-    We expose more of the structure for more experimental uses. 
+    Most of the structure here will not be needed in typical models. We expose more of the structure for more experimental uses. 
 
 
 -}
