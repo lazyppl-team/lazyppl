@@ -1,23 +1,53 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, ScopedTypeVariables #-}
 
-{- | This file defines
-    1. Two monads: `Prob` (for probability measures) and `Meas` (for unnormalized measures)
-    2. The inference methods produce samples from an unnormalized measure. We provide three inference methods: 
-       a. 'mh' (Metropolis-Hastings algorithm based on lazily mutating parts of the tree at random).
-       b. 'mhirreducible', which randomly restarts for a properly irreducible Metropolis-Hastings kernel.
-       c. 'lwis' (simple reference likelihood weighted importance sampling)
-    See also SingleSite for a separate single-site Metropolis-Hastings algorithm, akin to Wingate et al., via GHC.Exts.Heap and System.IO.Unsafe.)
+{- | LazyPPL is a library for Bayesian probabilistic programming. It supports lazy use of probability, and we provide new Metropolis-Hastings simulation algorithms to allow this. Laziness appears to be a good paradigm for non-parametric statistics. 
+
+LazyPPL is inspired by recent ideas in synthetic probability theory and synthetic measure theory, such as [quasi-Borel spaces](https://ncatlab.org/nlab/show/quasi-Borel+space) and [Markov categories](https://ncatlab.org/nlab/show/Markov+category). LazyPPL is inspired by many other languages, including [Church](http://v1.probmods.org), [Anglican](https://probprog.github.io/anglican/), and [Monad-Bayes](https://hackage.haskell.org/package/monad-bayes). Monad-Bayes now includes a LazyPPL-inspired simulation algorithm.
+
+This module defines
+
+    1. Two monads: `Prob` (for probability measures) and `Meas` (for unnormalized measures), with interface `uniform`, `sample`, `score`. 
+
+    2. Monte Carlo inference methods produce samples from an unnormalized measure. We provide three inference methods: 
+
+        a. 'mh' (Metropolis-Hastings algorithm based on lazily mutating parts of the tree at random).
+
+        b. 'mhirreducible', which randomly restarts for a properly irreducible Metropolis-Hastings kernel.
+
+        c. 'wis' (simple reference weighted importance sampling)
+
+        See also the SingleSite module for a separate single-site Metropolis-Hastings algorithm via GHC.Exts.Heap and System.IO.Unsafe.
+
+    3. Various useful helpful functions.
+
+    A typical usage would be
+
+@   
+    import LazyPPL (Prob, Meas, uniform, sample, score, mh, every)
+@
+
+    We expose more of the structure for more experimental uses. 
+
+
 -}
 
 module LazyPPL
-    ( -- * Types
-      Tree(Tree), Prob(Prob), runProb, Meas(Meas),
+    ( -- * Rose tree type
+      --
+      -- | Our source of randomness will be an infinitely wide and deep lazy [rose tree](https://en.wikipedia.org/wiki/Rose_tree), regarded as initialized with uniform [0,1] choices for each label.
+      Tree(Tree),
+      -- * Monads
+      Prob(Prob), Meas(Meas),
       -- * Basic interface
+      --
+      -- | There are three building blocks for measures: `uniform` for probability measures; `sample` and `score` for unnormalized measures. Combined with the monad structure, these give all s-finite measures.
       uniform, sample, score,
       -- * Monte Carlo simulation
-      weightedsamples, mh, mhirreducible, lwis, 
-      -- * Helper function
-      every) where
+      --
+      -- | The `Meas` type describes unnormalized measures. Monte Carlo simulation allows us to sample from an unnormalized measure. Our main Monte Carlo simulator is `mh`. 
+      mh, mhirreducible, weightedsamples, wis, 
+      -- * Useful functions
+      every, randomTree, runProb) where
 
 import Control.Monad.Trans.Writer
 import Control.Monad.Trans.Class
@@ -29,15 +59,18 @@ import Control.Monad.State.Lazy (State, state , put, get, runState)
 import Numeric.Log
 
 
--- | A 'Tree' is a lazy, infinitely wide and infinitely deep rose tree, labelled by Doubles
--- | Our source of randomness will be a Tree, populated by uniform [0,1] choices for each label.
--- | Often people would just use a list or stream instead of a tree.
--- | But a tree allows us to be lazy about how far we are going all the time.
+{- | A `Tree` here is a lazy, infinitely wide and infinitely deep rose tree, labelled by Doubles.
+-}
 data Tree = Tree Double [Tree]
+-- Often people would just use a list or stream instead of a tree.
+-- But a tree allows us to be lazy about how far we are going all the time.
 
--- | A probability distribution over a is 
--- | a function 'Tree -> a'
--- | The idea is that it uses up bits of the tree as it runs
+{- | A probability distribution over a is 
+a function @ Tree -> a @.
+
+We can think of this as the law of a random variable, indexed by the source of randomness, which is `Tree`. 
+
+According to the monad implementation, a program uses up bits of the tree as it runs. The tree being infinitely wide and deep allows for lazy computation.-}
 newtype Prob a = Prob (Tree -> a)
 
 -- | Split tree splits a tree in two (bijectively)
@@ -45,9 +78,10 @@ splitTree :: Tree -> (Tree , Tree)
 splitTree (Tree r (t : ts)) = (t , Tree r ts)
 
 
--- | Probabilities form a monad.
 -- | Sequencing is done by splitting the tree
--- | and using different bits for different computations.
+-- and using different bits for different computations.
+-- 
+-- This monad structure is strongly inspired by the probability monad of [quasi-Borel space](https://ncatlab.org/nlab/show/quasi-Borel+space#probability_distributions). 
 instance Monad Prob where
   return a = Prob $ const a
   (Prob m) >>= f = Prob $ \g ->
@@ -57,23 +91,25 @@ instance Monad Prob where
 instance Functor Prob where fmap = liftM
 instance Applicative Prob where {pure = return ; (<*>) = ap}
 
-{- | An unnormalized measure is represented by a probability distribution over pairs of a weight and a result -}
+{- | An unnormalized measure is represented by a probability distribution over pairs of a weight and a result. -}
 newtype Meas a = Meas (WriterT (Product (Log Double)) Prob a)
   deriving(Functor, Applicative, Monad)
 
--- | A uniform sample is a building block for probability distributions
+{- | A uniform sample is a building block for probability distributions.
+
+This is implemented by getting the label at the head of the tree and discarding the rest.-}
 uniform :: Prob Double
 uniform = Prob $ \(Tree r _) -> r
--- ^ Implemented by getting the label at the head of the tree and discard the rest
 
--- | The first way of building an unnormalized measure is sampling from a probability measure. 
+-- | Regard a probability measure as an unnormalized measure.
 sample :: Prob a -> Meas a
 sample p = Meas $ lift p
 
--- | The second way of building an unnormalized measure is scoring or weighting the measure by a positive real.
+{- | A one point measure with a given score (or weight, or mass, or likelihood), which should be a positive real number.
+
+A score of 0 describes impossibility. To avoid numeric issues, we encode it as @ exp(-300) @ instead.-}
 score :: Double -> Meas ()
 score r = Meas $ tell $ Product $ (Exp . log) (if r==0 then exp(-300) else r)
--- ^ score 0 is convenient, but to avoid numeric issues, we use exp(-300) instead.
 
 scoreLog :: Log Double -> Meas ()
 scoreLog r = Meas $ tell $ Product r
@@ -82,18 +118,21 @@ scoreProductLog :: Product (Log Double) -> Meas ()
 scoreProductLog r = Meas $ tell r
 
 
-{- | Preliminaries for the simulation methods. Generate a tree with uniform random labels
-    This uses 'split' to split a random seed -}
+{- | Generate a tree with uniform random labels.
+
+    This uses 'split' to split a random seed. -}
 randomTree :: RandomGen g => g -> Tree
 randomTree g = let (a,g') = random g in Tree a (randomTrees g')
 randomTrees :: RandomGen g => g -> [Tree]
 randomTrees g = let (g1,g2) = split g in randomTree g1 : randomTrees g2
 
-{- | 'runProb' runs a probability deterministically, given a source of randomness -}
+{- | 'runProb' runs a probability deterministically, given a source of randomness. -}
 runProb :: Prob a -> Tree -> a
 runProb (Prob a) = a
 
-{- | 'weightedsamples' runs an unnormalized measure and gets out a stream of (result,weight) pairs -}
+{- | Runs an unnormalized measure and gets out a stream of (result,weight) pairs.
+
+These are not samples from the renormalized distribution, just plain (result,weight) pairs. This is useful when the distribution is known to be normalized already. -}
 weightedsamples :: forall a. Meas a -> IO [(a,Log Double)]
 weightedsamples (Meas m) =
   do
@@ -108,10 +147,15 @@ weightedsamples (Meas m) =
     let xws = runProb helper rs
     return $ map (\(x,w) -> (x, getProduct w)) xws
 
-{- | Likelihood weighted importance sampling first draws n weighted samples,
-    and then samples a stream of results from that regarded as an empirical distribution -}
-lwis :: Int -> Meas a -> IO [a]
-lwis n m = do
+{- | Weighted importance sampling first draws n weighted samples,
+    and then samples a stream of results from that, regarded as an empirical distribution. Sometimes called "likelihood weighted importance sampling". 
+
+This is a reference implementation. It will not usually be very efficient at all, but may be useful for debugging. 
+ -}
+wis :: Int -- ^ @n@, the number of samples to base on
+    -> Meas a -- ^ @m@, the measure to normalize
+    -> IO [a] -- ^ Returns a stream of samples
+wis n m = do
   xws <- weightedsamples m
   let xws' = take n $ accumulate xws 0
   let max = snd $ last xws'
@@ -122,13 +166,22 @@ lwis n m = do
   where accumulate ((x, w) : xws) a = (x, w + a) : (x, w + a) : accumulate xws (w + a)
         accumulate [] a = []
 
-{-- | __Metropolis-Hastings__ (MH): Produce a stream of samples, using Metropolis Hastings
-    We use 'mutatetree p' to propose different distributions.
-    If p = 1/dimension then this is a bit like single-site lightweight MH.
-    (Wingate, Stuhlmuller, Goodman, AISTATS 2011.) 
-    If p = 1 then this is like multi-site lightweight MH 
+{- | Produce a stream of samples, using Metropolis Hastings simulation.
 
-    The algorithm is as follows:
+   The weights are also returned. Often the weights can be discarded, but sometimes we may search for a sample of maximum score.
+
+   The algorithm works as follows. 
+
+   At each step, we randomly change some sites (nodes in the tree). 
+   We then accept or reject these proposed changes, using a probability that is determined by the weight of the measure at the new tree. 
+   If rejected, we repeat the previous sample. 
+
+    This kernel is related to the one introduced by [Wingate, Stuhlmuller, Goodman, AISTATS 2011](http://proceedings.mlr.press/v15/wingate11a/wingate11a.pdf), but it is different in that it works when the number of sites is unknown. Moreover, since a site is a path through the tree, the address is more informative than a number, which avoids some addressing issues. 
+
+    When 1/@p@ is roughly the number of used sites, then this will be a bit like "single-site lightweight" MH.
+    If @p@ = 1 then this is "multi-site lightweight" MH.
+--}
+{-- The algorithm is as follows:
 
     Top level: produces a stream of samples.
     * Split the random number generator in two
@@ -150,11 +203,12 @@ lwis n m = do
     1. Randomly change some sites, 
     2. Rerun the model with the new tree, to get a new weight 'w''.
     3. Compute the MH acceptance ratio. This is the probability of either returning the new seed or the old one.
-    4. Accept or reject the new sample based on the MH ratio.
-    
+    4. Accept or reject the new sample based on the MH ratio.  
 --}
-
-mh :: forall a. Double -> Meas a -> IO [(a,Product (Log Double))]
+mh :: forall a.
+   Double -- ^ The chance @p@ of changing any site
+   -> Meas a -- ^ The unnormalized measure to sample from
+   -> IO [(a,Product (Log Double))] -- ^ Returns a stream of (result,weight) pairs
 mh p (Meas m) = do
     -- Top level: produce a stream of samples.
     -- Split the random number generator in two
@@ -206,9 +260,19 @@ mutateTrees p g (t:ts) = let (g1,g2) = split g in mutateTree p g1 t : mutateTree
 
 
 
-{- | Irreducible form of 'mh'. Takes 'p' like 'mh', but also 'q', which is the chance of proposing an all-sites change. -}
+{- | Irreducible form of 'mh'. Takes @p@ like 'mh', but also @q@, which is the chance of proposing an all-sites change. Irreducibility means that, asymptotically, the sequence of samples will converge in distribution to the renormalized version of @m@. 
 
-mhirreducible :: forall a. Double -> Double -> Meas a -> IO [(a,Product (Log Double))]
+The kernel in `mh` is not formally irreducible in the usual sense, although it is an open question whether this is a problem for asymptotic convergence in any definable model. In any case, convergence is only asymptotic, and so it can be helpful to use `mhirreducible` is that in some situations.
+
+Roughly this avoids `mh` getting stuck in one particular mode, although it is a rather brutal method.
+
+ -}
+
+mhirreducible :: forall a.
+              Double -- ^ The chance @p@ of changing any given site
+              -> Double -- ^ The chance @q@ of doing an all-sites change
+              -> Meas a -- ^ The unnormalized measure @m@ to sample from
+              -> IO [(a,Product (Log Double))] -- ^ Returns a stream of (result,weight) pairs
 mhirreducible p q (Meas m) = do
     -- Top level: produce a stream of samples.
     -- Split the random number generator in two
@@ -250,7 +314,9 @@ mhirreducible p q (Meas m) = do
 
 
 
--- | Useful function which thins out a list. --
+{- | Useful function which thins out a stream of results, as is common in Markov Chain Monte Carlo simulation.
+
+@every n xs@ returns only the elements at indices that are multiples of n.--}
 every :: Int -> [a] -> [a]
 every n xs = case drop (n -1) xs of
   (y : ys) -> y : every n ys
