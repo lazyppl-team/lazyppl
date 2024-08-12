@@ -1,5 +1,23 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, ScopedTypeVariables #-}
-module LazyPPL where
+
+{- | This file defines
+    1. Two monads: `Prob` (for probability measures) and `Meas` (for unnormalized measures)
+    2. The inference methods produce samples from an unnormalized measure. We provide three inference methods: 
+       a. 'mh' (Metropolis-Hastings algorithm based on lazily mutating parts of the tree at random).
+       b. 'mhirreducible', which randomly restarts for a properly irreducible Metropolis-Hastings kernel.
+       c. 'lwis' (simple reference likelihood weighted importance sampling)
+    See also SingleSite for a separate single-site Metropolis-Hastings algorithm, akin to Wingate et al., via GHC.Exts.Heap and System.IO.Unsafe.)
+-}
+
+module LazyPPL
+    ( -- * Types
+      Tree(Tree), Prob(Prob), runProb, Meas(Meas),
+      -- * Basic interface
+      uniform, sample, score,
+      -- * Monte Carlo simulation
+      weightedsamples, mh, mhirreducible, lwis, 
+      -- * Helper function
+      every) where
 
 import Control.Monad.Trans.Writer
 import Control.Monad.Trans.Class
@@ -10,14 +28,8 @@ import Control.Monad.Extra
 import Control.Monad.State.Lazy (State, state , put, get, runState)
 import Numeric.Log
 
-{- | This file defines
-    1. Two monads: 'Prob' (for probabilities) and 'Meas' (for unnormalized probabilities)
-    2. Three inference methods: 'lwis' (likelihood weighted importance sampling)
-    3. 'mh' (Metropolis-Hastings algorithm based on lazily mutating parts of the tree at random)
-    3. 'mh1' (Single-site Metropolis-Hastings algorithm, akin to Wingate et al. It is only this that uses GHC.Exts.Heap and System.IO.Unsafe.)
--}
 
--- | A 'Tree' is a lazy, infinitely wide and infinitely deep tree, labelled by Doubles
+-- | A 'Tree' is a lazy, infinitely wide and infinitely deep rose tree, labelled by Doubles
 -- | Our source of randomness will be a Tree, populated by uniform [0,1] choices for each label.
 -- | Often people would just use a list or stream instead of a tree.
 -- | But a tree allows us to be lazy about how far we are going all the time.
@@ -28,14 +40,9 @@ data Tree = Tree Double [Tree]
 -- | The idea is that it uses up bits of the tree as it runs
 newtype Prob a = Prob (Tree -> a)
 
--- | Two key things to do with trees:
 -- | Split tree splits a tree in two (bijectively)
 splitTree :: Tree -> (Tree , Tree)
 splitTree (Tree r (t : ts)) = (t , Tree r ts)
-
--- | Get the label at the head of the tree and discard the rest
-uniform :: Prob Double
-uniform = Prob $ \(Tree r _) -> r
 
 
 -- | Probabilities form a monad.
@@ -54,12 +61,19 @@ instance Applicative Prob where {pure = return ; (<*>) = ap}
 newtype Meas a = Meas (WriterT (Product (Log Double)) Prob a)
   deriving(Functor, Applicative, Monad)
 
-{- | The two key methods for Meas are sample (from a probability) and score (aka factor, weight) -}
+-- | A uniform sample is a building block for probability distributions
+uniform :: Prob Double
+uniform = Prob $ \(Tree r _) -> r
+-- ^ Implemented by getting the label at the head of the tree and discard the rest
+
+-- | The first way of building an unnormalized measure is sampling from a probability measure. 
 sample :: Prob a -> Meas a
 sample p = Meas $ lift p
 
+-- | The second way of building an unnormalized measure is scoring or weighting the measure by a positive real.
 score :: Double -> Meas ()
 score r = Meas $ tell $ Product $ (Exp . log) (if r==0 then exp(-300) else r)
+-- ^ score 0 is convenient, but to avoid numeric issues, we use exp(-300) instead.
 
 scoreLog :: Log Double -> Meas ()
 scoreLog r = Meas $ tell $ Product r
@@ -79,7 +93,7 @@ randomTrees g = let (g1,g2) = split g in randomTree g1 : randomTrees g2
 runProb :: Prob a -> Tree -> a
 runProb (Prob a) = a
 
-{- | 'weightedsamples' runs a probability measure and gets out a stream of (result,weight) pairs -}
+{- | 'weightedsamples' runs an unnormalized measure and gets out a stream of (result,weight) pairs -}
 weightedsamples :: forall a. Meas a -> IO [(a,Log Double)]
 weightedsamples (Meas m) =
   do
