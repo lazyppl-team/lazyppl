@@ -1,31 +1,46 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Distr.DirichletP (Restaurant, Table, newCustomer, newRestaurant, dp) where
+{-| Abstract types for the [Dirichlet Process](https://en.wikipedia.org/wiki/Dirichlet_process) viewed through the interface of the [Chinese Restaurant Process](https://en.wikipedia.org/wiki/Chinese_restaurant_process).
+
+Ideas following [S. Staton, H. Yang, N. L. Ackerman, C. Freer, D. Roy. Exchangeable random process and data abstraction. Workshop on probabilistic programming semantics (PPS 2017).](https://www.cs.ox.ac.uk/people/hongseok.yang/paper/pps17a.pdf)
+
+Our implementation here uses stick breaking, with a lazily broken stick. Other urn-based implementations are possible with hidden state, and they should be observationally equivalent.
+
+For illustrations, see [non-parametric clustering](https://lazyppl-team.github.io/ClusteringDemo.html) and [relational inference](https://lazyppl-team.github.io/IrmDemo.html).
+
+-}
+
+module Distr.DirichletP (
+{- * Chinese Restaurant Process interface -}
+{- | For clustering, we regard each data point as a "customer" in a "restaurant", and they are in the same cluster if they sit at the same `Table`. 
+-}
+Restaurant, Table, newRestaurant, newCustomer, 
+-- * Random distribution interface
+dp) where
 
 import Data.List
 import Data.Maybe
-import Distr
-import Distr.Memoization
 import LazyPPL
+import Distr
+import Distr.Memoization (MonadMemo)
 
-{-| Abstract types for the CRP.
-e.g.
-S. Staton, H. Yang, N. L. Ackerman, C. Freer, D. Roy.
-Exchangeable random process and data abstraction.
-Workshop on probabilistic programming semantics (PPS 2017).
--}
 
+-- | Abstract type of restaurants
 newtype Restaurant = R [Double]
 
-newtype Table = T Int deriving (Eq, Ord, Show, MonadMemo Prob)
+-- | Abstract type of tables. This supports `Eq` so that we can ask whether customers are at the same table (i.e. whether points are in the same cluster). 
+newtype Table = T Int deriving (Eq, Show, MonadMemo Prob)
 
+{-| A customer enters the restaurant and is assigned a table. -}
 newCustomer :: Restaurant -> Prob Table
 newCustomer (R restaurant) =
   do
     r <- uniform
     return $ T $ fromJust $ findIndex (> r) (scanl1 (+) restaurant)
 
-newRestaurant :: Double -> Prob Restaurant
+{-| Create a new restaurant with concentration parameter alpha. -}
+newRestaurant :: Double -- ^ Concentration parameter, alpha
+              -> Prob Restaurant
 newRestaurant alpha = do
   sticks <- stickBreaking alpha 0
   return $ R sticks
@@ -40,9 +55,10 @@ stickBreaking alpha lower =
     vs <- stickBreaking alpha (lower + v)
     return (v : vs)
 
-{- | We can then define the Dirichlet Process --}
-
-dp :: Double -> Prob a -> Prob (Prob a)
+{-| [Dirichlet Process](https://en.wikipedia.org/wiki/Dirichlet_process) as a random distribution. -}
+dp :: Double -- ^ Concentration parameter, alpha
+   -> Prob a -- ^ Base distribution
+   -> Prob (Prob a)
 dp alpha p = do
   xs <- iid p
   vs <- stickBreaking alpha 0
