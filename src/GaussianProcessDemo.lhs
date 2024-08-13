@@ -7,8 +7,8 @@ title: Gaussian process regression in LazyPPL
 \begin{code}
 module GaussianProcessDemo where
 import LazyPPL
-import Distr (normal, normalPdf)
-import Distr.GP
+import LazyPPL.Distributions (normal, normalPdf)
+import LazyPPL.Distributions.GP
 import Control.Monad
 import Graphics.Matplotlib hiding (density)
 \end{code}

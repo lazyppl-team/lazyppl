@@ -8,12 +8,12 @@ We are using abstract types to hide the implementation details, inspired by [Exc
 Illustration: [Feature extraction example](https://lazyppl-team.github.io/AdditiveClusteringDemo.html). 
 -} 
 
-module Distr.IBP where
+module LazyPPL.Distributions.IBP where
 
 import LazyPPL
-import Distr
-import Distr.Counter
-import Distr.Memoization
+import LazyPPL.Distributions
+import LazyPPL.Distributions.Counter
+import LazyPPL.Distributions.Memoization
 
 import Data.List
 

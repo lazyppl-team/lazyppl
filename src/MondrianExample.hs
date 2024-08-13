@@ -1,9 +1,9 @@
 {-# LANGUAGE BangPatterns #-}
 module MondrianExample where
 
-import Distr
-import Distr.Mondrian
 import LazyPPL
+import LazyPPL.Distributions
+import LazyPPL.Distributions.Mondrian
 import Helpers
 import Graphics.Matplotlib
 import Data.Map (Map,empty,lookup,insert,size,keys,findWithDefault,fromList,(!))

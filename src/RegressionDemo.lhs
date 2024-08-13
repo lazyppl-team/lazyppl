@@ -12,7 +12,7 @@ The examples also demonstrate that higher-order functions (such as `regress` and
 \begin{code}
 module RegressionDemo where
 import LazyPPL
-import Distr
+import LazyPPL.Distributions
 import Data.Colour
 import Data.Colour.Names
 import Control.Monad

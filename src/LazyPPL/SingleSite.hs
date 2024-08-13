@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables
  #-}
-module SingleSite (mh1) where
+module LazyPPL.SingleSite (mh1) where
 
 import LazyPPL
 import Control.Monad.Trans.Writer

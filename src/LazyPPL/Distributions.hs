@@ -3,7 +3,7 @@
 Sometimes both a distribution (type @Prob a@) and pdf (type @a -> Double@) are given. Distributions are useful for sampling, densities are used for scoring. -}
 
 
-module Distr (
+module LazyPPL.Distributions (
        -- * Continuous distributions
        normal,normalPdf,exponential,expPdf,gamma, beta, dirichlet, uniformbounded,
        -- * Discrete distributions

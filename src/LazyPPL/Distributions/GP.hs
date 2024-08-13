@@ -9,10 +9,10 @@ or [Wiener process regression](https://lazyppl-team.github.io/WienerDemo.html). 
 -}
 
 
-module Distr.GP (wiener, gp) where
+module LazyPPL.Distributions.GP (wiener, gp) where
 
 import LazyPPL (Prob,Tree(Tree),Prob(Prob),runProb)
-import Distr (normal,iid)
+import LazyPPL.Distributions (normal,iid)
 import Numeric.LinearAlgebra hiding (step,size,find)
 import Numeric.LinearAlgebra.Data hiding (step,size,find)
 import Data.List (find)

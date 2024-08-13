@@ -5,9 +5,9 @@
 
 module IrmTest where
 
-import Distr
-import Distr.DirichletP
-import Distr.Memoization
+import LazyPPL.Distributions
+import LazyPPL.Distributions.DirichletP
+import LazyPPL.Distributions.Memoization
 import LazyPPL
 
 instance (MonadMemo Prob String) where memoize = generalmemoize

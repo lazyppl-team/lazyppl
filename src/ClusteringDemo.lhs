@@ -16,11 +16,11 @@ import Data.Colour.RGBSpace.HSV
 import Data.Colour.SRGB
 import Data.List
 import Data.Monoid
-import Distr
-import Distr.DirichletP
-import Distr.Memoization
 import LazyPPL
-import SingleSite
+import LazyPPL.Distributions
+import LazyPPL.Distributions.DirichletP
+import LazyPPL.Distributions.Memoization
+import LazyPPL.SingleSite
 import Numeric.Log
 import Graphics.Matplotlib hiding (density)
 

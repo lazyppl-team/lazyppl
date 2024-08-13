@@ -24,7 +24,7 @@ To illustrate the basic usage, here is a very simple first example, that doesn't
 {-# LANGUAGE ExtendedDefaultRules #-}
 module Index where
 import LazyPPL
-import Distr
+import LazyPPL.Distributions
 import Graphics.Matplotlib hiding (density)
 import Data.List
 \end{code}

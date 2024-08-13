@@ -10,7 +10,7 @@ For illustrations, see [non-parametric clustering](https://lazyppl-team.github.i
 
 -}
 
-module Distr.DirichletP (
+module LazyPPL.Distributions.DirichletP (
 {- * Chinese Restaurant Process interface -}
 {- | For clustering, we regard each data point as a "customer" in a "restaurant", and they are in the same cluster if they sit at the same `Table`. 
 -}
@@ -21,8 +21,8 @@ dp) where
 import Data.List
 import Data.Maybe
 import LazyPPL
-import Distr
-import Distr.Memoization (MonadMemo)
+import LazyPPL.Distributions
+import LazyPPL.Distributions.Memoization (MonadMemo)
 
 
 -- | Abstract type of restaurants

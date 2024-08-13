@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use newtype instead of data" #-}
 
-module Distr.Mondrian where
+module LazyPPL.Distributions.Mondrian where
 
 import LazyPPL
 import Data.Colour.RGBSpace.HSV
@@ -10,8 +10,8 @@ import Data.Colour.SRGB
     ( RGB(channelBlue, channelGreen, channelRed) )
 import Data.IORef
 -- import Debug.Trace
-import Distr
-import Distr.Counter
+import LazyPPL.Distributions
+import LazyPPL.Distributions.Counter
 import Graphics.Matplotlib
     ( subplots,
       text,

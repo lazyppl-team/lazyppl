@@ -14,11 +14,11 @@ This example, which follows an [example from Church](http://v1.probmods.org/non-
 > 
 > module IrmDemo where
 > 
-> import Distr
-> import Distr.DirichletP
-> import Distr.Memoization
-> import Data.List
 > import LazyPPL
+> import LazyPPL.Distributions
+> import LazyPPL.Distributions.DirichletP
+> import LazyPPL.Distributions.Memoization
+> import Data.List
 > import Graphics.Matplotlib
 
 </details>

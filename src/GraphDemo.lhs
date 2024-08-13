@@ -28,12 +28,12 @@ The code uses the [LazyPPL library](https://lazyppl-team.github.io) for Haskell 
 {-# LANGUAGE ExtendedDefaultRules #-}
 module GraphDemo where
 import LazyPPL
-import Distr
+import LazyPPL.Distributions
+import LazyPPL.Distributions.Memoization
 import Control.Monad
 import Data.List
 import Data.Maybe
 import Graphics.Matplotlib
-import Distr.Memoization
 
 import Graphics.Matplotlib hiding (density)
 

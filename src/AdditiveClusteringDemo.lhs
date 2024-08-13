@@ -15,9 +15,9 @@ A demonstration of using Indian Buffet Process for feature finding.
 > module AdditiveClusteringDemo where
 
 > import LazyPPL
-> import Distr
-> import Distr.IBP
-> import Distr.Memoization
+> import LazyPPL.Distributions
+> import LazyPPL.Distributions.IBP
+> import LazyPPL.Distributions.Memoization
 
 > import Data.List
 > import Control.Monad

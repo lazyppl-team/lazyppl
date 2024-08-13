@@ -9,8 +9,8 @@ title: Discussion of program transformations and laziness
 module ControlFlowDemo where
 
 import LazyPPL
-import SingleSite
-import Distr
+import LazyPPL.SingleSite
+import LazyPPL.Distributions
 import Control.Monad
 import Graphics.Matplotlib
 \end{code}

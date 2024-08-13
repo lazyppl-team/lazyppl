@@ -12,7 +12,7 @@ We treat program induction as a regression problem: finding programs that may ha
 \begin{code}
 module ProgramInductionDemo where
 import LazyPPL
-import Distr
+import LazyPPL.Distributions
 import Control.Monad (replicateM,forM_)
 import Graphics.Matplotlib hiding (density)
 \end{code}

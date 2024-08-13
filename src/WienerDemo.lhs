@@ -7,8 +7,8 @@ title: Wiener process regression in LazyPPL
 \begin{code}
 module WienerDemo where
 import LazyPPL
-import Distr
-import Distr.GP (wiener)
+import LazyPPL.Distributions
+import LazyPPL.Distributions.GP (wiener)
 
 import Data.List
 import Data.Map (empty,lookup,insert,size,keys)

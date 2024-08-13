@@ -1,5 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
-module Distr.Counter (Counter,newCounter,readAndIncrement) where
+module LazyPPL.Distributions.Counter (Counter,newCounter,readAndIncrement) where
 
 import LazyPPL
 import Data.IORef

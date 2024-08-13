@@ -22,7 +22,7 @@ This module provides:
 For illustrations, see the [graph example](https://lazyppl-team.github.io/GraphDemo.html), [clustering](https://lazyppl-team.github.io/ClusteringDemo.html), [additive clustering](https://lazyppl-team.github.io/AdditiveClusteringDemo.html), or the [infinite relational model](https://lazyppl-team.github.io/IrmDemo.html). 
 -}
 
-module Distr.Memoization (MonadMemo, memoize, generalmemoize, memrec) where
+module LazyPPL.Distributions.Memoization (MonadMemo, memoize, generalmemoize, memrec) where
 
 import Control.Monad
 import Control.Monad.Extra
