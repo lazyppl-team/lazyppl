@@ -1,51 +1,58 @@
 name:                lazyppl
-version:             0.2.0.0
+version:             1.0
 license:             MIT
-author:              "Sam Staton and others"
+author:              "LazyPPL team"
 maintainer:          "sam.staton@cs.ox.ac.uk"
-copyright:           "2021 Sam Staton and others"
+copyright:           "2021-2024 LazyPPL team"
+stability:       experimental
+homepage: https://lazyppl-team.github.io/
 
 extra-source-files:
 - README.md
 - ChangeLog.md
 
 # Metadata used when publishing your package
-# synopsis:            Lazy Probabilistic Programming
-# category:            PPL
+synopsis:            Lazy Probabilistic Programming Library
+category:            Statistics
 
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description:         Please see the README on GitHub at <https://github.com/githubuser/lazyppl#readme>
+description: LazyPPL is a Haskell library for Bayesian probabilistic programming. It supports lazy use of probability, which is useful for specifying non-parametric models, and we provide new Metropolis-Hastings algorithms to allow this. For illustrations, see <https://lazyppl-team.github.io/>.
+
+github: lazyppl-team/lazyppl
+
 
 dependencies:
 - base >= 4.7 && < 5
-- transformers
-- mtl
+- random >= 1.2.0 && < 1.3 
+- statistics >= 0.15.2 && < 0.16 # 0.16 should be ok
+- log-domain >=0.13.2 && < 0.14
+- mtl >= 2.2.2 && < 2.3 # Could try 2.3
+- transformers >= 0.5.6.2 && < 0.6 # 0.6 might be ok
+- monad-extras >= 0.6.0 && < 0.7 
+- containers >= 0.6.5.1 && < 0.7 # 0.7 looks ok
+# for GP 
+- hmatrix >= 0.20.2 && < 0.21
+# for SingleSite 
+- deepseq >= 1.4.4.0 && < 1.5
+- ghc-heap >= 8.10.7 && < 8.11 
+# for exe's
 - array
 - vector
-- random
-- statistics
 - bytestring
 - cassava
 - gamma
-- log-domain
 - colour
-- containers
 - data-default-class
 - lens
-# - debug
-- monad-extras
 - lazyio
 - spoon
 - Histogram
-- ghc-heap
 - monad-loops
 - matplotlib
-- deepseq
 - aeson
 - bytestring
-- hmatrix
 
 library:
   source-dirs: src
@@ -121,3 +128,11 @@ executables:
     - -main-is GaussianProcessDemo
     dependencies:
     - lazyppl
+  index-exe:
+    main:                Index.lhs
+    source-dirs:         src
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -main-is Index
