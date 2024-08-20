@@ -1,6 +1,8 @@
 {- | Handy distributions for the `LazyPPL` library, based on the `uniform` distribution. Mostly defined using the `Statistics.Distribution` module and family. 
 
-Sometimes both a distribution (type @Prob a@) and pdf (type @a -> Double@) are given. Distributions are useful for sampling, densities are used for scoring. -}
+Sometimes both a distribution (type @Prob a@) and pdf (type @a -> Double@) are given. Distributions are useful for sampling, densities are used for scoring. 
+
+For more distributions, see the Statistics.Distribution in the statistics package. -}
 
 
 module LazyPPL.Distributions (
@@ -13,12 +15,9 @@ module LazyPPL.Distributions (
        where
 
 import LazyPPL (Prob,uniform)
-import Statistics.Distribution (quantile, density, probability)
-import Statistics.Distribution.Normal (normalDistr)
-import Statistics.Distribution.Beta (betaDistr)
-import Statistics.Distribution.Gamma (gammaDistr)
-import qualified Statistics.Distribution.Poisson as Poisson (poisson) 
 import Data.List (findIndex)
+import Numeric.SpecFunctions
+import Numeric.MathFunctions.Constants
 
 {-|
   [Normal distribution](https://en.wikipedia.org/wiki/Normal_distribution)
@@ -28,10 +27,11 @@ normal :: Double -- ^ mu, mean
        -> Prob Double
 normal m s = do 
   x <- uniform
-  return $ quantile (normalDistr m s) x
+  return $ (- invErfc (2 * x)) * (m_sqrt_2 * s) + m
 
 normalPdf :: Double -> Double -> Double -> Double
-normalPdf m s = density $ normalDistr m s
+normalPdf m s x = exp ((-(x - m) * (x -m) / (2 * s * s)) - log (m_sqrt_2_pi * s))
+
 
 {-|
   [Exponential distribution](https://en.wikipedia.org/wiki/Exponential_distribution)
@@ -53,7 +53,7 @@ gamma :: Double -- ^ k, shape
       -> Prob Double
 gamma a b = do
   x <- uniform
-  return $ quantile (gammaDistr a b) x
+  return $ b * invIncompleteGamma a x
 
 {-|
   [Beta distribution](https://en.wikipedia.org/wiki/Beta_distribution)
@@ -63,7 +63,7 @@ beta :: Double -- ^ alpha
      -> Prob Double
 beta a b = do
   x <- uniform
-  return $ quantile (betaDistr a b) x
+  return $ invIncompleteBeta a b x
 
 {-|
   [Poisson distribution](https://en.wikipedia.org/wiki/Poisson_distribution)
@@ -72,12 +72,14 @@ poisson :: Double -- ^ lambda, rate
         -> Prob Integer
 poisson lambda = do
   x <- uniform
-  let cmf = scanl1 (+) $ map (probability $ Poisson.poisson lambda) [0,1..]
+  let cmf = map (\x -> 1 - incompleteGamma (fromIntegral (x + 1)) lambda) [0,1..]
   let (Just n) = findIndex (> x) cmf
   return $ fromIntegral n
 
 poissonPdf :: Double -> Integer -> Double
-poissonPdf rate n = probability (Poisson.poisson rate) (fromIntegral n)
+poissonPdf rate n = let result = exp(-rate) * rate ^^ (fromIntegral n) / (factorial (fromIntegral n)) in 
+  if (isInfinite result) || (isNaN result) then exp (-rate + (fromIntegral n) * log rate - logGamma (fromIntegral (n+1))) else result
+
 
 {-|
   [Dirichlet distribution](https://en.wikipedia.org/wiki/Dirichlet_distribution)
