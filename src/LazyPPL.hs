@@ -33,7 +33,7 @@ This module defines
 
     Most of the structure here will not be needed in typical models. We expose more of the structure for more experimental uses. 
 
-The `Distr` module provides many useful distributions, and further non-parametric distributions are in `Distr.GP`, `Distr.IBP`, and `Distr.Memoization`. 
+The `Distributions` module provides many useful distributions, and further non-parametric distributions are in `Distributions.DirichletP`, `Distributions.GP`, `Distr.IBP`, and `Distr.Memoization`. 
 
 
 -}
