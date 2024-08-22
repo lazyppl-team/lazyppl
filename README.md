@@ -30,21 +30,21 @@ The aim of this implementation is to demonstrate that it is possible to have fir
 
 ## Examples
 
-* [``WienerDemo``](https://lazyppl.bitbucket.io/WienerDemo.html) ([``lhs``](src/WienerDemo.lhs)) contains a simple implementation of regression using a Wiener process. Via maintaining a hidden table of previous calls, it appears to be a bona fide random function $R\to R$ that is constructed lazily. Because the functions are built lazily, some values of the functions will be sampled during the simulation, and others just during the plotting.
+* [``WienerDemo``](https://lazyppl-team.github.io/WienerDemo.html) ([``lhs``](src/WienerDemo.lhs)) contains a simple implementation of regression using a Wiener process. Via maintaining a hidden table of previous calls, it appears to be a bona fide random function $R\to R$ that is constructed lazily. Because the functions are built lazily, some values of the functions will be sampled during the simulation, and others just during the plotting.
 
-![Wiener process regression](https://lazyppl.bitbucket.io/images/wiener-reg.svg)
+![Wiener process regression](https://lazyppl-team.github.io/images/wiener-reg.svg)
 
-* [``RegressionDemo``](https://lazyppl.bitbucket.io/RegressionDemo.html) ([``lhs``](src/RegressionDemo.lhs)) demonstrates piecewise linear regression. Key idea: the change points are drawn from a lazy Poisson process.
+* [``RegressionDemo``](https://lazyppl-team.github.io/RegressionDemo.html) ([``lhs``](src/RegressionDemo.lhs)) demonstrates piecewise linear regression. Key idea: the change points are drawn from a lazy Poisson process.
 
-![Poisson-split piecewise linear regression](https://lazyppl.bitbucket.io/images/regression-piecewise-reg.svg)
+![Poisson-split piecewise linear regression](https://lazyppl-team.github.io/images/regression-piecewise-reg.svg)
 
-* [``Clustering``](https://lazyppl.bitbucket.io/ClusteringDemo.html)  ([``lhs``](src/ClusteringDemo.lhs)) contains some simple clustering examples, where the number of clusters is unknown. Key uses of laziness: stick-breaking is lazy, and we also use stochastic memoization.
+* [``Clustering``](https://lazyppl-team.github.io/ClusteringDemo.html)  ([``lhs``](src/ClusteringDemo.lhs)) contains some simple clustering examples, where the number of clusters is unknown. Key uses of laziness: stick-breaking is lazy, and we also use stochastic memoization.
 
-![Dirichlet process clustering](https://lazyppl.bitbucket.io/images/clustering-map.svg)
+![Dirichlet process clustering](https://lazyppl-team.github.io/images/clustering-map.svg)
 
-* [``ProgramInduction``](https://lazyppl.bitbucket.io/ProgramInductionDemo.html)  ([``lhs``](src/ProgramInductionDemo.lhs)) contains a simple example of program induction over a simple arithmetic language. Key use of laziness: Random expressions are represented as an infinite forest together with a finite path through it.
+* [``ProgramInduction``](https://lazyppl-team.github.io/ProgramInductionDemo.html)  ([``lhs``](src/ProgramInductionDemo.lhs)) contains a simple example of program induction over a simple arithmetic language. Key use of laziness: Random expressions are represented as an infinite forest together with a finite path through it.
 
-![Program induction](https://lazyppl.bitbucket.io/images/programinduction-reg.svg)
+![Program induction](https://lazyppl-team.github.io/images/programinduction-reg.svg)
 
 * We also have examples of feature extraction ([Additive Clustering](src/AdditiveClustering.hs) via the Indian Buffet Process), and relation inference (via the [Mondrian Process](src/MondrianExample.hs), and a simple Chinese-Restaurant-Process based [Infinite Relational Model](src/IrmTest.hs)). 
 
