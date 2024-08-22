@@ -57,9 +57,9 @@ The aim of this implementation is to demonstrate that it is possible to have fir
     * Our first Metropolis Hastings algorithm `mh` takes as an argument a probability `p` of changing any given site. This is different from single-site MH (which picks exactly one site to change each step) and multi-site MH (which changes all sites at each step). The reason for this is that in the lazy setting we cannot explore how many sites there are without triggering more computation (that would require a lot of Haskell hacking). We can recover single-site MH by putting `p=1/num_sites` and multi-site MH by putting `p=1`.
 	* A second Metropolis Hastings algorithm `mh1` implements a single-site proposal kernel by inspecting the Haskell heap.
     * A key implementation idea is that the underlying sample space is `Tree`, which comprises a lazy tree of `Double`s that is infinitely wide and infinitely deep. Informally, at any moment, if you need some unknown or lazy amount of randomness, you can grab just one branch of the tree, without worrying about affecting the other branches. That branch will itself be a `Tree`, so this can all happen recursively or in a nested way without any problems. 
-* [``Distr.hs``](src/Distr.hs) contains common parametric distributions such as normal distributions etc.. We find that the types of Haskell are also quite illuminating for complex distributions, see the types of the processes `memoize`, `wiener`, `poissonPP`, `dp` [above](#top). We also use abstract types, which capture some essence of exchangeability, for example:
-    * in a Chinese Restaurant Process, `newCustomer :: Restaurant -> Prob Table` ([``DirichletP.hs``](src/Distr/DirichletP.hs));
-    * in an Indian Buffet Process, `newCustomer :: Restaurant -> Prob [Dish]` ([``IBP.hs``](src/Distr/IBP.hs)).
+* [``LazyPPL/Distributions.hs``](src/LazyPPL/Distributions.hs) contains common parametric distributions such as normal distributions etc.. We find that the types of Haskell are also quite illuminating for complex distributions, see the types of the processes `memoize`, `wiener`, `poissonPP`, `dp` [above](#top). We also use abstract types, which capture some essence of exchangeability, for example:
+    * in a Chinese Restaurant Process, `newCustomer :: Restaurant -> Prob Table` ([``DirichletP.hs``](src/LazyPPL/Distributions/DirichletP.hs));
+    * in an Indian Buffet Process, `newCustomer :: Restaurant -> Prob [Dish]` ([``IBP.hs``](src/LazyPPL/Distributions/IBP.hs)).
 
 
 ## Installation
@@ -81,17 +81,17 @@ For the Gaussian process example, the `hmatrix` library requires the GSL, BLAS a
 
 ### Contributing
 
-The core of the library can be found in `src/LazyPPL.hs` and some useful, common, and interesting distributions can be found in `src/Distr.hs` and `src/Distr/`.
+The core of the library can be found in `src/LazyPPL.hs` and some useful, common, and interesting distributions can be found in `src/LazyPPL/Distributions.hs` and `src/LazyPPL/Distributions/`.
 
 * `src/LazyPPL.hs` contains a likelihood-weighted importance sampling algorithm (`lwis`) and a Metropolis-Hastings algorithm, together with the basic monads. There are two monads, `Prob` and `Meas`. 
-    * `Prob` is to be thought of as an affine monad of probability measures. It comes with various predefined probability distributions such as `uniform` (in `src/LazyPPL.hs`), `normal`, `exponential`, `beta`, `poisson`, `dirichlet`, `iid`, etc (in `src/Distr.hs`). 
+    * `Prob` is to be thought of as an affine monad of probability measures. It comes with various predefined probability distributions such as `uniform` (in `src/LazyPPL.hs`), `normal`, `exponential`, `beta`, `poisson`, `dirichlet`, `iid`, etc (in `src/LazyPPL/Distributions.hs`). 
     * `Meas` is to be thought of as a non-affine monad of unnormalized measures. It provides an interface using `sample` (which draws from a `Prob`) and `score` (which multiplies the current trace by a given likelihood weight). 
     * Our first Metropolis Hastings algorithm `mh` takes as an argument a probability `p` of changing any given site of the rose tree of random seeds. This is different from single-site MH (which picks exactly one site to change each step) and multi-site MH (which changes all sites at each step). The reason for this is that, in the lazy setting, we cannot explore how many active sites there are without triggering more computation (which would require a lot of Haskell hacking). We can approximate single-site MH by putting `p=1/num_sites` and recover multi-site MH by putting `p=1`.
 	* A second Metropolis Hastings algorithm `mh1` implements a single-site proposal kernel by inspecting the Haskell heap.
     * A key implementation idea is that the underlying sample space is `Tree`, which comprises a lazy tree of `Double`s that is infinitely wide and infinitely deep. Informally, at any moment, if you need some unknown or lazy amount of randomness, you can target just one branch of the tree, without worrying about affecting the other branches. That branch will itself be a `Tree`, so this can all happen recursively without any problems. 
-* `src/Distr.hs` contains common distributions such as, among others, the normal, exponential, gamma, dirichlet distributions. We find that Haskell types are quite illuminating to construct sophisticated distributions. For example, abstract types capture some essence of exchangeability, for example:
-    * in the Chinese Restaurant Process, `newCustomer :: Restaurant -> Prob Table` (`src/Distr/DirichletP.hs`);
-    * in the Indian Buffet Process, `newCustomer :: Restaurant -> Prob [Dish]` (`src/Distr/IBP.hs`).
+* `src/LazyPPL/Distributions.hs` contains common distributions such as, among others, the normal, exponential, gamma, dirichlet distributions. We find that Haskell types are quite illuminating to construct sophisticated distributions. For example, abstract types capture some essence of exchangeability, for example:
+    * in the Chinese Restaurant Process, `newCustomer :: Restaurant -> Prob Table` (`src/LazyPPL/Distributions/DirichletP.hs`);
+    * in the Indian Buffet Process, `newCustomer :: Restaurant -> Prob [Dish]` (`src/LazyPPL/Distributions/IBP.hs`).
 
 The rest of the files in the `src/` directory consists of various examples of probabilistic models that we can write using our library.
 
