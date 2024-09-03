@@ -3,16 +3,18 @@
 Sometimes both a distribution (type @Prob a@) and pdf (type @a -> Double@) are given. Distributions are useful for sampling, densities are used for scoring. 
 
 For more distributions, see the Statistics.Distribution in the statistics package. -}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Avoid lambda using `infix`" #-}
 
 
 module LazyPPL.Distributions (
-       -- * Continuous distributions
-       normal,normalPdf,exponential,expPdf,gamma, beta, dirichlet, uniformbounded,
-       -- * Discrete distributions
-       bernoulli, uniformdiscrete, categorical, poisson, poissonPdf,
-       -- * Streams
-       iid)
-       where
+        -- * Continuous distributions
+        normal,normalPdf,exponential,expPdf,gamma, beta, dirichlet, uniformbounded,
+        -- * Discrete distributions
+        bernoulli, uniformdiscrete, categorical, poisson, poissonPdf,
+        -- * Streams
+        iid)
+      where
 
 import LazyPPL (Prob,uniform)
 import Data.List (findIndex)
@@ -23,14 +25,13 @@ import Numeric.MathFunctions.Constants
   [Normal distribution](https://en.wikipedia.org/wiki/Normal_distribution)
 -}
 normal :: Double -- ^ mu, mean
-       -> Double -- ^ sigma, standard deviation
-       -> Prob Double
-normal m s = do 
+        -> Double -- ^ sigma, standard deviation
+        -> Prob Double
+normal m s = do
   x <- uniform
   return $ (- invErfc (2 * x)) * (m_sqrt_2 * s) + m
-
 normalPdf :: Double -> Double -> Double -> Double
-normalPdf m s x = exp ((-(x - m) * (x -m) / (2 * s * s)) - log (m_sqrt_2_pi * s))
+normalPdf m s x = exp (- ((x - m) * (x - m) / (2 * s * s)) - log (m_sqrt_2_pi * s))
 
 
 {-|
@@ -38,12 +39,11 @@ normalPdf m s x = exp ((-(x - m) * (x -m) / (2 * s * s)) - log (m_sqrt_2_pi * s)
 -}
 exponential :: Double -- ^ lambda, rate
             -> Prob Double
-exponential rate = do 
+exponential rate = do
   x <- uniform
   return $ - (log x / rate)
-
 expPdf :: Double -> Double -> Double
-expPdf rate x = exp (-rate*x) * rate
+expPdf rate x = exp (- (rate * x)) * rate
 
 {-|
   [Gamma distribution](https://en.wikipedia.org/wiki/Gamma_distribution)
@@ -59,8 +59,8 @@ gamma a b = do
   [Beta distribution](https://en.wikipedia.org/wiki/Beta_distribution)
 -}
 beta :: Double -- ^ alpha
-     -> Double -- ^ beta
-     -> Prob Double
+      -> Double -- ^ beta
+      -> Prob Double
 beta a b = do
   x <- uniform
   return $ invIncompleteBeta a b x
@@ -77,8 +77,8 @@ poisson lambda = do
   return $ fromIntegral n
 
 poissonPdf :: Double -> Integer -> Double
-poissonPdf rate n = let result = exp(-rate) * rate ^^ (fromIntegral n) / (factorial (fromIntegral n)) in 
-  if (isInfinite result) || (isNaN result) then exp (-rate + (fromIntegral n) * log rate - logGamma (fromIntegral (n+1))) else result
+poissonPdf rate n = let result = exp(-rate) * rate ^^ fromIntegral n / factorial (fromIntegral n) in
+  if isInfinite result || isNaN result then exp (-rate + fromIntegral n * log rate - logGamma (fromIntegral (n+1))) else result
 
 
 {-|
@@ -94,8 +94,8 @@ dirichlet as = do
 
 -- | [Continuous uniform distribution on a bounded interval](https://en.wikipedia.org/wiki/Continuous_uniform_distribution)
 uniformbounded :: Double -- ^ lower
-               -> Double -- ^ upper
-               -> Prob Double
+                -> Double -- ^ upper
+                -> Prob Double
 uniformbounded lower upper = do
   x <- uniform
   return $ (upper - lower) * x + lower
@@ -121,7 +121,7 @@ uniformdiscrete n =
 {-| [Categorical distribution](https://www.google.com/search?client=safari&rls=en&q=categorical+distribution&ie=UTF-8&oe=UTF-8): Takes a list of k numbers that sum to 1, 
     and returns a random number between 0 and (k-1), weighted accordingly -}
 categorical :: [Double] -> Prob Int
-categorical xs = do 
+categorical xs = do
   r <- uniform
   case findIndex (>r) $ tail $ scanl (+) 0 xs of
     Just i -> return i
