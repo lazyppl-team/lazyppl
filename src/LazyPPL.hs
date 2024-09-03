@@ -188,7 +188,7 @@ wis n m = do
     When 1/@p@ is roughly the number of used sites, then this will be a bit like "single-site lightweight" MH.
     If @p@ = 1 then this is "multi-site lightweight" MH.
 
-    __Tip:__ if @m :: Prob a@ then use @map fst <$> (mh 1 $ sample m)@ to get a stream of samples from a probability distribution without conditioning. 
+    __Tip:__ if @m :: Prob a@ then use @fmap (map fst) (mh 1 $ sample m)@ to get a stream of samples from a probability distribution without conditioning. 
 --}
 {-- The algorithm is as follows:
 
