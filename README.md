@@ -8,7 +8,9 @@ It provides a Metropolis-Hastings implementation in Haskell that works with lazy
 
 Various examples are given in Literate Haskell at [https://lazyppl-team.github.io](https://lazyppl-team.github.io). 
 
-To try the different examples, use ``stack run wiener-exe`` and so on.
+The main LazyPPL modules are available on [Hackage](https://hackage.haskell.org/package/lazyppl) and [Stackage](https://www.stackage.org/). 
+
+To try the different examples, download the repository and use ``stack run wiener-exe`` and so on.
 The source is in ``src/``.
 
 A Docker image is [available](https://hub.docker.com/r/youkad/lazyppl). To start a container, run the following command:
