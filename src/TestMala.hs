@@ -43,8 +43,8 @@ regress :: (Floating d,Show d,Show a) => d -> Prob d (a -> d) -> [(a, d)] -> Mea
 regress sigma prior dataset =
   do
     f <- sample prior
---    forM_ dataset (\(x, y) -> score $ traceShow (normalLogPdf (f x) sigma y,x,y) $ normalLogPdf (f x) sigma y)
-    forM_ dataset (\(x, y) -> scoreLog $ normalLogPdf (f x) sigma y)
+    --forM_ dataset (\(x, y) -> scoreLog $ traceShow (normalLogPdf (f x) sigma y,x,y) $ normalLogPdf (f x) sigma y)
+    forM_ dataset (\(x, y) -> scoreLog $ (normalLogPdf (f x) sigma y))
     return f
 
 plotLinReg =
@@ -129,7 +129,7 @@ plotStepReg =
 
 plotStepRegHMC (eps, steps) = 
   do fs' <- mh (hmcKernel (LFConfig eps steps 0)) (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
-     let fs = map (\f -> primal . f . toNagata) $ take 4000 $ drop 1000 fs'
+     let fs = map (\f -> primal . f . toNagata) $ take 2000 $ drop 1000 fs'
      let name = "images/mala/hmc-piecewiseconst-reg-eps-" ++ show eps ++ "steps-" ++ show steps ++ ".png"
      --print ("done with eps: " ++ show eps ++ " steps: " ++ show steps)
      plotFuns name dataset fs 0.02 
@@ -137,8 +137,27 @@ plotStepRegHMC (eps, steps) =
 plotStepRegHMCAll =
   do let configs = [(e, s) | e <- [0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5], s <- [15, 20, 25, 30, 35, 40]]
      let configs = [ (0.005, 15),  (0.005, 20), (0.005, 25), (0.005, 30), (0.001, 15),  (0.001, 20), (0.001, 25), (0.001, 30)]
-     --let configs = [(0.005, 30)]
+     let configs = [(0.05, 50)]
      let x = map plotStepRegHMC configs
+     sequence_ x
+
+
+-- eps = 0.05, steps = 40
+plotStepRegLAHMC (eps, steps, chances, alpha, i) = 
+  do fs' <- lahmcPersistence (lookaheadHMC chances) (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset) (LFConfig eps steps 0) alpha
+     let fs = map (\f -> primal . f . toNagata) $ take 5000 $ drop 0 fs'
+     let y = map (\x -> map (fs!!x) [0..20]) $ 0:[100, 200..1900]
+     print y
+     let name = "images/mala/hmc-piecewiseconst-reg-eps-" ++ show eps ++ "steps-" ++ show steps ++ "chances-" ++ show chances ++ "alpha-" ++ show alpha ++ "("++ show i ++ ").png"
+     --print ("done with eps: " ++ show eps ++ " steps: " ++ show steps)
+     plotFuns name dataset fs 0.02 
+
+plotStepRegLAHMCAll =
+  do let configs = [(e, s) | e <- [0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5], s <- [15, 20, 25, 30, 35, 40]]
+     let configs = [ (0.005, 15),  (0.005, 20), (0.005, 25), (0.005, 30), (0.001, 15),  (0.001, 20), (0.001, 25), (0.001, 30)]
+     --let configs = [(0.005, 20, 3, 0.5, x) | x<- [1..10]]
+     let configs = [(0.05, 50, 9, 0.5, x) | x<- [1..30]]
+     let x = map plotStepRegLAHMC configs
      sequence_ x
 
 {--
@@ -264,4 +283,4 @@ plotFuns filename dataset funs alpha =
 -- main = do {plotLinearPrior ; plotDataset ; plotLinReg ; plotPiecewisePrior ; plotPoissonPP ; plotPiecewiseReg ; plotPiecewiseConst }
 
 main :: IO ()
-main = plotStepReg
+main = plotStepRegHMCAll

@@ -267,8 +267,6 @@ mh k m = do
     let (g1,g2) = split g
     --let (g3, g4) = split g2
     let t = randomTree g1
-    let (_,N w dw) = runMeas m (dualizeTree t)
-    --let (logratio,t') = k g3 m t
     -- Now run step over and over to get a stream of (tree,result,weight)s.
     -- let (samples,_) = trace ("initialW:"++ show w ++ "lengthInitialTrace" ++ show (length (M.keys dw))) (runState (iterateM step t) g2)
     let (samples,_) = runState (iterateM step t) g2
@@ -364,6 +362,9 @@ malaKernel tau g m t =
     gradientStep dr (N x dx) = N (x + (tau * M.findWithDefault 0 key dr)) dx
       where key = head (M.keys dx) 
 
+-- hmcKernel - from MCMC using Hamiltonian dynamics by Neal
+-- https://arxiv.org/abs/1206.1901
+
 data LFConfig a = LFConfig {eps :: a , leapfrogSteps :: Int , selected :: Int}
 
 simpleLeapfrog :: Double -> Int -> Meas (Nagata Integer Double) a -> Tree (Nagata Integer Double) -> Tree (Nagata Integer Double) -> (Tree (Nagata Integer Double), Tree (Nagata Integer Double))
@@ -399,12 +400,12 @@ hmcKernel lfc g m q =
   let (_,N w dU_dq) = runMeas m (dualizeTree q) in
   let (a, g') = random g :: (Double, g) in
   --let eps = (invnormcdf a)* (eps'/5) + eps' in
-  --let eps = a* 0.05 + 0.00075 in 
-  let eps = eps'
+  let eps = a* 0.05 + 0.00075 in 
+  --let eps = eps' in
   let (b, g'') = random g' :: (Double, g) in
   --let steps = (floor (11*b) - 6)*1 + steps' in
-  --let steps = floor (41*b) + 10 in 
-  let steps = steps'
+  let steps = floor (41*b) + 10 in 
+  --let steps = steps' in
   let p = randomTree g'' in 
   let p' = fmap (gradientStepP 0.5 eps dU_dq) (dualizeTree p) in -- p_k - 1/2 epsilon grad log pi (q_k)
   let (q_prop, p'') = simpleLeapfrog eps steps m (dualizeTree q) p' in
@@ -423,6 +424,88 @@ hmcKernel lfc g m q =
   (w' - w + plogratio/2, fmap primal q_prop) 
   --trace ("initial w:"++show w ++ " proposed w " ++ show w' ++ " pdiff: " ++ show (plogratio/2)++" log ratio: "++ show (w' - w + plogratio/2) ++ " ratio "++ show (exp (w' - w + plogratio/2))) (w' - w + plogratio/2, fmap primal q_prop)
 
+
+-- look ahead hmc with persistence, can be transformed into NP-iMCMC?
+-- https://arxiv.org/abs/2211.01100
+
+-- alpha between 0 and 1 - persistence parameter: alpha = 1 no persistence (equivalent to HMC), alpha = 0 full persistence
+-- chances :: Integer - look ahead parameter: chances = 1 -> no extra chances
+lahmcPersistence :: (LFConfig Double -> Meas (Nagata Integer Double) a -> (Tree Double, Tree Double) -> (Tree Double, Tree Double) -> Bool -> Double -> (Tree Double, Tree Double, Bool))  -> Meas (Nagata Integer Double) a -> LFConfig Double -> Double -> IO [a]
+lahmcPersistence laIntegrator m lfc alpha = do
+    newStdGen
+    g <- getStdGen
+    let (g1,g2) = split g :: (StdGen ,StdGen)
+    let (g3, g4) = split g2 :: (StdGen, StdGen)
+    --let (g3, g4) = split g2
+    let q = randomTree g1
+    let p = randomTree g3
+    let (_,N w dU_dq) = runMeas m (dualizeTree q)
+    -- Now run step over and over to get a stream of (tree,result,weight)s.
+    let (samples,_) = trace ("initialW:"++ show w ++ "grad" ++ show dU_dq ++ " q " ++ show (map (lookupTree q) (M.keys dU_dq))) $ runState (iterateM step (q, p, True)) g4
+    --let (samples,_) = runState (iterateM step (q, p, True)) g4
+    -- The stream of seeds is used to produce a stream of result/weight pairs.
+    return $ map fst $ map (runMeas m) $ map dualizeTree $ map (\(x, _, _) -> x) $ [(q, p, True)] ++ samples
+    {- NB There are three kinds of randomness in the step function.
+    1. The start tree 't', which is the source of randomness for simulating the
+    program m to start with. This is sort-of the point in the "state space".
+    2. The randomness needed to propose a new tree ('g1')
+    3. The randomness needed to decide whether to accept or reject that ('g2')
+    The tree t is an argument and result,
+    but we use a state monad ('get'/'put') to deal with the other randomness '(g,g1,g2)' -}
+    where step :: RandomGen g => (Tree Double, Tree Double, Bool) -> State g (Tree Double, Tree Double, Bool)
+          step (q_old, p_old, d) = do
+            g <- get
+            let (g', g'') = split g
+            let (r, g_1) = random g'
+            let (a :: Double, g_2) = random g_1 
+            let (b :: Double, g_3) = random g_2 
+            --let eps = (invnormcdf a)* (eps'/5) + eps' in
+            put g_3
+            let (LFConfig eps steps selected) = lfc
+            let eps' = b * eps + 0.00075
+            --let steps = (floor (11*b) - 6)*1 + steps' in
+            let steps' = floor (a*(fromIntegral steps+1)) + 10
+            --let steps = steps' in
+            let (x,y, d') = laIntegrator (LFConfig eps' steps' selected) m (q_old, p_old) (q_old, p_old) d r
+            let q_new = if (d == d') then x else q_old 
+            let p = if (d == d') then y else p_old
+            let p' = fmap (\x -> sqrt(1-alpha^2)* x) p
+            -- p_new is the modified momemtum: sqrt(1-\alpha^2) * p + \alpha * Normal
+            let p_new = mutateTreeGRW (alpha) g'' m p'
+            return (q_new, p_new, d')
+
+
+
+lookaheadHMC :: Integer -> LFConfig Double -> Meas (Nagata Integer Double) a -> (Tree Double, Tree Double) -> (Tree Double, Tree Double) -> Bool -> Double -> (Tree Double, Tree Double, Bool)
+lookaheadHMC 0 lfc m (q_0, p_0) (q, p) d r = (q_0, p_0, not d)
+lookaheadHMC chances lfc m (q_0, p_0) (q, p) d r =
+    let (logRatio, q_prop, p') = if d then (hmcKernel2 lfc m (q_0, p_0) (q, p)) else (hmcKernel2 lfc m (q_0, p_0) (q, (fmap (\x -> -x) p))) in
+    let p_prop = if d then p' else (fmap (\x -> -x) p') in
+    if (log r < logRatio) then (q_prop, p_prop, d) else (lookaheadHMC (chances-1) lfc m (q_0, p_0) (q_prop, p_prop) d r)
+
+
+
+
+hmcKernel2 :: LFConfig Double -> Meas (Nagata Integer Double) a -> (Tree Double, Tree Double) -> (Tree Double, Tree Double) -> (Double, Tree Double, Tree Double)
+hmcKernel2 lfc m (q_0, p_0) (q, p)=
+  let (LFConfig eps steps selected) = lfc in
+  let (_,N w dU_dq) = runMeas m (dualizeTree q) in
+  let p' = fmap (gradientStepP 0.5 eps dU_dq) (dualizeTree p) in -- p_k - 1/2 epsilon grad log pi (q_k)
+  let (q_prop, p'') = simpleLeapfrog eps steps m (dualizeTree q) p' in
+  let (_,N w' dU_dq') = runMeas m q_prop in
+  -- let p_prop = fmap (\(N x xd) -> (N -x xd)) (fmap (gradientStepP 0.5 eps dU_dq') p'') in
+  let p_prop = (fmap (gradientStepP 0.5 eps dU_dq') p'') in
+  -- Calculate log MH ratio
+  -- Find the union of the sites with non-zero gradient.
+  -- let sites = trace (show (M.keys dU_dq) ++ "proposed:" ++ show (M.keys dU_dq')) (merge (M.keys dU_dq) (M.keys dU_dq')) in
+  let (_,N w_0 dU_dq_0) = runMeas m (dualizeTree q_0) in
+  let sites = merge (M.keys dU_dq_0) (M.keys dU_dq') in
+  -- Find the log ratio for p as the sum of squares.
+  -- It's ok to ignore dimensions where both gradients are zero. 
+  --let plogratio = trace (show sites ++ "initial: " ++ show (map (lookupTree p_0) (M.keys dU_dq_0)) ++ "proposed: " ++ show (map primal (map (lookupTree p_prop) (M.keys dU_dq')))) (Prelude.sum [(lookupTree p_0 i)^2| i <- sites] - Prelude.sum [(primal (lookupTree p_prop i))^2 | i <- sites]) in
+  let plogratio = Prelude.sum [(lookupTree p_0 i)^2| i <- sites] - Prelude.sum [(primal (lookupTree p_prop i))^2 | i <- sites] in
+  (w' - w_0 + plogratio/2, fmap primal q_prop, fmap primal p_prop) 
+  --trace ("initial w:"++show w_0 ++ " proposed w " ++ show w' ++ " pdiff: " ++ show (plogratio/2)++" log ratio: "++ show (w' - w_0 + plogratio/2) ++ " ratio "++ show (w' - w_0 + plogratio/2)) (w' - w_0 + plogratio/2, fmap primal q_prop, fmap primal p_prop)
 
 
 -- updateQP :: (Floating a, Ord a, Show a) => (a -> a) -> a -> (a, a) -> (a, a)
