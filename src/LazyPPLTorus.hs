@@ -1,7 +1,10 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, 
     ScopedTypeVariables,
     RankNTypes, BangPatterns, DeriveFunctor #-}
-module LazyPPLMala where
+
+-- This version of LazyPPL uses a unit interval at each side but it is considered as a circle.
+
+module LazyPPLTorus where
 
 import Control.Monad.Trans.Writer
 import Control.Monad.Trans.Class
@@ -12,6 +15,9 @@ import Control.Monad
 import Control.Monad.Extra
 import Control.Monad.State.Lazy (State, state , put, get, runState)
 import Numeric.Log
+
+import Statistics.Distribution.StudentT
+import Statistics.Distribution (quantile)
 
 import Control.DeepSeq
 import Control.Exception (evaluate)
@@ -31,14 +37,6 @@ import Debug.Trace
 import AD
 import Data.Number.Erf
 
-{- | This file defines
-    1. Two monads: 'Prob' (for probabilities) and 'Meas' (for unnormalized probabilities)
-    2. 'mh' (Metropolis-Hastings algorithm, parameterized by a kernel)
-    3. Three MH kernels: LMH (POPL 2023), Gaussian random walk, and MALA
-
-    This differs from the original LazyPPL.hs in that it uses standard normals 
-    instead of gaussians to populate the tree. 
--}
 
 -- | A 'Tree' is a lazy, infinitely wide and infinitely deep tree, labelled by d (Doubles, or dual numbers)
 -- | Our source of randomness will be a Tree, populated by gaussian choices for each label.
@@ -60,12 +58,11 @@ newtype Prob d a = Prob (Tree d -> a)
 splitTree :: Tree d -> (Tree d , Tree d)
 splitTree (Tree r (t : ts)) = (t , Tree r ts)
 
-stdnormal :: Prob d d
-stdnormal = Prob $ \(Tree r _) -> r
-
--- | In contrast to the original LazyPPL, here the uniform distribution is a derived construct.
-uniform :: Erf d => Prob d d
-uniform = do { x <- stdnormal ; return $ normcdf x}
+-- | In contrast to the original LazyPPL, here the standard uniform distribution is a derived construct.
+-- | We use this measure-preserving transformation so that random walks around the circle bounce rather than jump.
+uniform :: (Fractional d) => Prob d d
+uniform = Prob $ \(Tree r _) -> 2 * abs (r - (1/2))
+-- Other times we might use the circle, e.g. cosine gives the arcsin distribution, or Box-Muller transformations  
 
 
 -- | Probabilities form a monad.
@@ -102,8 +99,7 @@ sample p = Meas $ lift p
     This uses 'split' to split a random seed -}
 randomTree :: RandomGen g => g -> Tree Double
 randomTree g = let (a,g') = random g in
-               let x = invnormcdf a in
-               Tree x (randomTrees g')
+               Tree a (randomTrees g')
 randomTrees :: RandomGen g => g -> [Tree Double]
 randomTrees g = let (g1,g2) = split g in randomTree g1 : randomTrees g2
 
@@ -118,7 +114,7 @@ runMeas (Meas m) t = let (x,Sum w) = runProb (runWriterT m) t in (x,w)
 
 minExample :: (Floating d) => Meas d d
 minExample = do
-   x <- sample stdnormal
+   x <- sample uniform
    score x
    return x
 
@@ -161,40 +157,6 @@ test p =
      let r = (runProb (runWriterT (unMeas p)) rs)
      print r
      
--- -------------------------------------------------------------------------------
--- A variant of minExample that scores based on the distance from 0.5
-
-trivialExample :: (Floating d) => Meas d d
-trivialExample =
-  do x <- sample stdnormal
-     score ((0.5 - x) * (0.5 - x))
-     return x
-
--- -------------------------------------------------------------------------------
-
--- infinite sequence of uniform samples
-iiduniform :: Erf d => Prob d [d]
-iiduniform = do 
-  x <- uniform
-  xs <- iiduniform
-  return $ x : xs
-
--- scale an infinite sequence of uniform samples by a random value, "a";
--- use these as steps in a random forwards-only walk 
--- use score to maximize the distance after the first 10 steps 
--- in consequence, "a" will be approx 1. 
-minExampleNonParam :: (Floating d , Erf d) => Meas d d
-minExampleNonParam = do
-  a <- sample uniform
-  steps <- sample $ (map (a *)) <$> iiduniform
-  let xs = scanl1 (+) steps
-  let d10 = xs !! 10
-  score d10 
-  return d10
-
---testNonParam :: IO ()
-testNonParam = prettyAscent 100 0.01 minExampleNonParam
-
 -- | Gradient ascent implementation that takes a number of iterations, a learning factor and
 --   a measurement program. It maximizes the measurement program's score.
 gradientAscent :: Double -> Meas (Nagata Integer Double) a -> IO [(a,Nagata Integer Double)]
@@ -223,35 +185,7 @@ prettyAscent n alpha p = do
    forM [0..(n-1)] (\i -> do {let hdr = "* Iteration " ++ show (i + 1) ++ ":" in putStr hdr ; let (result,score) = (rss!!i) in putStrLn ("Log likelihood = " ++ show score) }) 
    return $ fst $  rss !! n
 
--- {-- | __Metropolis-Hastings__ (MH): Produce a stream of samples, using Metropolis Hastings
---     This is parameterized by a proposal kernel (with acceptance ratio).
--- 
---     The algorithm is as follows:
--- 
---     Top level: produces a stream of samples.
---     * Split the random number generator in two
---     * One part is used as the first seed for the simulation,
---     * and one part is used for the randomness in the MH algorithm.
--- 
---     Then, run 'step' over and over to get a stream of '(tree, result, weight)'s.
---     The stream of seeds is used to produce a stream of result/weight pairs.
--- 
---     NB There are three kinds of randomness in the step function.
---     1. The start tree 't', which is the source of randomness for simulating the
---     program m to start with. This is sort-of the point in the "state space".
---     2. The randomness needed to propose a new tree via the kernel ('g1')
---     3. The randomness needed to decide whether to accept or reject that ('g2')
---     The tree t is an argument and result,
---     but we use a state monad ('get'/'put') to deal with the other randomness '(g, g1, g2)'
--- 
---     Steps of the 'step' function:
---     1. Randomly change some sites, 
---     2. Rerun the model with the new tree, to get a new weight 'w''.
---     3. Compute the MH acceptance ratio. This is the probability of either returning the new seed or the old one.
---     4. Accept or reject the new sample based on the MH ratio.
---     
--- --}
--- 
+
 mh :: (forall g. RandomGen g => g -> Meas (Nagata Integer Double) a -> Tree Double -> (Double,Tree Double))
       ->  Meas (Nagata Integer Double) a -> IO [a]
 mh k m = do
@@ -289,14 +223,14 @@ mh k m = do
               then return t' -- trace ("---- Weight: " ++ show w') w')
               else return t -- trace ("---- Weight: " ++ show w) w)
 
--- | Now here are three MH kernels: lmhKernel, grwKernel and malaKernel
+-- | Now here are four MH kernels: lmhKernel, grwKernel, srwKernel and malaKernel
 
 -- | Lightweight MH algorithm from POPL 2023
 mutateTreeLMH :: forall g a. RandomGen g => Double -> g -> Meas (Nagata Integer Double) a -> Tree Double -> Tree Double
 mutateTreeLMH p g m (Tree a ts) =
   let (a',g') = (random g :: (Double,g)) in
   let (a'',g'') = (random g' :: (Double,g)) in
-  if a' < p then Tree (invnormcdf a'') (mutateTreesLMH p g'' m ts) else Tree a (mutateTreesLMH p g' m ts)
+  if a' < p then Tree (a'') (mutateTreesLMH p g'' m ts) else Tree a (mutateTreesLMH p g' m ts)
 mutateTreesLMH :: RandomGen g => Double -> g ->  Meas (Nagata Integer Double) a -> [Tree Double] -> [Tree Double]
 mutateTreesLMH p g m (t:ts) = let (g1,g2) = split g in mutateTreeLMH p g1 m t : mutateTreesLMH p g2 m ts
 
@@ -307,18 +241,37 @@ lmhKernel p g m t =
   let (_,N w' _) = runMeas m (dualizeTree t') in 
   (w' - w, t')  
 
+circle x = x - (fromIntegral $ floor x) -- mapping from R to the circle, wrapping it round
 
 -- | Gaussian Random walk
 mutateTreeGRW :: forall g a. RandomGen g => Double -> g -> Meas (Nagata Integer Double) a -> Tree Double -> Tree Double
 mutateTreeGRW sigma g m (Tree a ts) =
   let (a',g') = (random g :: (Double,g)) in
-  Tree (a + sigma * (invnormcdf a')) (mutateTreesGRW sigma g' m ts)
+  Tree (circle (a + sigma * (invnormcdf a'))) (mutateTreesGRW sigma g' m ts)
 mutateTreesGRW :: RandomGen g => Double -> g ->  Meas (Nagata Integer Double) a -> [Tree Double] -> [Tree Double]
 mutateTreesGRW sigma g m (t:ts) = let (g1,g2) = split g in mutateTreeGRW sigma g1 m t : mutateTreesGRW sigma g2 m ts
 
 grwKernel :: forall g a. RandomGen g => Double -> g -> Meas (Nagata Integer Double) a -> Tree Double -> (Double, Tree Double)
 grwKernel sigma g m t =
   let t' = mutateTreeGRW sigma g m t in
+  let (_,N w _) = runMeas m (dualizeTree t) in 
+  let (_,N w' _) = runMeas m (dualizeTree t') in 
+  (w' - w, t')  
+
+-- | Student T Random walk
+-- | Student T has heavier tails. So:
+-- | With low degrees of freedom, this will be like the Gaussian one but have some chance of jumping a long way
+-- | With high degrees of freedom, this tends towards Gaussian.
+mutateTreeSRW :: forall g a. RandomGen g => Double -> Double -> g -> Meas (Nagata Integer Double) a -> Tree Double -> Tree Double
+mutateTreeSRW dof sigma g m (Tree a ts) =
+  let (a',g') = (random g :: (Double,g)) in
+  Tree (circle (a + sigma * (quantile (studentT dof) a'))) (mutateTreesSRW dof sigma g' m ts)
+mutateTreesSRW :: RandomGen g => Double -> Double -> g ->  Meas (Nagata Integer Double) a -> [Tree Double] -> [Tree Double]
+mutateTreesSRW dof sigma g m (t:ts) = let (g1,g2) = split g in mutateTreeSRW dof sigma g1 m t : mutateTreesSRW dof sigma g2 m ts
+
+srwKernel :: forall g a. RandomGen g => Double -> Double -> g -> Meas (Nagata Integer Double) a -> Tree Double -> (Double, Tree Double)
+srwKernel dof sigma g m t =
+  let t' = mutateTreeSRW dof sigma g m t in
   let (_,N w _) = runMeas m (dualizeTree t) in 
   let (_,N w' _) = runMeas m (dualizeTree t') in 
   (w' - w, t')  
@@ -338,10 +291,11 @@ merge (x:xs) (y:ys) | x < y = x : merge xs (y:ys)
 -- | MALA (Metropolis-adjusted Langevin algorithm)
 -- | https://en.wikipedia.org/wiki/Metropolis-adjusted_Langevin_algorithm#Further_details
 -- | Here, t is X_k and t' is X_{k+1}
-malaKernel :: forall g a. RandomGen g => Double -> g -> Meas (Nagata Integer Double) a -> Tree Double -> (Double, Tree Double)
-malaKernel tau g m t =
+-- | We are using the Student T random walk
+malaKernel :: forall g a. RandomGen g => Double -> Double -> g -> Meas (Nagata Integer Double) a -> Tree Double -> (Double, Tree Double)
+malaKernel dof tau g m t =
   let (_,N w dw) = runMeas m (dualizeTree t) in
-  let t'' = mutateTreeGRW (sqrt(2 * tau)) g m t in -- X_k + 2\tau Normal 
+  let t'' = mutateTreeSRW dof (sqrt(2 * tau)) g m t in -- X_k + 2\tau Normal 
   let t' = fmap (gradientStep dw) (dualizeTree t'') in -- X_k + tau grad log pi (X_k) + 2\tau Normal 
   let (_,N w' dw') = runMeas m t' in
   -- Calculate log MH ratio
@@ -355,7 +309,7 @@ malaKernel tau g m t =
   let qlogratio = (1/(4*tau))* (Prelude.sum [(lookupTree t i - primal (lookupTree t' i) - tau * (M.findWithDefault 0 i dw'))^2 | i <- sites] - Prelude.sum [(primal (lookupTree t' i) - lookupTree t i - tau * (M.findWithDefault 0 i dw))^2 | i <- sites]) in
   (w' - w - qlogratio , fmap primal t') 
   where 
-    gradientStep dr (N x dx) = N (x + (tau * M.findWithDefault 0 key dr)) dx
+    gradientStep dr (N x dx) = N (circle $ x + (tau * M.findWithDefault 0 key dr)) dx
       where key = head (M.keys dx) 
 
 
