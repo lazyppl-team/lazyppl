@@ -18,7 +18,7 @@ MALA | Gaussian random walk | Original LazyPPL
 
 MALA | Gaussian random walk | Original LazyPPL 
 --- | --- | ---
-![](images/mala/mala-piecewiseconst-reg.svg) | ![](images/mala/grw-piecewiseconst-reg.svg) | ![](images/mala/lmh-piecewiseconst-reg.svg)
+![](images/mala-piecewiseconst-reg.svg) | ![](images/grw-piecewiseconst-reg.svg) | ![](images/lmh-piecewiseconst-reg.svg)
  
 ## Testing samples in one dimension
 
