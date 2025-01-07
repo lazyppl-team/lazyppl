@@ -16,6 +16,8 @@ MALA | Gaussian random walk | Original LazyPPL
 
 2000 samples with no thinning:
 
+MALA | Gaussian random walk | Original LazyPPL 
+--- | --- | ---
 ![](images/mala/mala-piecewiseconst-reg.svg) | ![](images/mala/grw-piecewiseconst-reg.svg) | ![](images/mala/lmh-piecewiseconst-reg.svg)
  
 ## Testing samples in one dimension
@@ -24,4 +26,4 @@ MALA | Gaussian random walk | Original LazyPPL
 
 Uniform | Standard Gaussian
 --- | --- 
-![](images/mala/test-uniform.svg) | ![](images/mala/test-normal.svg)
+![](images/test-uniform.svg) | ![](images/test-normal.svg)
