@@ -8,19 +8,20 @@ Here are some examples, using the same source code as the original LazyPPL examp
 
 500 samples with no thinning:
 
-![](https://raw.githubusercontent.com/lazyppl-team/lazyppl/refs/heads/torus-experiments/images/mala-linear-reg.svg) | ![](https://raw.githubusercontent.com/lazyppl-team/lazyppl/refs/heads/torus-experiments/images/grw-linear-reg.svg) | ![](images/lmh-linear-reg.svg)
 MALA | Gaussian random walk | Original LazyPPL 
+--- | --- | ---
+![](images/mala-linear-reg.svg) | ![](images/grw-linear-reg.svg) | ![](images/lmh-linear-reg.svg)
 
 ## Piecewise linear regression 
 
 2000 samples with no thinning:
 
-![]((https://raw.githubusercontent.com/lazyppl-team/lazyppl/refs/heads/torus-experiments/images/mala/mala-piecewiseconst-reg.svg) | ![]((https://raw.githubusercontent.com/lazyppl-team/lazyppl/refs/heads/torus-experiments/images/mala/grw-piecewiseconst-reg.svg) | ![]((https://raw.githubusercontent.com/lazyppl-team/lazyppl/refs/heads/torus-experiments/images/mala/lmh-piecewiseconst-reg.svg)
-MALA | Gaussian random walk | Original LazyPPL 
-
+![]((images/mala/mala-piecewiseconst-reg.svg) | ![]((images/mala/grw-piecewiseconst-reg.svg) | ![]((images/mala/lmh-piecewiseconst-reg.svg)
+ 
 ## Testing samples in one dimension
 
 1 million samples:
 
-![]((https://raw.githubusercontent.com/lazyppl-team/lazyppl/refs/heads/torus-experiments/images/mala/test-uniform.svg) | ![]((https://raw.githubusercontent.com/lazyppl-team/lazyppl/refs/heads/torus-experiments/images/mala/test-normal.svg)
 Uniform | Standard Gaussian
+--- | --- 
+![]((images/mala/test-uniform.svg) | ![]((images/mala/test-normal.svg)
