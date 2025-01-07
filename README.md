@@ -6,7 +6,7 @@ Here are some examples, using the same source code as the original LazyPPL examp
 
 ## Linear regression 
 
-500 samples with no thinning:
+500 samples with no burn-in:
 
 MALA | Gaussian random walk | Original LazyPPL 
 --- | --- | ---
@@ -14,7 +14,7 @@ MALA | Gaussian random walk | Original LazyPPL
 
 ## Piecewise linear regression 
 
-2000 samples with no thinning:
+2000 samples with no burn-in:
 
 MALA | Gaussian random walk | Original LazyPPL 
 --- | --- | ---
