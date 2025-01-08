@@ -44,7 +44,7 @@ regress sigma prior dataset =
     return f
 
 plotLinReg =
-  do fs' <- mh (malaKernel 5 0.000005) (regress (toNagata 0.5) linear dataset)
+  do fs' <- mh (malaKernel 0.000005) (regress (toNagata 0.5) linear dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 500 $ fs'
      plotFuns "images/mala-linear-reg.svg" dataset fs 0.05
      fs' <- mh (grwKernel 0.003) (regress (toNagata 0.5) linear dataset)
@@ -92,13 +92,13 @@ randConst =
     return f
 
 plotStepReg =
-  do fs' <- mh (malaKernel 5 0.000001) (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
+  do fs' <- mh (malaKernel 0.000005) (regress (toNagata 0.5) (splice (poissonPP 0 0.3) randConst) dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 2000 $ fs'
      plotFuns "images/mala-piecewiseconst-reg.svg" dataset fs 0.02
-     fs' <- mh (grwKernel 0.03) (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
+     fs' <- mh (grwKernel 0.003) (regress (toNagata 0.5) (splice (poissonPP 0 0.3) randConst) dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 2000 $ fs'
      plotFuns "images/grw-piecewiseconst-reg.svg" dataset fs 0.02
-     fs' <- mh (lmhKernel 0.2) (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
+     fs' <- mh (lmhKernel 0.2) (regress (toNagata 0.5) (splice (poissonPP 0 0.3) randConst) dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 2000 $ fs'
      plotFuns "images/lmh-piecewiseconst-reg.svg" dataset fs 0.02 
 
@@ -141,10 +141,10 @@ plotHistogram filename xs = do
 
 plotTests :: IO ()
 plotTests = do
-  xws <- mh (malaKernel 5 0.0005) $ sample $ uniform
+  xws <- mh (malaKernel 0.0005) $ sample $ uniform
   let xws' = map (\(N x _) -> floor (x * 100)) xws
   plotHistogram "images/test-uniform.svg" ( take 1000000 xws')
-  xws <- mh (malaKernel 5 0.0005) $ sample $ normal 0 1
+  xws <- mh (malaKernel 0.0005) $ sample $ normal 0 1
   let xws' = map (\(N x _) -> floor (x * 10)) xws
   plotHistogram "images/test-normal.svg" ( take 1000000 xws')
 

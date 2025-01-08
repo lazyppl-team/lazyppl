@@ -16,9 +16,6 @@ import Control.Monad.Extra
 import Control.Monad.State.Lazy (State, state , put, get, runState)
 import Numeric.Log
 
-import Statistics.Distribution.StudentT
-import Statistics.Distribution (quantile)
-
 import Control.DeepSeq
 import Control.Exception (evaluate)
 
@@ -258,24 +255,6 @@ grwKernel sigma g m t =
   let (_,N w' _) = runMeas m (dualizeTree t') in 
   (w' - w, t')  
 
--- | Student T Random walk
--- | Student T has heavier tails. So:
--- | With low degrees of freedom, this will be like the Gaussian one but have some chance of jumping a long way
--- | With high degrees of freedom, this tends towards Gaussian.
-mutateTreeSRW :: forall g a. RandomGen g => Double -> Double -> g -> Meas (Nagata Integer Double) a -> Tree Double -> Tree Double
-mutateTreeSRW dof sigma g m (Tree a ts) =
-  let (a',g') = (random g :: (Double,g)) in
-  Tree (circle (a + sigma * (quantile (studentT dof) a'))) (mutateTreesSRW dof sigma g' m ts)
-mutateTreesSRW :: RandomGen g => Double -> Double -> g ->  Meas (Nagata Integer Double) a -> [Tree Double] -> [Tree Double]
-mutateTreesSRW dof sigma g m (t:ts) = let (g1,g2) = split g in mutateTreeSRW dof sigma g1 m t : mutateTreesSRW dof sigma g2 m ts
-
-srwKernel :: forall g a. RandomGen g => Double -> Double -> g -> Meas (Nagata Integer Double) a -> Tree Double -> (Double, Tree Double)
-srwKernel dof sigma g m t =
-  let t' = mutateTreeSRW dof sigma g m t in
-  let (_,N w _) = runMeas m (dualizeTree t) in 
-  let (_,N w' _) = runMeas m (dualizeTree t') in 
-  (w' - w, t')  
-
 -- Lookup a vertex in a tree. Uses the same indexing as dualizeTree.
 lookupTree :: Tree d -> Integer -> d
 lookupTree (Tree x _) 0 = x
@@ -291,11 +270,10 @@ merge (x:xs) (y:ys) | x < y = x : merge xs (y:ys)
 -- | MALA (Metropolis-adjusted Langevin algorithm)
 -- | https://en.wikipedia.org/wiki/Metropolis-adjusted_Langevin_algorithm#Further_details
 -- | Here, t is X_k and t' is X_{k+1}
--- | We are using the Student T random walk
-malaKernel :: forall g a. RandomGen g => Double -> Double -> g -> Meas (Nagata Integer Double) a -> Tree Double -> (Double, Tree Double)
-malaKernel dof tau g m t =
+malaKernel :: forall g a. RandomGen g => Double -> g -> Meas (Nagata Integer Double) a -> Tree Double -> (Double, Tree Double)
+malaKernel tau g m t =
   let (_,N w dw) = runMeas m (dualizeTree t) in
-  let t'' = mutateTreeSRW dof (sqrt(2 * tau)) g m t in -- X_k + 2\tau Normal 
+  let t'' = mutateTreeGRW (sqrt(2 * tau)) g m t in -- X_k + 2\tau Normal 
   let t' = fmap (gradientStep dw) (dualizeTree t'') in -- X_k + tau grad log pi (X_k) + 2\tau Normal 
   let (_,N w' dw') = runMeas m t' in
   -- Calculate log MH ratio
@@ -305,9 +283,12 @@ malaKernel dof tau g m t =
   -- Find the union of the sites with non-zero gradient.
   let sites = merge (M.keys dw) (M.keys dw') in 
   -- Find the log ratio as the sum of squares.
-  -- It's ok to ignore dimensions where both gradients are zero. 
-  let qlogratio = (1/(4*tau))* (Prelude.sum [(lookupTree t i - primal (lookupTree t' i) - tau * (M.findWithDefault 0 i dw'))^2 | i <- sites] - Prelude.sum [(primal (lookupTree t' i) - lookupTree t i - tau * (M.findWithDefault 0 i dw))^2 | i <- sites]) in
+  -- It's ok to ignore dimensions where both gradients are zero.
+  -- Helper function: circle distance
+  let cdist x x' dx' = let x'' = circle (x' + tau * dx') in if (abs (x-x'') < 0.5) then (x-x'')^2 else (1-(x-x''))^2 in
+  let qlogratio = (1/(4*tau))* (Prelude.sum [cdist (lookupTree t i) (primal (lookupTree t' i)) (M.findWithDefault 0 i dw') | i <- sites] - Prelude.sum [cdist (primal (lookupTree t' i)) (lookupTree t i) (M.findWithDefault 0 i dw) | i <- sites]) in
   (w' - w - qlogratio , fmap primal t') 
+  -- NB This ratio is only correct if the standard deviation is low, so that the chance of going twice round the circle in one step is negligible.
   where 
     gradientStep dr (N x dx) = N (circle $ x + (tau * M.findWithDefault 0 key dr)) dx
       where key = head (M.keys dx) 
