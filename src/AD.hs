@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 module AD where
 
 {- | This file defines a simple forward-mode version of AD.
@@ -5,13 +6,17 @@ module AD where
 
 import Data.Map
 import Data.Number.Erf
+import Control.DeepSeq
+import GHC.Generics (Generic)
 
 -- | Nagata number (aka, generalized dual number) whose second
 --   component is the gradient vector represented as a sparse
 --   map data structure from variable names to their partial
 --   derivative. Absent entries are zero.
 data Nagata v d = N { primal :: d, tangent :: (Map v d) }
-  deriving Show
+  deriving (Show, Generic)
+
+instance (NFData v, NFData d, Ord v) => NFData (Nagata v d)
 
 instance (Ord v, Ord d, Num d) => Num (Nagata v d) where
   fromInteger n   = N (fromInteger n) empty

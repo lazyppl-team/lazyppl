@@ -382,19 +382,19 @@ gradientOptimize op n alpha p =
 -- 
 -- {-- | Single-site Metropolis-Hastings --}
 -- 
--- -- | A partial tree, used for examining finite evaluated subtrees of the working infinite
--- -- | random tree.
--- data PTree = PTree (Maybe Double) [Maybe PTree] deriving Show
--- 
--- type Site = [Int]
--- type Subst = M.Map Site Double
--- 
--- getSites :: PTree -> [Site]
--- getSites p = getSites' p []
--- 
--- getSites' :: PTree -> Site  -> [Site]
--- getSites' (PTree (Just v) ts) site = site : concat [ getSites' t (n:site)  | (n, Just t) <- zip [0..] ts ]
--- getSites' (PTree Nothing  ts) site = concat [ getSites' t (n:site) | (n, Just t) <- zip [0..] ts ]
+-- | A partial tree, used for examining finite evaluated subtrees of the working infinite
+-- | random tree.
+data PTree = PTree (Maybe Double) [Maybe PTree] deriving Show
+
+type Site = [Int]
+type Subst = M.Map Site Double
+
+getSites :: PTree -> [Site]
+getSites p = getSites' p []
+
+getSites' :: PTree -> Site  -> [Site]
+getSites' (PTree (Just v) ts) site = site : concat [ getSites' t (n:site)  | (n, Just t) <- zip [0..] ts ]
+getSites' (PTree Nothing  ts) site = concat [ getSites' t (n:site) | (n, Just t) <- zip [0..] ts ]
 -- 
 -- mutateNode :: Tree -> Site -> Double -> Tree
 -- mutateNode (Tree _ ts) []     d = Tree d ts
@@ -437,63 +437,63 @@ gradientOptimize op n alpha p =
 --               then (treeSeed, seed2, sub', ptree', (x',w'))
 --               else (treeSeed, seed2, sub,  ptree,  (x,w))
 -- 
--- -- Functions for truncating a tree.
--- getGCClosureData b = do c <- getBoxedClosureData b
---                         case c of
---                           BlackholeClosure _ n -> getGCClosureData n
---                           -- SelectorClosure _ n -> getGCClosureData n
---                           _ -> return c
--- 
--- helperT :: Box -> IO PTree
--- helperT b = do
---   c <- getGCClosureData b
---   case c of
---     ConstrClosure _ [n,l] [] _ _ "Tree" ->
---       do  n' <- getGCClosureData n
---           l' <- getGCClosureData l
---           -- performGC
---           case (n',l') of
---             (ConstrClosure {dataArgs = [d], name = "D#"}, ConstrClosure {name = ":"}) ->
---               do  l'' <- helperB l
---                   return $ PTree (Just $ unsafeCoerce d) l''
---             (ThunkClosure {}, ConstrClosure {name = ":"}) ->
---               do  l'' <- helperB l
---                   return $ PTree Nothing l''
---             (ConstrClosure {dataArgs = [d], name = "D#"}, ThunkClosure {}) ->
---                   return $ PTree (Just $ unsafeCoerce d) []
---             (SelectorClosure {}, ThunkClosure {}) ->
---               return $ PTree Nothing []
---             (SelectorClosure {}, ConstrClosure {name = ":"}) ->
---               do  l'' <- helperB l
---                   return $ PTree Nothing l''
---             _ -> return $ error $ "Missing case:\n" ++ show n' ++ "\n" ++ show l'
---     ThunkClosure {} -> return $ PTree Nothing []
--- 
--- helperB :: Box -> IO [Maybe PTree]
--- helperB b = do
---   c <- getGCClosureData b
---   case c of
---     ConstrClosure _ [n,l] [] _ _ ":" ->
---       do  n' <- getGCClosureData n
---           l' <- getGCClosureData l
---           case (n',l') of
---             (ConstrClosure {name = "Tree"}, ConstrClosure {name = ":"}) ->
---               do  n'' <- helperT n
---                   l'' <- helperB l
---                   return $ Just n'' : l''
---             (ConstrClosure {name = "Tree"}, ThunkClosure {}) ->
---               do  n'' <- helperT n
---                   return [Just n'']
---             (ThunkClosure {}, ConstrClosure {name = ":"}) ->
---               do  l'' <- helperB l
---                   return $ Nothing : l''
---             (ThunkClosure {}, ThunkClosure {}) ->
---               return [] -- alternatively, Nothing : []
---             _ -> return $ error $ "Missing case:\n" ++ show n' ++ "\n" ++ show l'
---     ThunkClosure {} -> return []
--- 
--- trunc :: Tree -> IO PTree
--- trunc t = helperT $ asBox t
+-- Functions for truncating a tree.
+getGCClosureData b = do c <- getBoxedClosureData b
+                        case c of
+                          BlackholeClosure _ n -> getGCClosureData n
+                          -- SelectorClosure _ n -> getGCClosureData n
+                          _ -> return c
+
+helperT :: Box -> IO PTree
+helperT b = do
+  c <- getGCClosureData b
+  case c of
+    ConstrClosure _ [n,l] [] _ _ "Tree" ->
+      do  n' <- getGCClosureData n
+          l' <- getGCClosureData l
+          -- performGC
+          case (n',l') of
+            (ConstrClosure {dataArgs = [d], name = "D#"}, ConstrClosure {name = ":"}) ->
+              do  l'' <- helperB l
+                  return $ PTree (Just $ unsafeCoerce d) l''
+            (ThunkClosure {}, ConstrClosure {name = ":"}) ->
+              do  l'' <- helperB l
+                  return $ PTree Nothing l''
+            (ConstrClosure {dataArgs = [d], name = "D#"}, ThunkClosure {}) ->
+                  return $ PTree (Just $ unsafeCoerce d) []
+            (SelectorClosure {}, ThunkClosure {}) ->
+              return $ PTree Nothing []
+            (SelectorClosure {}, ConstrClosure {name = ":"}) ->
+              do  l'' <- helperB l
+                  return $ PTree Nothing l''
+            _ -> return $ error $ "Missing case:\n" ++ show n' ++ "\n" ++ show l'
+    ThunkClosure {} -> return $ PTree Nothing []
+
+helperB :: Box -> IO [Maybe PTree]
+helperB b = do
+  c <- getGCClosureData b
+  case c of
+    ConstrClosure _ [n,l] [] _ _ ":" ->
+      do  n' <- getGCClosureData n
+          l' <- getGCClosureData l
+          case (n',l') of
+            (ConstrClosure {name = "Tree"}, ConstrClosure {name = ":"}) ->
+              do  n'' <- helperT n
+                  l'' <- helperB l
+                  return $ Just n'' : l''
+            (ConstrClosure {name = "Tree"}, ThunkClosure {}) ->
+              do  n'' <- helperT n
+                  return [Just n'']
+            (ThunkClosure {}, ConstrClosure {name = ":"}) ->
+              do  l'' <- helperB l
+                  return $ Nothing : l''
+            (ThunkClosure {}, ThunkClosure {}) ->
+              return [] -- alternatively, Nothing : []
+            _ -> return $ error $ "Missing case:\n" ++ show n' ++ "\n" ++ show l'
+    ThunkClosure {} -> return []
+
+--trunc :: Tree -> IO PTree
+--trunc t = helperT $ asBox t
 -- 
 -- {-- | Useful function which thins out a list. --}
 -- every :: Int -> [a] -> [a]

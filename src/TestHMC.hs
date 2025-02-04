@@ -1,10 +1,10 @@
-module TestMala where
+module TestHMC where
 import AD
 import Data.Colour
 import Data.Colour.Names
 import Control.Monad
 import Data.Number.Erf
-import LazyPPLHMC
+import LazyPPLHMC hiding (uniform)
 
 import System.Random hiding (uniform)
 
@@ -12,9 +12,14 @@ import Debug.Trace
 
 import Graphics.Matplotlib hiding (density)
 
-normal m s = do { x <- stdnormal ; return $ s * x + m }
+normal :: Floating d => d -> d -> Meas d d
+--normal m s = do { x <- sample stdnormal ; scoreLog (normalLogPdf 0 1 x); return $ s * x + m }
+normal m s = do { x <- sample stdnormal; return $ s * x + m }
+uniform :: Erf d => Meas d d
+uniform = do { x <- normal 0 1; return $ normcdf x}
 
-linear :: Floating d => Prob d (d -> d)
+
+linear :: Floating d => Meas d (d -> d)
 linear =
   do
     a <- normal 0 3
@@ -22,9 +27,20 @@ linear =
     let f = \x -> a * x + b
     return f
 
+simpleModel :: (Floating d, Ord d, Show d) => Meas d [d]
+simpleModel = 
+  do 
+    x <- normal 0 1
+    y <- normal 0 1
+    t <- normal 0 1
+    let z = if (x > 0.0) then [x, y] else [x] 
+    --forM_ z (\t -> scoreLog $ (normalLogPdf 0 1 t))
+    --forM_ z (\t -> scoreLog (log t))
+    return z
+
 plotLinearPrior =
   do
-    fs' <- mh (grwKernel 0.2) (sample linear) 
+    fs' <- mh (grwKernel 0.2) linear
     let fs = map (\f -> primal . f . toNagata) $ take 1000 $ every 100 $ fs'
     plotFuns "images/mala-linear-prior.png" [] fs 0.1
 
@@ -41,13 +57,14 @@ normalPdf m s x = let x' = (x - m)/s in  exp (negate (x' * x') / 2) / (sqrt (2 *
 --normalLogPdf :: Floating d => d -> d -> d -> d
 --normalLogPdf m s x = let x' = (x - m)/s in negate (x' * x') / 2 - (log (sqrt (2 * pi)*s))
 
-regress :: (Floating d,Show d,Show a) => d -> Prob d (a -> d) -> [(a, d)] -> Meas d (a -> d)
+regress :: (Floating d,Show d,Show a) => d -> Meas d (a -> d) -> [(a, d)] -> Meas d (a -> d)
 regress sigma prior dataset =
   do
-    f <- sample prior
+    f <- prior
     --forM_ dataset (\(x, y) -> scoreLog $ traceShow (normalLogPdf (f x) sigma y,x,y) $ normalLogPdf (f x) sigma y)
     forM_ dataset (\(x, y) -> scoreLog $ (normalLogPdf (f x) sigma y))
     return f
+
 
 plotLinReg =
   do fs' <- mh (hmcKernel (LFConfig 0.001 10 0)) (regress (toNagata 0.5) linear dataset)
@@ -67,7 +84,7 @@ plotLinReg =
 plotLinRegHMC (eps, steps) = 
   do fs' <- mh (hmcKernel (LFConfig eps steps 0)) (regress (toNagata 0.5) linear dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 1000 $ fs'
-     let name = "images/mala/hmc-linear-reg-eps-" ++ show eps ++ "steps-" ++ show steps ++ ".png"
+     let name = "images/hmc/hmc-linear-reg-eps-" ++ show eps ++ "steps-" ++ show steps ++ ".png"
      --print ("done with eps: " ++ show eps ++ " steps: " ++ show steps)
      plotFuns name dataset fs 0.02 
 
@@ -78,39 +95,39 @@ plotLinRegHMCAll =
      sequence_ x
 
 
-exponential :: Erf d => d -> Prob d d
+exponential :: Erf d => d -> Meas d d
 exponential rate = do 
   x <- uniform
   return $ - (log x / rate)
 
 -- Poisson point process that extends infinitely in one dimension.
 -- Defined by stepping using exponential distribution.
-poissonPP :: (Erf d, Show d) => d -> d -> Prob d [d]
+poissonPP :: (Erf d, Show d) => d -> d -> Meas d [d]
 poissonPP lower rate =
   do
     step <- exponential rate
-    let x = trace ("PP" ++ show (lower + step)) $ lower + step
-    xs <- poissonPP x rate
+    let x = lower + step
+    xs <- trace (show x) $ poissonPP x rate
     return (x : xs)
 
 
-splice :: (Ord d, Show d) => Prob d [d] -> Prob d (d -> d) -> Prob d (d -> d)
+splice :: (Ord d, Num d, Show d) => Meas d [d] -> Meas d (d -> d) -> Meas d (d -> d)
 splice pointProcess randomFun =
   do
-    xs <- pointProcess
-    fs <- mapM (const randomFun) xs
-    default_f <- randomFun
+    xs <- trace "splice" pointProcess
+    fs <- trace "fs" $ mapM (const randomFun) xs
+    default_f <- trace "deafault f" randomFun
     let -- h :: [(d, d -> d)] -> d -> d
         h [] x = default_f x
-        h ((a, f) : xfs) x | x <= a = f x
-        h ((a, f) : xfs) x | x > a = h xfs x
+        h ((a, f) : xfs) x | x <= a = trace (show x ++ show a) $ f x
+        h ((a, f) : xfs) x | x > a = trace (show x ++ show a) $ h xfs x
     return (h (zip xs fs))
 
-randConst :: (Num d, Show d) => Prob d (d -> d)
+randConst :: Floating d => Meas d (d -> d)
 randConst =
   do
     b <- normal 0 3
-    let f = trace ("const" ++ show b) $ \x -> b
+    let f = \x -> b
     return f
 
 plotStepReg =
@@ -129,10 +146,10 @@ plotStepReg =
      plotFuns "images/mala/lmh-piecewiseconst-reg.png" dataset fs 0.02
      
 
-plotStepRegHMC (eps, steps, i) = 
+plotStepRegHMC (eps, steps) = 
   do fs' <- mh (hmcKernel (LFConfig eps steps 0)) (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
-     let fs = map (\f -> primal . f . toNagata) $ take 2000 $ drop 100 fs'
-     let name = "images/mala/hmc-piecewiseconst-reg-eps-" ++ show eps ++ "steps-" ++ show steps ++ "chain" ++ show i ++ ".png"
+     let fs = map (\f -> primal . f . toNagata) $ take 20 $ drop 1 fs'
+     let name = "images/hmc/hmc-piecewiseconst-reg-eps-" ++ show eps ++ "steps-" ++ show steps ++ ".png"
      --print ("done with eps: " ++ show eps ++ " steps: " ++ show steps)
      plotFuns name dataset fs 0.02 
 
@@ -140,15 +157,12 @@ plotStepRegHMCAll =
   do g <- getStdGen
      let t = dualizeTree $ randomTree g
      let (_, N w dq) = runMeas (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset) t
-     --let (k, w) = runMeas (sample (poissonPP 0 0.2)) t
-     print (show w)
+     --let (k, w) = runMeas (poissonPP 0 0.2) t
+     --print w
      let configs = [(e, s) | e <- [0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5], s <- [15, 20, 25, 30, 35, 40]]
      let configs = [ (0.005, 15),  (0.005, 20), (0.005, 25), (0.005, 30), (0.001, 15),  (0.001, 20), (0.001, 25), (0.001, 30)]
-     let configs = [(0.005, 20)]
-     let n = 1
-     let c = concat $ map (\(x, y) -> [(x, y, i) | i <- [1..n]]) configs
-     let x = map plotStepRegHMC c
-     print c
+     let configs = [(0.05, 20)]
+     let x = map plotStepRegHMC configs
      sequence_ x
 
 
@@ -158,7 +172,7 @@ plotStepRegLAHMC (eps, steps, chances, alpha, i) =
      let fs = map (\f -> primal . f . toNagata) $ take 5000 $ drop 0 fs'
      let y = map (\x -> map (fs!!x) [0..20]) $ 0:[100, 200..1900]
      print y
-     let name = "images/mala/hmc-piecewiseconst-reg-eps-" ++ show eps ++ "steps-" ++ show steps ++ "chances-" ++ show chances ++ "alpha-" ++ show alpha ++ "("++ show i ++ ").png"
+     let name = "images/hmc/lahmc-persistence-piecewiseconst-reg-eps-" ++ show eps ++ "steps-" ++ show steps ++ "chances-" ++ show chances ++ "alpha-" ++ show alpha ++ "("++ show i ++ ").png"
      --print ("done with eps: " ++ show eps ++ " steps: " ++ show steps)
      plotFuns name dataset fs 0.02 
 
@@ -166,10 +180,36 @@ plotStepRegLAHMCAll =
   do let configs = [(e, s) | e <- [0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5], s <- [15, 20, 25, 30, 35, 40]]
      let configs = [ (0.005, 15),  (0.005, 20), (0.005, 25), (0.005, 30), (0.001, 15),  (0.001, 20), (0.001, 25), (0.001, 30)]
      --let configs = [(0.005, 20, 3, 0.5, x) | x<- [1..10]]
-     let configs = [(0.05, 50, 9, 0.5, x) | x<- [1..30]]
+     let configs = [(0.05, 50, 9, 0.5, x) | x<- [1..3]]
      let x = map plotStepRegLAHMC configs
      sequence_ x
 
+
+simpleModelHMC (eps, steps) =  
+  do newStdGen
+     g <- getStdGen
+     let t = randomTree g
+     --let r = runProb simpleModel t
+     let k = runMeas simpleModel t
+     --print r
+     print k 
+     fs' <- mh (hmcKernel (LFConfig eps steps 0)) simpleModel
+     --let fs = map (\f -> primal . f . toNagata) $ take 1000 fs'
+     --print $ take 5 fs'
+     --print $ map length $ take 6000 fs'
+     let samples = take 6000 $ drop 1000 fs'
+     print $ "eps" ++ show eps ++ "L" ++ show steps 
+     --print $ map (\xs -> map primal xs) $ drop 5900 samples
+     print $ map length $ drop 5900 samples
+     print $ length $ filter (\xs -> length xs == 2) $ samples
+
+simpleModelHMCAll = 
+  do let configs = [(e, s) | e <- [0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5], s <- [5, 10, 15, 20]]
+     let configs = [(0.005, 20), (0.01, 5), (0.01, 10), (0.01, 15), (0.01, 20), (0.05, 5), (0.05, 10), (0.05, 15), (0.05, 20), (0.1, 5), (0.1, 10), (0.1, 15), (0.1, 20)]
+     let configs = [(0.2, 5)| e <- [1..5]]
+     let x = map simpleModelHMC configs
+     sequence_ x
+    
 {--
 
 splice :: Prob [Double] -> Prob (Double -> Double) -> Prob (Double -> Double)
@@ -293,4 +333,5 @@ plotFuns filename dataset funs alpha =
 -- main = do {plotLinearPrior ; plotDataset ; plotLinReg ; plotPiecewisePrior ; plotPoissonPP ; plotPiecewiseReg ; plotPiecewiseConst }
 
 main :: IO ()
-main = plotStepRegHMCAll
+main = simpleModelHMCAll
+--main = test simpleModel
