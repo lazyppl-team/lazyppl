@@ -400,12 +400,12 @@ hmcKernel lfc g m q =
   --trace (show [lookupTree p i ^2| i <- M.keys dU_dq] ++ show [primal (lookupTree p_prop i)  | i <- sites] ++ "initial w:"++show w ++ " proposed w " ++ show w' ++ " pdiff: " ++ show (plogratio/2)++" log ratio: "++ show (w' - w + plogratio/2) ++ " ratio "++ show (exp (w' - w + plogratio/2))) (w' - w + plogratio/2 + qlogratio, fmap primal q_prop)
 
 
-{- -- look ahead hmc with persistence, can be transformed into NP-iMCMC?
+-- look ahead hmc with persistence, can be transformed into NP-iMCMC?
 -- https://arxiv.org/abs/2211.01100
 
 -- alpha between 0 and 1 - persistence parameter: alpha = 1 no persistence (equivalent to HMC), alpha = 0 full persistence
 -- chances :: Integer - look ahead parameter: chances = 1 -> no extra chances
-lahmcPersistence :: (LFConfig Double -> Meas (Nagata Integer Double) a -> (Tree Double, Tree Double) -> (Tree Double, Tree Double) -> Bool -> Double -> (Tree Double, Tree Double, Bool))  -> Meas (Nagata Integer Double) a -> LFConfig Double -> Double -> IO [a]
+lahmcPersistence :: (LFConfig Double -> Meas (Nagata Integer Double) a -> (Tree Double, Tree Double) -> (Tree Double, Tree Double) -> Bool -> Double -> [Integer] -> (Tree Double, Tree Double, Bool))  -> Meas (Nagata Integer Double) a -> LFConfig Double -> Double -> IO [a]
 lahmcPersistence laIntegrator m lfc alpha = do
     newStdGen
     g <- getStdGen
@@ -441,7 +441,7 @@ lahmcPersistence laIntegrator m lfc alpha = do
             --let steps = (floor (11*b) - 6)*1 + steps' in
             let steps' = floor (a*(fromIntegral steps+1)) + 10
             --let steps = steps' in
-            let (x,y, d') = laIntegrator (LFConfig eps' steps' selected) m (q_old, p_old) (q_old, p_old) d r
+            let (x,y, d') = laIntegrator (LFConfig eps' steps' selected) m (q_old, p_old) (q_old, p_old) d r []
             let q_new = if (d == d') then x else q_old 
             let p = if (d == d') then y else p_old
             let p' = fmap (\x -> sqrt(1-alpha^2)* x) p
@@ -451,22 +451,22 @@ lahmcPersistence laIntegrator m lfc alpha = do
 
 
 
-lookaheadHMC :: Integer -> LFConfig Double -> Meas (Nagata Integer Double) a -> (Tree Double, Tree Double) -> (Tree Double, Tree Double) -> Bool -> Double -> (Tree Double, Tree Double, Bool)
-lookaheadHMC 0 lfc m (q_0, p_0) (q, p) d r = (q_0, p_0, not d)
-lookaheadHMC chances lfc m (q_0, p_0) (q, p) d r =
-    let (logRatio, q_prop, p') = if d then (hmcKernel2 lfc m (q_0, p_0) (q, p)) else (hmcKernel2 lfc m (q_0, p_0) (q, (fmap (\x -> -x) p))) in
+lookaheadHMC :: Integer -> LFConfig Double -> Meas (Nagata Integer Double) a -> (Tree Double, Tree Double) -> (Tree Double, Tree Double) -> Bool -> Double -> [Integer] -> (Tree Double, Tree Double, Bool)
+lookaheadHMC 0 lfc m (q_0, p_0) (q, p) d r sites = (q_0, p_0, not d)
+lookaheadHMC chances lfc m (q_0, p_0) (q, p) d r sites =
+    let (logRatio, q_prop, p', sites') = if d then (hmcKernel2 lfc m (q_0, p_0) (q, p) sites) else (hmcKernel2 lfc m (q_0, p_0) (q, (fmap (\x -> -x) p)) sites) in
     let p_prop = if d then p' else (fmap (\x -> -x) p') in
-    if (log r < logRatio) then (q_prop, p_prop, d) else (lookaheadHMC (chances-1) lfc m (q_0, p_0) (q_prop, p_prop) d r)
+    if (log r < logRatio) then (q_prop, p_prop, d) else (lookaheadHMC (chances-1) lfc m (q_0, p_0) (q_prop, p_prop) d r (merge sites sites'))
 
 
 
 
-hmcKernel2 :: LFConfig Double -> Meas (Nagata Integer Double) a -> (Tree Double, Tree Double) -> (Tree Double, Tree Double) -> (Double, Tree Double, Tree Double)
-hmcKernel2 lfc m (q_0, p_0) (q, p)=
+hmcKernel2 :: LFConfig Double -> Meas (Nagata Integer Double) a -> (Tree Double, Tree Double) -> (Tree Double, Tree Double) -> [Integer] -> (Double, Tree Double, Tree Double, [Integer])
+hmcKernel2 lfc m (q_0, p_0) (q, p) sites =
   let (LFConfig eps steps selected) = lfc in
   let (_,N w dU_dq) = runMeas m (dualizeTree q) in
   let p' = fmap (gradientStepP 0.5 eps dU_dq) (dualizeTree p) in -- p_k - 1/2 epsilon grad log pi (q_k)
-  let (q_prop, p'', _) = simpleLeapfrog eps steps m (dualizeTree q) p' [] in
+  let (q_prop, p'', allSites) = simpleLeapfrog eps steps m (dualizeTree q) p' sites in
   let (_,N w' dU_dq') = runMeas m q_prop in
   -- let p_prop = fmap (\(N x xd) -> (N -x xd)) (fmap (gradientStepP 0.5 eps dU_dq') p'') in
   let p_prop = (fmap (gradientStepP 0.5 eps dU_dq') p'') in
@@ -478,10 +478,10 @@ hmcKernel2 lfc m (q_0, p_0) (q, p)=
   -- Find the log ratio for p as the sum of squares.
   -- It's ok to ignore dimensions where both gradients are zero. 
   --let plogratio = trace (show sites ++ "initial: " ++ show (map (lookupTree p_0) (M.keys dU_dq_0)) ++ "proposed: " ++ show (map primal (map (lookupTree p_prop) (M.keys dU_dq')))) (Prelude.sum [(lookupTree p_0 i)^2| i <- sites] - Prelude.sum [(primal (lookupTree p_prop i))^2 | i <- sites]) in
-  let plogratio = Prelude.sum [(lookupTree p_0 i)^2| i <- sites] - Prelude.sum [(primal (lookupTree p_prop i))^2 | i <- sites] in
-  (w' - w_0 + plogratio/2, fmap primal q_prop, fmap primal p_prop) 
+  let plogratio = Prelude.sum [(lookupTree p_0 i)^2| i <- allSites] - Prelude.sum [(primal (lookupTree p_prop i))^2 | i <- allSites] in
+  (w' - w_0 + plogratio/2, fmap primal q_prop, fmap primal p_prop, allSites) 
   --trace ("initial w:"++show w_0 ++ " proposed w " ++ show w' ++ " pdiff: " ++ show (plogratio/2)++" log ratio: "++ show (w' - w_0 + plogratio/2) ++ " ratio "++ show (w' - w_0 + plogratio/2)) (w' - w_0 + plogratio/2, fmap primal q_prop, fmap primal p_prop)
- -}
+ 
 
 
 -- updateQP :: (Floating a, Ord a, Show a) => (a -> a) -> a -> (a, a) -> (a, a)

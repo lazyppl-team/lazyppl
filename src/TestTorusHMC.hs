@@ -150,6 +150,13 @@ plotTests = do
   xws <- mh (hmcKernel (LFConfig 0.005 20 0)) $ sample $ normal 0 1
   let xws' = map (\(N x _) -> floor (x * 10)) xws
   plotHistogram "images/hmc/test-normal.svg" (take 100000 xws')
+  let (eps, steps, chances, alpha) = (0.005, 20, 3, 0.5)
+  xws <- lahmcPersistence (lookaheadHMC chances) (sample uniform) (LFConfig eps steps 0) alpha
+  let xws' = map (\(N x _) -> floor (x * 100)) xws
+  plotHistogram "images/hmc/lahmc-test-uniform.svg" (take 100000 xws')
+  xws <- lahmcPersistence (lookaheadHMC chances) (sample (normal 0 1)) (LFConfig eps steps 0) alpha
+  let xws' = map (\(N x _) -> floor (x * 10)) xws
+  plotHistogram "images/hmc/lahmc-test-normal.svg" (take 100000 xws')
 
 plotLinRegHMC (eps, steps) = 
   do fs' <- mh (hmcKernel (LFConfig eps steps 0)) (regress (toNagata 0.5) linear dataset)
@@ -184,8 +191,24 @@ plotStepRegHMCAll =
      let x = map plotStepRegHMC conf
      sequence_ x
 
+plotStepRegLAHMC (eps, steps, chances, alpha, i) = 
+  do fs' <- lahmcPersistence (lookaheadHMC chances) (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset) (LFConfig eps steps 0) alpha
+     let fs = map (\f -> primal . f . toNagata) $ take 2000 $ drop 0 fs'
+     let y = map (\x -> map (fs!!x) [0..20]) $ 0:[100, 200..1900]
+     print y
+     let name = "images/hmc/lahmc-persistence-piecewiseconst-reg-eps-" ++ show eps ++ "steps-" ++ show steps ++ "chances-" ++ show chances ++ "alpha-" ++ show alpha ++ "("++ show i ++ ").png"
+     --print ("done with eps: " ++ show eps ++ " steps: " ++ show steps)
+     plotFuns name dataset fs 0.02 
+
+plotStepRegLAHMCAll =
+  do let configs = [(e, s) | e <- [0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5], s <- [15, 20, 25, 30, 35, 40]]
+     let configs = [ (0.005, 15),  (0.005, 20), (0.005, 25), (0.005, 30), (0.001, 15),  (0.001, 20), (0.001, 25), (0.001, 30)]
+     let configs = [(0.005, 20, 3, 0.5, x) | x<- [1..50]]
+     let x = map plotStepRegLAHMC configs
+     sequence_ x
+
 
 main :: IO ()
 --main = do { plotTests ; plotLinRegHMCALL ; plotStepRegHMCAll }
---main = do plotStepRegHMCAll
-main = do plotLinRegHMCAll
+--main = do plotTests
+main = do plotStepRegLAHMCAll
