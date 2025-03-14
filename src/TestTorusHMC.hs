@@ -19,9 +19,6 @@ normal m s = do { x <- uniform ; return $ s * (invnormcdf x) + m }
 normalPdf :: Floating d => d -> d -> d -> d
 normalPdf m s x = let x' = (x - m)/s in  exp (negate (x' * x') / 2) / (sqrt (2 * pi)*s)
 
-normalLogPdf :: Floating d => d -> d -> d -> d
-normalLogPdf m s x = let x' = (x - m)/s in negate (x' * x') / 2 - (log (sqrt (2 * pi)*s))
-
 --
 -- Random linear functions
 --
@@ -142,21 +139,15 @@ plotHistogram filename xs = do
 
 -- Tests to check we get uniform and normal distributions.
 
-plotTests :: IO ()
-plotTests = do
-  xws <- mh (hmcKernel (LFConfig 0.005 20 0)) $ sample $ uniform
+
+plotTestsNUTS :: IO ()
+plotTestsNUTS = do
+  xws <- mh (nutsKernel (LFConfig 0.5 7 0)) $ sample $ uniform
   let xws' = map (\(N x _) -> floor (x * 100)) xws
-  plotHistogram "images/hmc/test-uniform.svg" (take 100000 xws')
-  xws <- mh (hmcKernel (LFConfig 0.005 20 0)) $ sample $ normal 0 1
+  plotHistogram "images/nuts/test-uniform.svg" (take 100000 xws')
+  xws <- mh (nutsKernel (LFConfig 0.5 7 0)) $ sample $ normal 0 1
   let xws' = map (\(N x _) -> floor (x * 10)) xws
-  plotHistogram "images/hmc/test-normal.svg" (take 100000 xws')
-  let (eps, steps, chances, alpha) = (0.005, 20, 3, 0.5)
-  xws <- lahmcPersistence (lookaheadHMC chances) (sample uniform) (LFConfig eps steps 0) alpha
-  let xws' = map (\(N x _) -> floor (x * 100)) xws
-  plotHistogram "images/hmc/lahmc-test-uniform.svg" (take 100000 xws')
-  xws <- lahmcPersistence (lookaheadHMC chances) (sample (normal 0 1)) (LFConfig eps steps 0) alpha
-  let xws' = map (\(N x _) -> floor (x * 10)) xws
-  plotHistogram "images/hmc/lahmc-test-normal.svg" (take 100000 xws')
+  plotHistogram "images/nuts/test-normal.svg" (take 100000 xws')
 
 plotLinRegHMC (eps, steps) = 
   do fs' <- mh (hmcKernel (LFConfig eps steps 0)) (regress (toNagata 0.5) linear dataset)
@@ -206,9 +197,62 @@ plotStepRegLAHMCAll =
      let configs = [(0.005, 20, 3, 0.5, x) | x<- [1..50]]
      let x = map plotStepRegLAHMC configs
      sequence_ x
+     
+
+plotLinRegNUTS (eps, steps) = 
+  do fs' <- mh (nutsKernel (LFConfig eps steps 0)) (regress (toNagata 0.5) linear dataset)
+     let fs = map (\f -> primal . f . toNagata) $ take 1000 $ fs'
+     let name = "images/nuts/nuts-linear-reg-eps-" ++ show eps ++ "steps-" ++ show steps ++ ".png"
+     --print ("done with eps: " ++ show eps ++ " steps: " ++ show steps)
+     plotFuns name dataset fs 0.02 
+
+plotLinRegNUTSAll =
+  do let configs = [(e, s) | e <- [0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05], s <- [1, 5, 10, 15, 20]]
+     let configs = [(0.001, 5)]
+     let x = map plotLinRegNUTS configs
+     sequence_ x
+
+plotStepRegNUTS (eps, steps, i) = 
+  do fs' <- mh (nutsKernel (LFConfig eps steps 0)) (regress (toNagata 0.5) (splice (poissonPP 0 0.3) randConst) dataset)
+     let fs = map (\f -> primal . f . toNagata) $ take 10000 $ drop 1 fs'
+     let name = "images/nuts/nuts-piecewiseconst-reg-eps-" ++ show eps ++ "steps-" ++ show steps ++ "chain-" ++ show i ++ ".png"
+     --print ("done with eps: " ++ show eps ++ " steps: " ++ show steps)
+     plotFuns name dataset fs 0.02 
+
+plotStepRegNUTSAll =
+  do g <- getStdGen
+     let t = dualizeTree $ randomTree g
+     let (_, N w dq) = runMeas (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset) t
+     --let (k, w) = runMeas (poissonPP 0 0.2) t
+     --print w
+     let configs = [(e, s) | e <- [0.0005, 0.001, 0.005, 0.01, 0.05], s <- [4, 5, 6]]
+     --let configs = [ (0.005, 15),  (0.005, 20), (0.005, 25), (0.005, 30), (0.001, 15),  (0.001, 20), (0.001, 25), (0.001, 30)]
+     let configs = [(0.0005, 6), (0.001, 6)]
+     let conf = [(x, y, i)| (x, y) <- configs, i <- [0..10]]
+     let x = map plotStepRegNUTS conf
+     sequence_ x
+
+plotTests :: IO ()
+plotTests = do
+  let (mean, var) = (5, 1) 
+  let n = 1000
+  xws <- mh (hmcKernel (LFConfig 0.005 20 0)) $ sample $ uniform
+  let xws' = map (\(N x _) -> floor (x * 100)) xws
+  plotHistogram "images/hmc/test-uniform.svg" (take n xws')
+  xws <- mh (hmcKernel (LFConfig 0.005 20 0)) $ sample $ normal mean var
+  let xws' = map (\(N x _) -> floor (x * 10)) xws
+  plotHistogram ("images/hmc/test-normal-mean"++ show (primal mean) ++ "var" ++ show (primal var) ++ ".svg") (take n xws')
+  let (eps, steps, chances, alpha) = (0.005, 20, 3, 0.5)
+  xws <- lahmcPersistence (lookaheadHMC chances) (sample uniform) (LFConfig eps steps 0) alpha
+  let xws' = map (\(N x _) -> floor (x * 100)) xws
+  plotHistogram "images/hmc/lahmc-test-uniform.svg" (take n xws')
+  xws <- lahmcPersistence (lookaheadHMC chances) (sample (normal mean var)) (LFConfig eps steps 0) alpha
+  let xws' = map (\(N x _) -> floor (x * 10)) xws
+  plotHistogram ("images/hmc/lahmc-test-normal-mean"++ show (primal mean) ++ "var" ++ show (primal var) ++ ".svg") (take n xws')
+
 
 
 main :: IO ()
 --main = do { plotTests ; plotLinRegHMCALL ; plotStepRegHMCAll }
---main = do plotTests
-main = do plotStepRegLAHMCAll
+main = do plotTests
+--main = do plotStepRegLAHMCAll

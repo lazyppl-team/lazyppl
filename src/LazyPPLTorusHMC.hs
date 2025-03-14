@@ -60,8 +60,8 @@ newtype Prob d a = Prob (Tree d -> a)
 splitTree :: Tree d -> (Tree d , Tree d)
 splitTree (Tree r (t : ts)) = (t , Tree r ts)
 
-stdnormal :: Prob d d
-stdnormal = Prob $ \(Tree r _) -> r
+stdnormal :: InvErf d => Prob d d
+stdnormal = do { x <- uniform ; return $ invnormcdf x}
 
 -- | In contrast to the original LazyPPL, here the standard uniform distribution is a derived construct.
 -- | We use this measure-preserving transformation so that random walks around the circle bounce rather than jump.
@@ -121,11 +121,11 @@ runMeas (Meas m) t = let (x,Sum w) = runProb (runWriterT m) t in (x,w)
 
 -- A minimal example with one dimension. 
 
-minExample :: (Floating d) => Meas d d
+{- minExample :: (Floating d) => Meas d d
 minExample = do
    x <- sample stdnormal
    score x
-   return x
+   return x -}
 
 -- TOM: The dualizeTree function takes an infinite tree of
 --      Doubles to an infinite tree of dual numbers.
@@ -347,7 +347,7 @@ simpleLeapfrog _ 0 m q p xs = (q,p, merge xs [])
 simpleLeapfrog eps steps m q p xs = let
         q' = gradientStepQ eps p q
         (_,N w dU_dq) = runMeas m q'
-        p' = fmap (gradientStepP 1 eps dU_dq) p
+        p' = if (steps == 1) then p else fmap (gradientStepP 1 eps dU_dq) p
         ys = merge xs (M.keys dU_dq)
     in if steps == 1 then (q', p, ys) else simpleLeapfrog eps (steps-1) m q' p' ys
 
@@ -483,72 +483,87 @@ hmcKernel2 lfc m (q_0, p_0) (q, p) sites =
   --trace ("initial w:"++show w_0 ++ " proposed w " ++ show w' ++ " pdiff: " ++ show (plogratio/2)++" log ratio: "++ show (w' - w_0 + plogratio/2) ++ " ratio "++ show (w' - w_0 + plogratio/2)) (w' - w_0 + plogratio/2, fmap primal q_prop, fmap primal p_prop)
  
 
+type TreeState = (Tree (Nagata Integer Double), Tree (Nagata Integer Double),  Nagata Integer Double)
 
--- updateQP :: (Floating a, Ord a, Show a) => (a -> a) -> a -> (a, a) -> (a, a)
--- updateQP dV_dq eps (q, p) = let
---         p_half = p - eps/2 * (dV_dq q) -- half step
---         q' = q + eps * p_half -- full step
---         p' = p_half - eps/2 * (dV_dq q') -- finish half step
---     in (q', p')
+nutsKernel :: forall g a. RandomGen g => LFConfig Double -> g -> Meas (Nagata Integer Double) a -> Tree Double -> (Double, Tree Double)
+nutsKernel lfc g m q = 
+  let (LFConfig eps' max_depth selected) = lfc in
+  let (x, N w dU_dq) = runMeas m (dualizeTree q) in
+  let (a, g') = random g :: (Double, g) in
+  let possible_eps = map (\x -> 10**(-x)) [2..13] in
+  --let possible_eps = [0.01, 0.001, 0.0001, 0.00001, 0.000001, 0.0000001, 0.00000001, 0.000000001, 0.0000000001, 0.0000000001, 1e-12, 1e-14] in
+  let eps = possible_eps !! (floor (a * fromIntegral (length possible_eps-1))) in
+  let (b, g'') = random g' :: (Double, g) in
+  let p = randomTreeNormal g' in 
+  let treeStates = nutsTree m g'' eps max_depth 0 [(dualizeTree q, dualizeTree p, N w dU_dq)] in 
+  let sites = foldr merge [] (map (\(x, y, N w dU_dq) -> M.keys dU_dq) treeStates) in
+  let log_weights = map ((\(q, p, N w dU_dq) -> w - (Prelude.sum [(primal (lookupTree p i))^2 | i <- sites])/2)) treeStates in
+  let normConst = logSumExp log_weights in 
+  let normalizedWeights = map (\x -> exp (x - normConst)) log_weights in
+  let index = if b >= Prelude.sum normalizedWeights then ((length treeStates)-1) else findIndex b 0 0 normalizedWeights in
+  --let (q_final, p_final, _) = trace (show [lookupTree q i | i <- M.keys dU_dq] ++ show (map (\(q, p, N w dU_dq) -> [(primal (lookupTree q i), primal (lookupTree p i), w) | i <- M.keys dU_dq]) treeStates) ++ show normalizedWeights) treeStates!!index in
+  let (q_final, p_final, _) = treeStates!!index in
+  --let t = trace (show (length treeStates) ++ show index ++ show normalizedWeights ++ show log_weights) 0 in
+  (0, fmap primal q_final)
 
--- simpleLeapfrog :: (Floating a, Ord a, Show a) => (a -> a) -> (LFConfig a) -> (a, a) -> (a, a)
--- simpleLeapfrog dV_dq (LFConfig eps steps selected) (q, p) = let
---         qps = take steps $ iterate (updateQP dV_dq eps) (q, p)
---         qs = map fst qps
---         ps = map snd qps
---     -- TODO make use of selected instead of just taking the last one
---     in (last qs, last ps)
+logSumExp :: (Floating a, Ord a) => [a] -> a
+logSumExp [] = error "logSumExp: empty list"
+logSumExp xs = 
+    let m = maximum xs
+    in m + log (Prelude.sum (map (\x -> exp (x - m)) xs))
 
--- hmcProposal :: (Floating a, Ord a, Show a) => (LFConfig a) -> (a, a) -> (a, a)
--- hmcProposal lfc (q, p) = let
---         (q', p') = simpleLeapfrog dV_dq lfc (q, p)
---     in (q', -p')
+findIndex :: Double -> Double -> Int -> [Double] -> Int
+findIndex rand cumSum idx (w:ws)
+    | cumSum + w > rand = idx
+    | otherwise         = findIndex rand (cumSum + w) (idx + 1) ws
+findIndex _ _ idx [] = idx
 
--- hmcAcceptReject :: (RandomGen g, Floating a, Ord a, Random a, Show a) => LFConfig a -> ((a, a), g) -> ((a, a), g)
--- hmcAcceptReject lfc ((q, _), rng) = let
---         (p, rng') = normal rng -- assume the proposal distribution for momentum is N(0, 1)
---         (new_q, new_p) = hmcProposal lfc (q, p)
---         (u, rng'') = randomR (0.0, 1.0) rng'
---         (q', p') = if (log u) < (-(h new_q new_p) + (h q p)) then (new_q, new_p) else (q, p)
---     in ((q', p'), rng'')
 
--- -- | Gaussian Random walk
--- mutateTreeHMC :: forall g a. RandomGen g => (LFConfig a) -> g -> Meas (Nagata Integer Double) a -> Tree Double -> Tree Double
--- mutateTreeHMC lfc g m (Tree p ts) =
---   let (a', g') = (random g :: (Double,g)) in
---   let (new_q, new_p) = hmcProposal lfc (q, p) in
---   Tree (new_q, new_p) (mutateTreeHMC lfc g' m ts)
+nutsTree :: forall g a. RandomGen g => Meas (Nagata Integer Double) a -> g -> Double -> Int -> Int -> [TreeState] -> [TreeState]
+nutsTree m g eps max_depth depth nodeTree = 
+  let (a, g') = random g :: (Double, g) in
+  let dir = a > 0.5 in
+  let startState = if dir then (last nodeTree) else (head nodeTree) in
+  -- check that the startStateis not modified
+  let newSubTree = buildTree m eps depth dir startState in
+  let newTree = if dir then (nodeTree ++ newSubTree) else (newSubTree ++ nodeTree) in
+  if ((makesUTurn (head newTree) (last newTree)) || null newSubTree || depth == max_depth -1) then newTree else nutsTree m g' eps max_depth (depth + 1) newTree
 
--- mutateTreesHMC :: RandomGen g => Double -> g ->  Meas (Nagata Integer Double) a -> [Tree Double] -> [Tree Double]
--- mutateTreesHMC lfc g m (t:ts) = let (g1,g2) = split g in mutateTreeHMC lfc g1 m t : mutateTreesGRW lfc g2 m ts
 
--- hmcKernel :: forall g a. RandomGen g => Double -> g -> Meas (Nagata Integer Double) a -> Tree Double -> (Double, Tree Double)
--- hmcKernel tau g m t =
---   -- t :: Tree Double
---   -- (dualizeTree t) :: Tree (Nagata Integer Double)
---   -- (runMeas m (dualizeTree t)) :: (Nagata Integer Double, Nagata Integer Double)
---   -- w :: Double
---   -- dw :: (Map Integer Double)
+buildTree :: Meas (Nagata Integer Double) a -> Double -> Int -> Bool -> TreeState -> [TreeState]
+buildTree m eps 0 dir startState = 
+  let (q, p, N w dU_dq) = startState in
+  let p_dir = if dir then p else (fmap (\(N x y) -> N (-x) y) p) in
+  let p' = fmap (gradientStepP 0.5 eps dU_dq) p_dir in
+  let q' = gradientStepQ eps p' q in 
+  let (_,N w' dU_dq') = runMeas m q' in 
+  let p'' = fmap (gradientStepP 0.5 eps dU_dq') p' in
+  let p_final = if dir then p'' else (fmap (\(N x y) -> N (-x) y) p'') in
+  [(q', p_final, N w' dU_dq')]
+buildTree m eps depth True startState = 
+  let xs = buildTree m eps (depth -1) True startState in 
+  let startState' = if (null xs) then startState else (last xs) in
+  let ys = buildTree m eps (depth - 1) True startState' in
+  let newTree = xs ++ ys in
+  if (null xs || null ys) then [] else (if (makesUTurn (head newTree) (last newTree)) then [] else newTree)
+buildTree m eps depth False startState = 
+  let xs = buildTree m eps (depth -1) False startState in 
+  let startState' = if (null xs) then startState else (head xs) in 
+  let ys = buildTree m eps (depth - 1) False startState' in
+  let newTree = ys ++ xs in 
+  if (null xs || null ys) then [] else (if (makesUTurn (head newTree) (last newTree)) then [] else newTree)
 
---   let (_,N w dw) = runMeas m (dualizeTree t) in
---   let t'' = mutateTreeHMC (sqrt(2 * tau)) g m t in -- X_k + 2\tau Normal 
---   let t' = fmap (gradientStep dw) (dualizeTree t'') in -- X_k + tau grad log pi (X_k) + 2\tau Normal 
---   let (_,N w' dw') = runMeas m t' in
---   -- Calculate log MH ratio
---   -- The q(x'|x) requires calculating the l2 norm of the whole space, which is infinite-dimensional.
---   -- But the ratio of the q's will cancel in all dimensions
---   -- except where one or the other gradients is non-zero.
---   -- Find the union of the sites with non-zero gradient.
---   let sites = merge (M.keys dw) (M.keys dw') in
---   -- Find the log ratio as the sum of squares.
---   -- It's ok to ignore dimensions where both gradients are zero. 
---   let qlogratio = (1/(4*tau))* (Prelude.sum [(lookupTree t i - primal (lookupTree t' i) - tau * (M.findWithDefault 0 i dw'))^2 | i <- sites] 
---                                 - Prelude.sum [(primal (lookupTree t' i) - lookupTree t i - tau * (M.findWithDefault 0 i dw))^2 | i <- sites]) in
---   (w' - w - qlogratio , fmap primal t') 
---   where 
---     gradientStep dr (N x dx) = N (x + (tau * M.findWithDefault 0 key dr)) dx
---       where key = head (M.keys dx) 
 
+
+makesUTurn :: TreeState -> TreeState -> Bool
+makesUTurn leftmost rightmost = 
+  let (q, p, N w dU_dq) = leftmost in 
+  let (q', p', N w' dU_dq') = rightmost in
+  let sites = merge (M.keys dU_dq) (M.keys dU_dq') in
+  -- change this
+  let dist = Prelude.sum [(primal (lookupTree q i) - primal (lookupTree q' i)) * (primal (lookupTree p i)) | i <- sites] in 
+  let dist2 = Prelude.sum [(primal (lookupTree q i) - primal (lookupTree q' i)) * (primal (lookupTree p' i)) | i <- sites] in 
+  (dist > 0 && dist2 > 0)
 
 
 -- | Utilities for running MH
@@ -620,4 +635,7 @@ maxWeightPair aws =
   let maxw = maximum $ map snd aws
       (Just a) = L.lookup maxw $ map (\(a, w) -> (w, a)) aws in
   (a, maxw)
+
+normalLogPdf :: Floating d => d -> d -> d -> d
+normalLogPdf m s x = let x' = (x - m)/s in negate (x' * x') / 2 - (log (sqrt (2 * pi)*s))
 
