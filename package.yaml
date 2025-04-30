@@ -132,6 +132,7 @@ executables:
     - -main-is TestMala
     dependencies:
     - lazyppl
+  
   testhmc-exe:
     main:                TestHMC.hs
     source-dirs:         src
@@ -140,5 +141,28 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     - -main-is TestHMC
+    dependencies:
+    - lazyppl
+
+  testhmc2-exe:
+    main:                TestHMC2.hs
+    source-dirs:         src
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -main-is TestHMC2
+    dependencies:
+    - lazyppl
+
+
+  gaussianmixture-exe:
+    main:                GaussianMixture.hs
+    source-dirs:         src
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -main-is GaussianMixture
     dependencies:
     - lazyppl
