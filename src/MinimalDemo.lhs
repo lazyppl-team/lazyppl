@@ -122,8 +122,6 @@ When run, this should print a Poisson distribution table (approximately).
 Note that it might often be better to use the LazyPPL `poisson` distribution than to use this simulation method. This simple example is just for illustration.
 <br></br>
 
-\end{code}
-
 
 
 <details class="code-details">
