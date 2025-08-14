@@ -122,42 +122,9 @@ When run, this should print a Poisson distribution table (approximately).
 Note that it might often be better to use the LazyPPL `poisson` distribution than to use this simulation method. This simple example is just for illustration.
 <br></br>
 
-We can simulate the Poisson distribution by counting how many points in the unit interval of a Poisson point process.
-\begin{code}
-bernoulliPi4 :: Prob Bool
-bernoulliPi4 = do
-  x <- uniform
-  y <- uniform
-  return $ x * x + y * y < 1
 \end{code}
 
-<details class="code-details">
-<summary>(Simulation code)</summary>
-\begin{code}
-runPi =
-  do
-    bws <- mh 1 $ sample $ bernoulliPi4
-    let n=1000000
-    let bs = map fst $ take n $ bws
-    -- histogram generator
-    putStrLn $ "pi = " ++ (show $ 4 * (fromIntegral $ length $ filter id bs) / (fromIntegral n))
-\end{code}
-</details>
-When run, this should print a Poisson distribution table (approximately).
-```
-  k       poisson(k)
-  --      ----------
-  0       0.3679
-  1       0.3679
-  2       0.1839
-  3       6.13e-2
-  4       1.53e-2
-  5       3.1e-3
-  6       0.5e-3
-  7       1.0e-4
-```
-Note that it might often be better to use the LazyPPL `poisson` distribution than to use this simulation method. This simple example is just for illustration.
-<br></br>
+
 
 <details class="code-details">
 <summary>(Main function)</summary>
