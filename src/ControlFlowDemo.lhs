@@ -48,7 +48,7 @@ prior2 =
 \end{code}
 Of course, we could solve this particular program analytically. The point is rather that we have a universal program transformation manipulation that could be applied automatically. 
 
-The following chart shows that the expected sample size (the ratio between the variance of a single true sample and the variance among the generated samples) is much better with this second implementation of the prior, although Metropolis Hastings is still far from optimal for this contrived problem.
+The following chart shows that the effective sample size (the ratio between the variance of a single true sample and the variance among the generated samples) is much better with this second implementation of the prior, although Metropolis Hastings is still far from optimal for this contrived problem.
 ![](images/controlflow-essA.png)
 <details class="code-details">
 <summary>(Code for precision of estimators)</summary>
