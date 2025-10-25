@@ -1,4 +1,5 @@
 {-# LANGUAGE ExtendedDefaultRules #-}
+{-# LANGUAGE OverloadedStrings #-}
 module TestHMC2 where
 import AD
 import Data.Colour
@@ -13,6 +14,13 @@ import System.Random hiding (uniform)
 import Debug.Trace
 
 import Graphics.Matplotlib hiding (density)
+
+import Data.Aeson
+import qualified Data.ByteString.Lazy as B
+import qualified Data.Map.Strict as Map
+
+import System.CPUTime
+import Control.DeepSeq (deepseq)
 
 normal :: Floating d => d -> d -> Prob d d
 --normal m s = do { x <- sample stdnormal ; scoreLog (normalLogPdf 0 1 x); return $ s * x + m }
@@ -29,19 +37,20 @@ linear =
     let f = \x -> a * x + b
     return f
 
-simpleModel :: (Floating d, Ord d, Show d) => Meas d [d]
-simpleModel = 
+simpleModel2 :: (Floating d, Ord d, Show d) => d ->  Meas d [d]
+simpleModel2 alpha = 
   do 
     x <- sample $ normal 0 1
     y <- sample $ normal 0 1
-    t <- sample $ normal 0 1
+    --t <- sample $ normal 0 1
     let z = if (x > 0.0) then [x, y] else [x] 
-    scoreLog 2
+    score (if (x > 0.0) then alpha else 1) 
     return z
 
 plotLinearPrior =
   do
-    fs' <- mh (grwKernel 0.2) $ sample linear
+    g <- getStdGen
+    fs' <- mh g (grwKernel 0.2) 0 $ sample linear
     let fs = map (\f -> primal . f . toNagata) $ take 1000 $ every 100 $ map fst fs'
     plotFuns "images/mala-linear-prior.png" [] fs 0.1
 
@@ -68,22 +77,24 @@ regress sigma prior dataset =
 
 
 plotLinReg =
-  do fs' <- mh (hmcKernel (LFConfig 0.001 10 0)) (regress (toNagata 0.5) linear dataset)
+  do g <- getStdGen
+     fs' <- mh g (hmcKernel (LFConfig 0.001 10 0)) 0 (regress (toNagata 0.5) linear dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 1000 $ map fst fs'
      plotFuns "images/mala/hmc2-linear-reg.png" dataset fs 0.05
-     fs' <- mh (malaKernel 0.0005) (regress (toNagata 0.5) linear dataset)
+     fs' <- mh g (malaKernel 0.0005) 0 (regress (toNagata 0.5) linear dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 500 $ map fst fs'
      plotFuns "images/mala/mala2-linear-reg.png" dataset fs 0.05
-     fs' <- mh (grwKernel 0.1) (regress (toNagata 0.5) linear dataset)
+     fs' <- mh g (grwKernel 0.1) 0 (regress (toNagata 0.5) linear dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 500 $ map fst fs'
      plotFuns "images/mala/grw-linear-reg.png" dataset fs 0.05
-     fs' <- mh (lmhKernel 0.5) (regress (toNagata 0.5) linear dataset)
+     fs' <- mh g (lmhKernel 0.5) 0 (regress (toNagata 0.5) linear dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 500 $ map fst fs'
      plotFuns "images/mala/lmh-linear-reg.png" dataset fs 0.05
      
   
 plotLinRegHMC (eps, steps) = 
-  do fs' <- mh (hmcKernel (LFConfig eps steps 0)) (regress (toNagata 0.5) linear dataset)
+  do g <- getStdGen
+     fs' <- mh g (hmcKernel (LFConfig eps steps 0)) 0 (regress (toNagata 0.5) linear dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 1000 $ map fst fs'
      let name = "images/hmc2/hmc-linear-reg-eps-" ++ show eps ++ "steps-" ++ show steps ++ ".png"
      --print ("done with eps: " ++ show eps ++ " steps: " ++ show steps)
@@ -133,22 +144,24 @@ randConst =
 
 plotStepReg =
   -- eps, steps = (0.0005, 25), (0.005, 30), (0.005, 20)
-  do fs' <- mh (hmcKernel (LFConfig 0.005 30 0)) (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
+  do g <- getStdGen
+     fs' <- mh g (hmcKernel (LFConfig 0.005 30 0)) 0 (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 2000 $ map fst fs'
-     plotFuns "images/mala/hmc2-piecewiseconst-reg.png" dataset fs 0.02 
-     fs' <- mh (malaKernel 0.0005) (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
+     plotFuns "images/mala/hmc2-piecewiseconst-reg.png" dataset fs 0.02
+     fs' <- mh g (malaKernel 0.0005) 0 (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 2000 $ map fst fs'
      plotFuns "images/mala/mala2-piecewiseconst-reg.png" dataset fs 0.02
-     fs' <- mh (grwKernel 0.1) (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
+     fs' <- mh g (grwKernel 0.1) 0 (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 2000 $ map fst fs'
      plotFuns "images/mala/grw-piecewiseconst-reg.png" dataset fs 0.01
-     fs' <- mh (lmhKernel 0.5) (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
+     fs' <- mh g (lmhKernel 0.5) 0 (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 2000 $ map fst fs'
      plotFuns "images/mala/lmh-piecewiseconst-reg.png" dataset fs 0.02
      
 
 plotStepRegHMC (eps, steps) = 
-  do fs' <- mh (hmcKernel (LFConfig eps steps 0)) (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
+  do g <- getStdGen
+     fs' <- mh g (hmcKernel (LFConfig eps steps 0)) 0 (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 2000 $ drop 1 $ map fst fs'
      let name = "images/hmc2/hmc-piecewiseconst-reg-eps-" ++ show eps ++ "steps-" ++ show steps ++ ".png"
      --print ("done with eps: " ++ show eps ++ " steps: " ++ show steps)
@@ -186,7 +199,9 @@ plotStepRegLAHMCAll =
      sequence_ x
 
 plotStepRegNUTS (eps, depth, i) = 
-  do fs' <- mh (nutsKernel (LFConfig eps depth 0)) (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
+  do 
+     g <- getStdGen
+     fs' <- mh g (nutsKernel (LFConfig eps depth 0)) 0 (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 2000 $ drop 1 $ map fst fs'
      let name = "images/hmc2/nuts-piecewiseconst-reg-eps-" ++ show eps ++ "depth-" ++ show depth ++ "("++ show i ++ ").png"
      --print ("done with eps: " ++ show eps ++ " steps: " ++ show steps)
@@ -207,19 +222,55 @@ plotStepRegNUTSAll =
      sequence_ x
 
 
-simpleModelHMC (eps, steps) =  
-  do newStdGen
-     g <- getStdGen
-     let t = randomTree g
+
+simpleModelHMC (eps, steps, alpha, rep) =  
+  do 
+     --g <- getStdGen
+     let g = mkStdGen rep
+     --let (alg, alg2, alg_kernel) = ("lazyHMCmod", "lazyHMCmod", mh g (hmcKernel(LFConfig eps steps 0)) 0)
+     let (alg, alg2, alg_kernel) = ("lazyHMCOsc", "lazyHMCOsc", mh g (hmcOscKernel(LFConfig eps steps 0)) 0)
+
+     let t = dualizeTree $randomTree g
      --let r = runProb simpleModel t
-     let k = runMeas simpleModel t
-     --print r
-     print k 
-     fs' <- mh (hmcKernel (LFConfig eps steps 0)) simpleModel
+     --let k = runMeas (simpleModel2 alpha) t
+     start <- getCPUTime
+     let count = 2000
+     let burnin = 0
+     let filename = "samples_produced/test/test_model2_alpha" ++ show (primal alpha) ++ "-" ++ show rep ++ "_" ++ alg ++ "_count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json"
+     print filename
+     fs' <- alg_kernel (simpleModel2 alpha)
      --let fs = map (\f -> primal . f . toNagata) $ take 1000 $ map fst fs'
      --print $ take 5 fs'
      --print $ map length $ take 6000 $ map fst fs'
-     let samples = take 6000 $ drop 1000  $ map fst fs'
+     let samples = take count $ drop 0 $ map fst fs'
+     let results = map (\xs -> map primal xs) samples
+     results `deepseq` return ()
+     -- jsonVal :: Value
+     end <- getCPUTime
+     let time = fromIntegral (end - start) / (10^12)
+     let jsonVal = object
+          [ "metadata" .= object
+              [ "alg" .= String alg2,
+                "eps" .= eps,
+                "leapfrog_steps" .= steps,
+                "count" .= count,
+                "burnin" .= burnin
+              ],
+            alg2 .= object
+              [ "eps" .= eps,
+                "leapfrog_steps" .= steps,
+                "burnin" .= burnin,
+                "time" .= time,
+                "samples" .= results,
+                "model_info" .= object
+                  [ "model_hyperparam" .= object
+                      [ "alpha" .= primal alpha
+                      ],
+                    "data_info" .= object []
+                  ]
+              ]
+          ]
+     B.writeFile filename (encode jsonVal)
      print $ "eps" ++ show eps ++ "L" ++ show steps 
      --print $ map (\xs -> map primal xs) $ drop 5900 samples
      print $ map length $ drop 5900 samples
@@ -228,8 +279,67 @@ simpleModelHMC (eps, steps) =
 simpleModelHMCAll = 
   do let configs = [(e, s) | e <- [0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5], s <- [5, 10, 15, 20]]
      let configs = [(0.005, 20), (0.01, 5), (0.01, 10), (0.01, 15), (0.01, 20), (0.05, 5), (0.05, 10), (0.05, 15), (0.05, 20), (0.1, 5), (0.1, 10), (0.1, 15), (0.1, 20)]
-     let configs = [(0.2, 5)| e <- [1..5]]
+     let configs = [(0.2, 5, 0.5, rep)| rep <- [0..9]] ++ [(0.2, 5, 1, rep)| rep <- [0..9]] ++ [(0.2, 5, 2, rep)| rep <- [0..9]]
      let x = map simpleModelHMC configs
+     sequence_ x
+
+
+simpleModelNUTS :: Show d => (Double, Int, Nagata Integer Double, d) -> IO ()
+simpleModelNUTS (eps, steps, alpha, rep) =  
+  do newStdGen
+     g <- getStdGen
+     let t = dualizeTree $randomTree g
+     --let r = runProb simpleModel t
+     let k = runMeas (simpleModel2 alpha) t
+     --print r
+     print k 
+     start <- getCPUTime
+     let count = 2000
+     let burnin = 0
+     fs' <- mh g (nutsKernel (LFConfig eps steps 0)) 0 (simpleModel2 alpha)
+     --let fs = map (\f -> primal . f . toNagata) $ take 1000 $ map fst fs'
+     --print $ take 5 fs'
+     --print $ map length $ take 6000 $ map fst fs'
+     let samples = take count $ drop 0 $ map fst fs'
+     let results = map (\xs -> map primal xs) samples
+     results `deepseq` return ()
+     -- jsonVal :: Value
+     end <- getCPUTime
+     let time = fromIntegral (end - start) / (10^12)
+     let jsonVal = object
+          [ "metadata" .= object
+              [ "alg" .= String "LazyNUTS",
+                "eps" .= eps,
+                "leapfrog_steps" .= steps,
+                "count" .= count,
+                "burnin" .= burnin
+              ],
+            "LazyNUTS" .= object
+              [ "eps" .= eps,
+                "leapfrog_steps" .= steps,
+                "burnin" .= burnin,
+                "time" .= time,
+                "samples" .= results,
+                "model_info" .= object
+                  [ "model_hyperparam" .= object
+                      [ "alpha" .= primal alpha
+                      ],
+                    "data_info" .= object []
+                  ]
+              ]
+          ]
+     let filename = "samples_produced/test/test_model2_alpha" ++ show (primal alpha) ++ "-" ++ show rep ++ "_lazyNUTS__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json"
+     B.writeFile filename (encode jsonVal)
+     print $ "eps" ++ show eps ++ "L" ++ show steps 
+     --print $ map (\xs -> map primal xs) $ drop 5900 samples
+     print $ map length $ drop 5900 samples
+     print $ length $ filter (\xs -> length xs == 2) $ samples
+
+simpleModelNUTSAll = 
+  do let configs = [(e, s) | e <- [0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5], s <- [5, 10, 15, 20]]
+     let configs = [(0.005, 20), (0.01, 5), (0.01, 10), (0.01, 15), (0.01, 20), (0.05, 5), (0.05, 10), (0.05, 15), (0.05, 20), (0.1, 5), (0.1, 10), (0.1, 15), (0.1, 20)]
+     let configs = [(0.2, 5, 0.5, rep)| rep <- [0..9]] ++ [(0.2, 5, 2, rep)| rep <- [0..9]] ++ [(0.2, 5, 1, rep)| rep <- [0..9]]
+     let x = map simpleModelNUTS configs
      sequence_ x
     
 {--
@@ -360,13 +470,14 @@ plotHistogram filename xs = do
 
 plotTests :: IO ()
 plotTests = do
+  g <- getStdGen
   let (mean, var) = (0, 1) 
   let n = 10000
   -- hmc
-  xws <- mh (hmcKernel (LFConfig 0.05 10 0)) $ sample $ uniform
+  xws <- mh g (hmcKernel (LFConfig 0.05 10 0)) 0 $ sample $ uniform
   let xws' = map (\(N x _) -> floor (x * 100)) $ map fst xws
   plotHistogram "images/hmc2/test-uniform.svg" (take n xws')
-  xws <- mh (hmcKernel (LFConfig 0.05 10 0)) $ sample $ normal mean var
+  xws <- mh g (hmcKernel (LFConfig 0.05 10 0)) 0 $ sample $ normal mean var
   let xws' = map (\(N x _) -> floor (x * 10)) $ map fst xws
   plotHistogram ("images/hmc2/test-normal-mean"++ show (primal mean) ++ "var" ++ show (primal var) ++ ".svg") (take n xws')
   let (eps, steps, chances, alpha) = (0.005, 10, 3, 0.5)
@@ -378,11 +489,11 @@ plotTests = do
   let xws' = map (\(N x _) -> floor (x * 10)) xws
   plotHistogram ("images/hmc2/lahmc-test-normal-mean"++ show (primal mean) ++ "var" ++ show (primal var) ++ ".svg") (take n xws')
   -- nuts
-  xws <- mh (nutsKernel (LFConfig 0.05 5 0)) $ sample $ uniform
+  xws <- mh g (nutsKernel (LFConfig 0.05 5 0)) 0 $ sample $ uniform
   print $ take 10 xws
   let xws' = map (\(N x _) -> floor (x * 100)) $ map fst xws
   plotHistogram "images/hmc2/nuts-test-uniform.svg" (take n xws')
-  xws <- mh (nutsKernel (LFConfig 0.05 5 0)) $ sample $ normal mean var
+  xws <- mh g (nutsKernel (LFConfig 0.05 5 0)) 0 $ sample $ normal mean var
   print $ take 10 xws
   let xws' = map (\(N x _) -> floor (x * 10)) $ map fst xws
   plotHistogram ("images/hmc2/nuts-test-normal-mean"++ show (primal mean) ++ "var" ++ show (primal var) ++ ".svg") (take n xws')
@@ -393,4 +504,4 @@ plotTests = do
 -- main = do {plotLinearPrior ; plotDataset ; plotLinReg ; plotPiecewisePrior ; plotPoissonPP ; plotPiecewiseReg ; plotPiecewiseConst }
 
 main :: IO ()
-main = plotStepRegNUTSAll
+main = simpleModelHMCAll

@@ -29,14 +29,14 @@ linear =
     let f = \x -> a * x + b
     return f
 
-simpleModel :: (Floating d, Ord d, Show d) => Meas d [d]
-simpleModel = 
+simpleModel :: (Floating d, Ord d, Show d) => d -> Meas d [d]
+simpleModel alpha = 
   do 
     x <- sample $ normal 0 1
     y <- sample $ normal 0 1
-    t <- sample $ normal 0 1
+    --t <- sample $ normal 0 1
     let z = if (x > 0.0) then [x, y] else [x] 
-    scoreLog 2
+    score alpha
     --forM_ z (\t -> scoreLog $ (normalLogPdf 0 1 t))
     --forM_ z (\t -> scoreLog (log t))
     return z
@@ -188,28 +188,28 @@ plotStepRegLAHMCAll =
      sequence_ x
 
 
-simpleModelHMC (eps, steps) =  
+simpleModelHMC (eps, steps, alpha) =  
   do newStdGen
      g <- getStdGen
-     let t = randomTree g
+     let t = dualizeTree $ randomTree g
      --let r = runProb simpleModel t
-     let k = runMeas simpleModel t
+     let k = runMeas (simpleModel (toNagata alpha)) t
      --print r
      print k 
-     fs' <- mh (hmcKernel (LFConfig eps steps 0)) simpleModel
+     fs' <- mh (hmcKernel (LFConfig eps steps 0)) (simpleModel (toNagata alpha))
      --let fs = map (\f -> primal . f . toNagata) $ take 1000 fs'
      --print $ take 5 fs'
      --print $ map length $ take 6000 fs'
-     let samples = take 6000 $ drop 1000 fs'
+     let samples = take 6 $ drop 0 fs'
      print $ "eps" ++ show eps ++ "L" ++ show steps 
      --print $ map (\xs -> map primal xs) $ drop 5900 samples
-     print $ map length $ drop 5900 samples
+     print $ map length $ drop 0 samples
      print $ length $ filter (\xs -> length xs == 2) $ samples
 
 simpleModelHMCAll = 
   do let configs = [(e, s) | e <- [0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5], s <- [5, 10, 15, 20]]
      let configs = [(0.005, 20), (0.01, 5), (0.01, 10), (0.01, 15), (0.01, 20), (0.05, 5), (0.05, 10), (0.05, 15), (0.05, 20), (0.1, 5), (0.1, 10), (0.1, 15), (0.1, 20)]
-     let configs = [(0.2, 5)| e <- [1..5]]
+     let configs = [(0.5, 5, 1)| e <- [1..5]]
      let x = map simpleModelHMC configs
      sequence_ x
     
@@ -366,4 +366,4 @@ plotTests = do
 -- main = do {plotLinearPrior ; plotDataset ; plotLinReg ; plotPiecewisePrior ; plotPoissonPP ; plotPiecewiseReg ; plotPiecewiseConst }
 
 main :: IO ()
-main = plotTests
+main = simpleModelHMCAll
