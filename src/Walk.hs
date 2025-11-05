@@ -12,7 +12,7 @@ import LazyPPLHMC2 hiding (uniform, logSumExp, findIndex)
 import System.Random hiding (uniform)
 
 import Debug.Trace
-import Data.List (findIndex)
+import Data.List (findIndex, find)
 import Numeric.SpecFunctions
 import Numeric.MathFunctions.Constants
 
@@ -49,21 +49,34 @@ walkModel distLim = do
                 let step = 2 * stepSample - 1
                 walkStep (position + step) (distance + abs step)
 
+walkModelLazy :: (Floating d, Ord d, Show d, Erf d) => d -> Meas d d
+walkModelLazy distLim = do
+        startSample <- sample uniform
+        stepSamples <- sample iiduniform
+        let steps = map (\x -> 2*x-1) stepSamples
+        let start = (3 * startSample)
+        let positions = scanl (+) start steps
+        let distances = scanl (+) 0 (map abs steps)
+        case find (\(p, d) -> p <= 0 || d >= distLim) (zip positions distances) of
+            Just (finalPos, finalDistance) -> scoreLog (normalLogPdf 1.1 0.1 finalDistance)
+            Nothing -> score 0
+        return start
+
 
 runWalk (eps, steps, count, burnin, distLim, rep) =
     do
         --g <- getStdGen
         let g = mkStdGen rep
-        --let (alg, alg2, alg_kernel) = ("lazyHMCmod", "lazyHMCmod", mh g (hmcKernel (LFConfig eps steps 0)) burnin)
+        let (alg, alg2, alg_kernel) = ("lazyHMCmod", "lazyHMCmod", mh g (hmcKernel (LFConfig eps steps 0)) burnin)
         --let (alg, alg2, alg_kernel) = ("lazyHMCOsc", "lazyHMCOsc", mh g (hmcOscKernel (LFConfig eps steps 0)) burnin)
         --let (alg, alg2, alg_kernel) = ("lazyNUTS", "lazyNUTS", mh g (nutsKernel (LFConfig eps steps 0)) burnin)
-        let (alg, alg2, alg_kernel) = ("lazyLMH", "lazyLMH", mh g (lmhKernel 0.5) burnin)
+        --let (alg, alg2, alg_kernel) = ("lazyLMH", "lazyLMH", mh g (lmhKernel 0.5) burnin)
 
         print $ "start rep " ++ show rep
-        let filename = "samples_produced/walk/walk3_dist_lim" ++ show distLim ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json"
+        let filename = "samples_produced/walk/walkLazy_dist_lim" ++ show distLim ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json"
         print filename
         start <- getCPUTime
-        fs <- alg_kernel (walkModel (toNagata distLim))
+        fs <- alg_kernel (walkModelLazy (toNagata distLim))
         let results = map primal $ take count $ drop burnin $ map fst fs 
         results `deepseq` return ()
         -- jsonVal :: Value
@@ -98,7 +111,7 @@ runWalk (eps, steps, count, burnin, distLim, rep) =
 
 runWalkAll =
     do
-        let configs = [(e, l, 1300, 100, 10, rep)| rep <- [0..9], e <- [0.1], l <- [6]]
+        let configs = [(e, l, 1300, 100, 10, rep)| rep <- [0..9], e <- [0.05, 0.1], l <- [5, 10, 20]]
         let x = map runWalk configs
         sequence_ x
 

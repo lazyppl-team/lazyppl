@@ -42,20 +42,26 @@ geometric p = do
             n <- geometric p
             return (1 + n)
 
+geometricLazy :: (Floating d, Ord d, Show d, Erf d) => d -> Meas d Int
+geometricLazy p = do
+    x <- sample iiduniform
+    let (Just n) = findIndex (<p) x
+    return (1+n)
+
 
 runGeom (eps, steps, count, burnin, p, rep) =
     do
         --g <- getStdGen
         let g = mkStdGen rep
-        let (alg, alg2, alg_kernel) = ("lazyHMCmod", "lazyHMCmod", mh g (hmcKernel(LFConfig eps steps 0)) burnin)
-        --let (alg, alg2, alg_kernel) = ("lazyHMCOsc", "lazyHMCOsc", mh g (hmcOscKernel(LFConfig eps steps 0)) burnin)
-        --let (alg, alg2, alg_kernel) = ("lazyNUTS", "lazyNUTS", mh g (nutsKernel (LFConfig eps steps 0)) burnin)
-   
+        let (alg, alg2, alg_kernel, filename) = ("lazyHMCmod", "lazyHMCmod", mh g (hmcKernel(LFConfig eps steps 0)) burnin,"samples_produced/geom/geomLazy_p" ++ show p ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
+        --let (alg, alg2, alg_kernel, filename) = ("lazyHMCOsc", "lazyHMCOsc", mh g (hmcOscKernel(LFConfig eps steps 0)) burnin, "samples_produced/geom/geomLazy_p" ++ show p ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
+        --let (alg, alg2, alg_kernel, filename) = ("lazyNUTS", "lazyNUTS", mh g (nutsKernel (LFConfig eps steps 0)) burnin, "samples_produced/geom/geomLazy_p" ++ show p ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
+        --let (alg, alg2, alg_kernel, filename) = ("lazyLMH", "lazyLMH", mh g (lmhKernel eps) burnin, "samples_produced/geom/geomLazy_p" ++ show p ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_burnin" ++ show burnin ++ ".json")
+        
         print $ "start rep " ++ show rep
-        let filename = "samples_produced/geom/geom3_p" ++ show p ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json"
         print filename
         start <- getCPUTime
-        fs <- alg_kernel (geometric (toNagata p))
+        fs <- alg_kernel (geometricLazy (toNagata p))
         let results = take count $ drop burnin $ map fst fs
         results `deepseq` return ()
         -- jsonVal :: Value
@@ -89,7 +95,7 @@ runGeom (eps, steps, count, burnin, p, rep) =
 
 runGeomAll =
     do
-        let configs = [(0.1, 50, 1300, 0, 0.2, rep)| rep <- [0..9]]
+        let configs = [(e, l, 1300, 0, 0.2, rep)| rep <- [0..9], l <- [5, 10, 15], e <- [0.05, 0.1]]
         let x = map runGeom configs
         sequence_ x
 
