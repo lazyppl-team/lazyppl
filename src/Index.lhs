@@ -28,7 +28,7 @@ title: LazyPPL
 <p class="examples-intro">LazyPPL is a Haskell library for Bayesian probabilistic programming. It supports lazy use of probability, and we provide new Metropolis-Hastings algorithms to allow this. LazyPPL is inspired by recent ideas in synthetic probability theory and synthetic measure theory, such as <a href="https://ncatlab.org/nlab/show/quasi-Borel+space">quasi-Borel spaces</a> and <a href="https://ncatlab.org/nlab/show/Markov+category">Markov categories</a>. Laziness appears to be a good paradigm for non-parametric statistics. LazyPPL is inspired by many other languages, including <a href="v1.probmods.org">Church</a>, <a href="https://probprog.github.io/anglican/">Anglican</a>, and <a href="https://www.tweag.io/blog/2019-09-20-monad-bayes-1/">MonadBayes</a>. Several aspects are now incorporated into MonadBayes (see <a href="https://www.tweag.io/blog/2022-10-18-monad-bayes-fellowship/">here</a>).</p>
 <div class="examples-grid">
 <article class="example-card">
-<div class="card-preview"><img src="images/regression-piecewise-reg.svg" alt="Linear and piecewise linear regression"></div>
+<a href="RegressionDemo.html" class="card-preview"><img src="images/regression-piecewise-reg.svg" alt="Linear and piecewise linear regression"></a>
 <div class="card-content">
 <span class="card-tag">Regression</span>
 <h3><a href="RegressionDemo.html">Linear & Piecewise Regression</a></h3>
@@ -36,7 +36,7 @@ title: LazyPPL
 </div>
 </article>
 <article class="example-card">
-<div class="card-preview"><img src="images/wiener-reg.svg" alt="Wiener process regression"></div>
+<a href="WienerDemo.html" class="card-preview"><img src="images/wiener-reg.svg" alt="Wiener process regression"></a>
 <div class="card-content">
 <span class="card-tag">Stochastic Processes</span>
 <h3><a href="WienerDemo.html">Wiener Process Regression</a></h3>
@@ -44,7 +44,7 @@ title: LazyPPL
 </div>
 </article>
 <article class="example-card">
-<div class="card-preview"><img src="images/programinduction-reg.svg" alt="Program induction"></div>
+<a href="ProgramInductionDemo.html" class="card-preview"><img src="images/programinduction-reg.svg" alt="Program induction"></a>
 <div class="card-content">
 <span class="card-tag">Program Induction</span>
 <h3><a href="ProgramInductionDemo.html">Program Induction</a></h3>
@@ -52,7 +52,7 @@ title: LazyPPL
 </div>
 </article>
 <article class="example-card">
-<div class="card-preview"><img src="images/clustering-map.svg" alt="Dirichlet Process clustering"></div>
+<a href="ClusteringDemo.html" class="card-preview"><img src="images/clustering-map.svg" alt="Dirichlet Process clustering"></a>
 <div class="card-content">
 <span class="card-tag">Clustering</span>
 <h3><a href="ClusteringDemo.html">Non-parametric Clustering</a></h3>
@@ -60,7 +60,7 @@ title: LazyPPL
 </div>
 </article>
 <article class="example-card">
-<div class="card-preview"><img src="images/graph-data.svg" alt="Observed graph for inference"></div>
+<a href="GraphDemo.html" class="card-preview"><img src="images/graph-data.svg" alt="Observed graph for inference"></a>
 <div class="card-content">
 <span class="card-tag">Graph Inference</span>
 <h3><a href="GraphDemo.html">Graph Inference</a></h3>
@@ -68,7 +68,7 @@ title: LazyPPL
 </div>
 </article>
 <article class="example-card">
-<div class="card-preview"><img src="images/physics4.svg" alt="2D physics bumper configuration"></div>
+<a href="Physics.html" class="card-preview"><img src="images/physics4.svg" alt="2D physics bumper configuration"></a>
 <div class="card-content">
 <span class="card-tag">Physics</span>
 <h3><a href="Physics.html">Inference in a Physics Model</a></h3>
