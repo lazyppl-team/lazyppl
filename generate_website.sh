@@ -42,10 +42,10 @@ else
     done
 
     # Build Physics page from the external lazyppl_physics repo if available.
-    # This keeps Physics as a separate project while using the shared template.
-    if [ -f "../lazyppl_physics/src/Physics.lhs" ]; then
+    # Path is ../../lazyppl_physics because we're in src/ subdirectory
+    if [ -f "../../lazyppl_physics/src/Physics.lhs" ]; then
         pandoc -f markdown+lhs+markdown_in_html_blocks \
-               -s "../lazyppl_physics/src/Physics.lhs" \
+               -s "../../lazyppl_physics/src/Physics.lhs" \
                -t html \
                -o "../website/Physics.html" \
                --template=../pandoc/lazyppltemplate.html \
