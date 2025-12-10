@@ -1009,12 +1009,40 @@ header {
 }
 
 @media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .navbar {
+    background: linear-gradient(180deg, rgba(15, 20, 25, 0.97) 0%, rgba(12, 16, 20, 0.95) 100%);
+    border-bottom-color: rgba(102, 181, 204, 0.12);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.02) inset, 0 2px 8px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.2), 0 0 1px rgba(102, 181, 204, 0.08);
+  }
   :root:not([data-theme="light"]) .nav-link {
     color: var(--teal-100);
   }
   :root:not([data-theme="light"]) .nav-link:hover {
     color: var(--teal-300);
     background: linear-gradient(135deg, rgba(91, 163, 184, 0.12) 0%, rgba(74, 144, 164, 0.08) 100%);
+  }
+  :root:not([data-theme="light"]) .nav-link.icon-link {
+    color: var(--teal-200);
+    background: rgba(91, 163, 184, 0.1);
+  }
+  :root:not([data-theme="light"]) .dropdown-menu {
+    background: var(--navy-800);
+    border-color: rgba(91, 163, 184, 0.2);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 10px 24px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  }
+  :root:not([data-theme="light"]) .dropdown-menu::before {
+    background: var(--navy-800);
+    border-color: rgba(91, 163, 184, 0.2);
+  }
+  :root:not([data-theme="light"]) .dropdown-menu a {
+    color: var(--teal-100);
+  }
+  :root:not([data-theme="light"]) .dropdown-menu a:hover {
+    background: linear-gradient(135deg, rgba(91, 163, 184, 0.15) 0%, rgba(74, 144, 164, 0.1) 100%);
+    color: var(--teal-300);
+  }
+  :root:not([data-theme="light"]) .navbar-brand img {
+    filter: drop-shadow(0 0 2px rgba(180, 210, 220, 0.3)) brightness(1.1);
   }
 }
 
