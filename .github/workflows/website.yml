@@ -15,6 +15,10 @@ jobs:
 
     - uses: nikeee/setup-pandoc@v1
 
+    - name: Clone lazyppl_physics (Physics example source)
+      run: |
+        git clone https://github.com/lazyppl-team/lazyppl_physics.git ../lazyppl_physics || echo "lazyppl_physics repo not available; skipping Physics page"
+
     - name: Generate website
       run: bash generate_website.sh
 

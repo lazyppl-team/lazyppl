@@ -1,43 +1,85 @@
-<nav class="navbar navbar-expand-lg navbar-light bg-light">
-  <div class="container-fluid">
-    <a class="navbar-brand" href="index.html"><img src="images/logo.png" width="45" height="45" class="align-top d-inline-block" alt="LazyPPL"></a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="navbarSupportedContent">
-      <ul class="mb-2 navbar-nav me-auto mb-lg-0">
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            Regression examples
-          </a>
-          <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-            <li><a class="dropdown-item" href="RegressionDemo.html">Linear and piecewise linear</a></li> 
-            <li><a class="dropdown-item" href="GaussianProcessDemo.html">Gaussian process regression</a></li>
-            <li><a class="dropdown-item" href="WienerDemo.html">Wiener process regression</a></li>
-           <li><a class="dropdown-item" href="ProgramInductionDemo.html">Program induction</a></li>
-          </ul>
-        </li>
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            Other examples
-          </a>
-          <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-            <li><a class="dropdown-item" href="MinimalDemo.html">Minimal demonstration</a></li>
-            <li><a class="dropdown-item" href="ClusteringDemo.html">Non-parametric clustering</a></li>
-            <li><a class="dropdown-item" href="IrmDemo.html">Infinite relational model</a></li>
-            <li><a class="dropdown-item" href="AdditiveClusteringDemo.html">Indian Buffet Process</a></li>
-            <li><a class="dropdown-item" href="ControlFlowDemo.html">Program transformations</a></li>
-            <li><a class="dropdown-item" href="GraphDemo.html">Graph inference</a></li>
-            <li><a class="dropdown-item" href="Physics.html">Inference in a physics model</a></li>
-          </ul>
-        </li>
-            <li class="nav-item"><a href="https://dl.acm.org/doi/abs/10.1145/3571239" class="nav-link"><i class="ai ai-acm"></i>
-</a></li>
-<li class="nav-item"><a href="https://arxiv.org/abs/2212.07250" class="nav-link"><i class="ai ai-arxiv"></i>
-</a></li>
-            <li class="nav-item"><a href="https://github.com/lazyppl-team/lazyppl" class="nav-link"><i class="fa-brands fa-github"></i></a></li>
+<nav class="navbar" role="navigation" aria-label="main navigation">
+  <div class="nav-container">
+    <a class="navbar-brand" href="index.html">
+      <img src="images/logo.png" height="40" alt="LazyPPL">
+    </a>
 
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+      <span class="hamburger"></span>
+    </button>
+
+    <div class="nav-menu">
+      <ul class="nav-list">
+        <li class="nav-item has-dropdown">
+          <button class="nav-link dropdown-trigger" aria-expanded="false">
+            Regression examples
+            <svg class="dropdown-arrow" width="12" height="12" viewBox="0 0 12 12"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+          </button>
+          <ul class="dropdown-menu">
+            <li><a href="RegressionDemo.html">Linear and piecewise linear</a></li>
+            <li><a href="GaussianProcessDemo.html">Gaussian process regression</a></li>
+            <li><a href="WienerDemo.html">Wiener process regression</a></li>
+            <li><a href="ProgramInductionDemo.html">Program induction</a></li>
+          </ul>
+        </li>
+        <li class="nav-item has-dropdown">
+          <button class="nav-link dropdown-trigger" aria-expanded="false">
+            Other examples
+            <svg class="dropdown-arrow" width="12" height="12" viewBox="0 0 12 12"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+          </button>
+          <ul class="dropdown-menu">
+            <li><a href="MinimalDemo.html">Minimal demonstration</a></li>
+            <li><a href="ClusteringDemo.html">Non-parametric clustering</a></li>
+            <li><a href="IrmDemo.html">Infinite relational model</a></li>
+            <li><a href="AdditiveClusteringDemo.html">Indian Buffet Process</a></li>
+            <li><a href="ControlFlowDemo.html">Program transformations</a></li>
+            <li><a href="GraphDemo.html">Graph inference</a></li>
+            <li><a href="Physics.html">Inference in a physics model</a></li>
+          </ul>
+        </li>
+        <li class="nav-item">
+          <a href="https://dl.acm.org/doi/abs/10.1145/3571239" class="nav-link icon-link" title="ACM Paper" aria-label="ACM Paper">
+            <i class="ai ai-acm"></i>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="https://arxiv.org/abs/2212.07250" class="nav-link icon-link" title="arXiv" aria-label="arXiv preprint">
+            <i class="ai ai-arxiv"></i>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="https://github.com/lazyppl-team/lazyppl" class="nav-link icon-link" title="GitHub" aria-label="LazyPPL on GitHub">
+            <i class="fa-brands fa-github"></i>
+          </a>
+        </li>
       </ul>
+
+      <div class="nav-actions">
+        <a href="https://hackage.haskell.org/package/lazyppl" class="nav-badge" title="View on Hackage">
+          <img src="https://img.shields.io/hackage/v/lazyppl.svg?style=flat-square&amp;color=5e5086" alt="Hackage">
+        </a>
+        <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme" title="Toggle theme">
+          <svg class="system-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+          <svg class="sun-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <svg class="moon-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+      </div>
     </div>
   </div>
 </nav>
