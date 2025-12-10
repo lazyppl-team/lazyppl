@@ -655,6 +655,27 @@ code span.wa { color: #d97706; font-style: italic; } /* Warning */
 [data-theme="dark"] code span.at { color: #7bc4d4; } /* Attributes: teal */
 [data-theme="dark"] code span.bn { color: #e6c179; } /* BaseN: amber */
 
+/* System dark mode: code blocks and syntax highlighting */
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) div.sourceCode {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(102, 181, 204, 0.05), 0 0 0 1px rgba(42, 49, 58, 0.6) !important;
+    border-color: rgba(42, 49, 58, 0.8) !important;
+  }
+  html:not([data-theme="light"]) div.sourceCode::before {
+    box-shadow: 0 0 12px rgba(102, 181, 204, 0.15) !important;
+  }
+  html:not([data-theme="light"]) code span.kw { color: #b5a3dc !important; }
+  html:not([data-theme="light"]) code span.dt { color: #7bc4d4 !important; }
+  html:not([data-theme="light"]) code span.fu { color: #8db4d8 !important; }
+  html:not([data-theme="light"]) code span.op { color: #d89b9b !important; }
+  html:not([data-theme="light"]) code span.st { color: #a8cc9c !important; }
+  html:not([data-theme="light"]) code span.dv { color: #e6c179 !important; }
+  html:not([data-theme="light"]) code span.co { color: #7a8694 !important; font-style: italic; }
+  html:not([data-theme="light"]) code span.ot { color: #b89cd9 !important; }
+  html:not([data-theme="light"]) code span.at { color: #7bc4d4 !important; }
+  html:not([data-theme="light"]) code span.bn { color: #e6c179 !important; }
+}
+
 code { white-space: pre-wrap; }
 
 /* ==========================================================================
@@ -728,6 +749,19 @@ article img:hover {
 /* Dark mode GIF images - invert physics animations with white backgrounds */
 [data-theme="dark"] img[src*=".gif"] {
   filter: invert(0.88) hue-rotate(180deg);
+}
+
+/* System dark mode: SVG/GIF inversion */
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) img[src*=".svg"]:not([src*="logo"]) {
+    filter: invert(0.88) hue-rotate(180deg) !important;
+  }
+  html:not([data-theme="light"]) .card-preview img[src*=".svg"] {
+    filter: invert(0.88) hue-rotate(180deg) !important;
+  }
+  html:not([data-theme="light"]) img[src*=".gif"] {
+    filter: invert(0.88) hue-rotate(180deg) !important;
+  }
 }
 
 /* Center figures and their captions */
