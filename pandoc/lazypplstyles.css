@@ -751,7 +751,7 @@ article img:hover {
   filter: invert(0.88) hue-rotate(180deg);
 }
 
-/* System dark mode: SVG/GIF inversion */
+/* System dark mode: SVG/GIF/iframe inversion */
 @media (prefers-color-scheme: dark) {
   html:not([data-theme="light"]) img[src*=".svg"]:not([src*="logo"]) {
     filter: invert(0.88) hue-rotate(180deg) !important;
@@ -761,6 +761,9 @@ article img:hover {
   }
   html:not([data-theme="light"]) img[src*=".gif"] {
     filter: invert(0.88) hue-rotate(180deg) !important;
+  }
+  html:not([data-theme="light"]) iframe {
+    filter: invert(1) hue-rotate(180deg) !important;
   }
 }
 
@@ -2731,6 +2734,44 @@ h2.intro-title ~ h2.intro-title {
 
   .examples-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ==========================================================================
+   System Dark Mode: Hero & Cards
+   ========================================================================== */
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) .hero-title .hero-logo {
+    filter: drop-shadow(0 2px 12px rgba(91, 163, 184, 0.15)) !important;
+  }
+  html:not([data-theme="light"]) .hero-title:hover .hero-logo {
+    filter: drop-shadow(0 4px 20px rgba(91, 163, 184, 0.3)) !important;
+  }
+  html:not([data-theme="light"]) .hero-description {
+    color: var(--text-muted) !important;
+  }
+  html:not([data-theme="light"]) .example-card {
+    background: linear-gradient(135deg, rgba(26, 35, 50, 0.6), rgba(26, 35, 50, 0.3)) !important;
+    border-color: rgba(91, 163, 184, 0.15) !important;
+  }
+  html:not([data-theme="light"]) .example-card:hover {
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(91, 163, 184, 0.2), 0 0 40px rgba(74, 144, 164, 0.08) !important;
+  }
+  html:not([data-theme="light"]) .card-tag {
+    background: var(--navy-700) !important;
+    color: var(--teal-300) !important;
+  }
+  html:not([data-theme="light"]) .examples-intro {
+    color: var(--text-muted) !important;
+  }
+  html:not([data-theme="light"]) .copy-btn:hover {
+    background: rgba(91, 163, 184, 0.15) !important;
+    border-color: var(--teal-400) !important;
+  }
+  html:not([data-theme="light"]) details.code-details summary:hover {
+    background: rgba(91, 163, 184, 0.06) !important;
+    color: var(--teal-400) !important;
   }
 }
 
