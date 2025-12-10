@@ -724,6 +724,11 @@ article img:hover {
   filter: invert(0.88) hue-rotate(180deg);
 }
 
+/* Dark mode GIF images - invert physics animations with white backgrounds */
+[data-theme="dark"] img[src*=".gif"] {
+  filter: invert(0.88) hue-rotate(180deg);
+}
+
 /* Center figures and their captions */
 figure {
   margin: var(--space-xl) auto;
