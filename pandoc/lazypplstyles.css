@@ -642,33 +642,33 @@ div.sourceCode pre {
   overflow: visible;
 }
 
-/* Syntax highlighting - Haskell optimized */
-code span.kw { color: #7c3aed; font-weight: 600; } /* Keywords: purple */
-code span.dt { color: #0891b2; font-weight: 500; } /* Data types: cyan */
-code span.fu { color: #2563eb; } /* Functions: blue */
-code span.op { color: #dc2626; } /* Operators: red */
-code span.st { color: #16a34a; } /* Strings: green */
-code span.dv { color: #d97706; } /* Numbers: amber */
-code span.co { color: #6b7280; font-style: italic; } /* Comments: gray */
-code span.ot { color: #7c3aed; } /* Other/Pragma: purple */
-code span.al { color: #dc2626; font-weight: bold; } /* Alert */
-code span.an { color: #6b7280; font-style: italic; } /* Annotation */
-code span.at { color: #0891b2; } /* Attribute */
-code span.bn { color: #d97706; } /* BaseN */
-code span.cf { color: #7c3aed; font-weight: 600; } /* ControlFlow */
-code span.ch { color: #16a34a; } /* Char */
-code span.cn { color: #d97706; } /* Constant */
-code span.er { color: #dc2626; font-weight: bold; } /* Error */
+/* Syntax highlighting - Haskell optimized (with !important to override Pandoc defaults) */
+code span.kw { color: #7c3aed !important; font-weight: 600 !important; } /* Keywords: purple */
+code span.dt { color: #0891b2 !important; font-weight: 500 !important; } /* Data types: cyan */
+code span.fu { color: #2563eb !important; } /* Functions: blue */
+code span.op { color: #dc2626 !important; } /* Operators: red */
+code span.st { color: #16a34a !important; } /* Strings: green */
+code span.dv { color: #d97706 !important; } /* Numbers: amber */
+code span.co { color: #6b7280 !important; font-style: italic !important; } /* Comments: gray */
+code span.ot { color: #7c3aed !important; } /* Other/Pragma: purple */
+code span.al { color: #dc2626 !important; font-weight: bold !important; } /* Alert */
+code span.an { color: #6b7280 !important; font-style: italic !important; } /* Annotation */
+code span.at { color: #0891b2 !important; } /* Attribute */
+code span.bn { color: #d97706 !important; } /* BaseN */
+code span.cf { color: #7c3aed !important; font-weight: 600 !important; } /* ControlFlow */
+code span.ch { color: #16a34a !important; } /* Char */
+code span.cn { color: #d97706 !important; } /* Constant */
+code span.er { color: #dc2626 !important; font-weight: bold !important; } /* Error */
 code span.ex { } /* Extension */
-code span.fl { color: #d97706; } /* Float */
-code span.im { color: #2563eb; } /* Import */
-code span.in { color: #6b7280; font-style: italic; } /* Information */
-code span.pp { color: #7c3aed; } /* Preprocessor */
-code span.sc { color: #16a34a; } /* SpecialChar */
-code span.ss { color: #16a34a; } /* SpecialString */
-code span.va { color: var(--text); } /* Variable */
-code span.vs { color: #16a34a; } /* VerbatimString */
-code span.wa { color: #d97706; font-style: italic; } /* Warning */
+code span.fl { color: #d97706 !important; } /* Float */
+code span.im { color: #2563eb !important; } /* Import */
+code span.in { color: #6b7280 !important; font-style: italic !important; } /* Information */
+code span.pp { color: #7c3aed !important; } /* Preprocessor */
+code span.sc { color: #16a34a !important; } /* SpecialChar */
+code span.ss { color: #16a34a !important; } /* SpecialString */
+code span.va { color: var(--text) !important; } /* Variable */
+code span.vs { color: #16a34a !important; } /* VerbatimString */
+code span.wa { color: #d97706 !important; font-style: italic !important; } /* Warning */
 
 /* Dark mode syntax highlighting */
 [data-theme="dark"] code span.kw { color: #b5a3dc; } /* Keywords: muted lavender */
@@ -2254,6 +2254,7 @@ $endif$
   .examples-intro {
     font-size: 1rem;
     margin-bottom: var(--space-lg);
+    text-align: left;
   }
 
   /* Cards become fully stacked */
@@ -3018,6 +3019,12 @@ body:has(.hero) #title-block-header {
   font-size: 1.1rem;
   margin-top: var(--space-lg);
   margin-bottom: var(--space-2xl);
+}
+
+@media (max-width: 600px) {
+  .examples-intro {
+    text-align: left;
+  }
 }
 
 /* Dark mode: use primary text color */
