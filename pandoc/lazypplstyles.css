@@ -13,6 +13,7 @@
   --navy-600: #3a4f73;
 
     /* Teal accent (from logo horizontal bars) */
+    --teal-700: #2a6070;  /* Darker teal for light mode text (WCAG AA compliant) */
     --teal-600: #3a7a8c;
     --teal-500: #4a90a4;
     --teal-400: #5ba3b8;
@@ -641,32 +642,33 @@ div.sourceCode pre {
 }
 
 /* Syntax highlighting - Haskell (!important overrides Pandoc) */
-code span.kw { color: #7c3aed !important; font-weight: 600 !important; } /* Keywords: purple */
-code span.dt { color: #0891b2 !important; font-weight: 500 !important; } /* Data types: cyan */
-code span.fu { color: #2563eb !important; } /* Functions: blue */
-code span.op { color: #dc2626 !important; } /* Operators: red */
-code span.st { color: #16a34a !important; } /* Strings: green */
-code span.dv { color: #d97706 !important; } /* Numbers: amber */
-code span.co { color: #6b7280 !important; font-style: italic !important; } /* Comments: gray */
+/* Light mode colors - WCAG AA compliant (≥4.5:1 contrast on #fafcfd) */
+code span.kw { color: #7c3aed !important; font-weight: 600 !important; } /* Keywords: purple (5.54:1) */
+code span.dt { color: #0e7490 !important; font-weight: 500 !important; } /* Data types: darker cyan (4.89:1) */
+code span.fu { color: #2563eb !important; } /* Functions: blue (5.02:1) */
+code span.op { color: #dc2626 !important; } /* Operators: red (4.69:1) */
+code span.st { color: #15803d !important; } /* Strings: darker green (4.87:1) */
+code span.dv { color: #b45309 !important; } /* Numbers: darker amber (4.74:1) */
+code span.co { color: #6b7280 !important; font-style: italic !important; } /* Comments: gray (4.70:1) */
 code span.ot { color: #7c3aed !important; } /* Other/Pragma: purple */
 code span.al { color: #dc2626 !important; font-weight: bold !important; } /* Alert */
 code span.an { color: #6b7280 !important; font-style: italic !important; } /* Annotation */
-code span.at { color: #0891b2 !important; } /* Attribute */
-code span.bn { color: #d97706 !important; } /* BaseN */
+code span.at { color: #0e7490 !important; } /* Attribute: darker cyan */
+code span.bn { color: #b45309 !important; } /* BaseN: darker amber */
 code span.cf { color: #7c3aed !important; font-weight: 600 !important; } /* ControlFlow */
-code span.ch { color: #16a34a !important; } /* Char */
-code span.cn { color: #d97706 !important; } /* Constant */
+code span.ch { color: #15803d !important; } /* Char: darker green */
+code span.cn { color: #b45309 !important; } /* Constant: darker amber */
 code span.er { color: #dc2626 !important; font-weight: bold !important; } /* Error */
 code span.ex { } /* Extension */
-code span.fl { color: #d97706 !important; } /* Float */
+code span.fl { color: #b45309 !important; } /* Float: darker amber */
 code span.im { color: #2563eb !important; } /* Import */
 code span.in { color: #6b7280 !important; font-style: italic !important; } /* Information */
 code span.pp { color: #7c3aed !important; } /* Preprocessor */
-code span.sc { color: #16a34a !important; } /* SpecialChar */
-code span.ss { color: #16a34a !important; } /* SpecialString */
+code span.sc { color: #15803d !important; } /* SpecialChar: darker green */
+code span.ss { color: #15803d !important; } /* SpecialString: darker green */
 code span.va { color: var(--text) !important; } /* Variable */
-code span.vs { color: #16a34a !important; } /* VerbatimString */
-code span.wa { color: #d97706 !important; font-style: italic !important; } /* Warning */
+code span.vs { color: #15803d !important; } /* VerbatimString: darker green */
+code span.wa { color: #b45309 !important; font-style: italic !important; } /* Warning: darker amber */
 
 /* Dark mode syntax highlighting */
 [data-theme="dark"] code span.kw { color: #b5a3dc; } /* Keywords: muted lavender */
@@ -2851,11 +2853,16 @@ body:has(.hero) #title-block-header {
   font-family: var(--font-heading);
   font-size: 1.35rem;
   font-weight: 500;
-  color: var(--teal-500);
+  color: var(--teal-700);  /* Darker teal for WCAG AA contrast in light mode */
   margin: var(--space-md) 0 var(--space-xl);
   letter-spacing: -0.01em;
   opacity: 0;
   animation: heroFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.4s forwards;
+}
+
+/* Dark mode: use lighter teal for hero tagline */
+[data-theme="dark"] .hero-tagline {
+  color: var(--teal-400);
 }
 
 
@@ -3438,6 +3445,9 @@ h2.intro-title ~ h2.intro-title {
   }
   html:not([data-theme="light"]) img[src*="logo"]:not(.hero-logo) {
     filter: drop-shadow(0 0 2px rgba(180, 210, 220, 0.3)) brightness(1.1) !important;
+  }
+  html:not([data-theme="light"]) .hero-tagline {
+    color: var(--teal-400) !important;
   }
   html:not([data-theme="light"]) .hero-description {
     color: var(--text-muted) !important;
