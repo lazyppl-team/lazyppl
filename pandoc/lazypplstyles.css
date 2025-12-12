@@ -174,7 +174,7 @@ html {
 
 body {
   margin: 0;
-  padding: 0;
+  padding: 0 1rem;
   color: var(--text);
   /* Light mode: subtle warm-to-cool gradient */
   background:
@@ -188,6 +188,7 @@ body {
   font-size: 1.1em;
   hyphens: auto;
   overflow-wrap: break-word;
+  overflow-x: hidden;
   word-spacing: 0.02em;
   text-rendering: optimizeLegibility;
   font-kerning: normal;
@@ -841,6 +842,7 @@ main img:not(.hero-logo):not([src*="badge"]):not([src*="shield"]),
   margin: var(--space-lg) auto;
   max-width: 100%;
   height: auto;
+  box-sizing: border-box;
 }
 
 /* ==========================================================================
@@ -888,7 +890,9 @@ header {
   position: sticky;
   top: 0;
   z-index: 1000;
-  width: 100%;
+  width: calc(100% + 2rem);
+  margin-left: -1rem;
+  margin-right: -1rem;
   box-sizing: border-box;
 }
 
@@ -2162,10 +2166,34 @@ $endif$
     --space-3xl: 2.5rem;
   }
 
+  /* Prevent horizontal overflow */
+  html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
   body {
     font-size: 0.95em;
     hyphens: auto;
     -webkit-hyphens: auto;
+  }
+
+  /* Constrain all potentially wide elements */
+  img, iframe, video, embed, object {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  /* Code blocks scroll horizontally */
+  pre, div.sourceCode {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  pre code, div.sourceCode code {
+    white-space: pre;
+    word-wrap: normal;
+    overflow-wrap: normal;
   }
 
   h1 {
