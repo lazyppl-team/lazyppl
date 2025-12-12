@@ -1428,6 +1428,8 @@ header {
 
   .has-dropdown .dropdown-trigger[aria-expanded="true"] + .dropdown-menu {
     display: block;
+    transform: none;
+    left: 0;
   }
 
   .dropdown-menu a {
