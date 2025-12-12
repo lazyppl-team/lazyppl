@@ -1350,12 +1350,16 @@ header {
     align-items: stretch;
     width: 100%;
     gap: var(--space-xs);
+    box-sizing: border-box;
+    max-width: 100%;
   }
 
   .nav-item {
     width: 100%;
     flex-direction: column;
     align-items: stretch;
+    box-sizing: border-box;
+    max-width: 100%;
   }
 
   .has-dropdown {
@@ -1442,6 +1446,8 @@ header {
     padding-left: 0;
     justify-content: center;
     gap: var(--space-md);
+    box-sizing: border-box;
+    max-width: 100%;
   }
 
   .nav-badge {
@@ -2428,6 +2434,8 @@ $endif$
 
   .hero {
     padding: var(--space-lg) var(--space-sm) var(--space-md);
+    box-sizing: border-box;
+    max-width: 100%;
   }
 
   .hero-title .hero-logo {
@@ -2438,6 +2446,8 @@ $endif$
   .btn {
     padding: 0.75rem 1rem;
     font-size: 0.9rem;
+    box-sizing: border-box;
+    max-width: 100%;
   }
 
   .card-content {
