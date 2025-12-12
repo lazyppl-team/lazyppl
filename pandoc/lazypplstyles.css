@@ -1307,6 +1307,10 @@ header {
 
 /* Mobile responsive navbar */
 @media (max-width: 768px) {
+  .site-nav {
+    overflow-x: hidden;
+  }
+
   .nav-toggle {
     display: flex;
     align-items: center;
@@ -1318,6 +1322,7 @@ header {
 
   .nav-container {
     justify-content: space-between;
+    max-width: 100%;
   }
 
   .nav-menu {
@@ -1325,6 +1330,7 @@ header {
     top: 100%;
     left: 0;
     right: 0;
+    width: 100%;
     flex-direction: column;
     align-items: stretch;
     background: var(--bg);
@@ -2125,12 +2131,32 @@ $endif$
     --space-3xl: 3rem;
   }
 
+  /* Prevent horizontal overflow */
+  html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
   body {
     font-size: 1em;
   }
 
+  /* Content media - fluid sizing on mobile
+     :where() keeps specificity at 0, so UI element rules always win */
+  img:where(:not(.hero-logo):not([src*="logo"]):not([src*="badge"]):not([src*="shield"])),
+  iframe, video, embed, object {
+    max-width: 100%;
+    height: auto;
+  }
+
+  pre, div.sourceCode {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
   /* Improve code blocks on smaller screens */
   div.sourceCode {
+    overflow-x: auto;
     border-radius: var(--radius-sm);
     margin-left: calc(-1 * clamp(0.5rem, 2vw, 1rem));
     margin-right: calc(-1 * clamp(0.5rem, 2vw, 1rem));
@@ -2178,10 +2204,12 @@ $endif$
     -webkit-hyphens: auto;
   }
 
-  /* Constrain all potentially wide elements */
-  img, iframe, video, embed, object {
-    max-width: 100% !important;
-    height: auto !important;
+  /* Content media - fluid sizing on mobile
+     :where() keeps specificity at 0, so UI element rules always win */
+  img:where(:not(.hero-logo):not([src*="logo"]):not([src*="badge"]):not([src*="shield"])),
+  iframe, video, embed, object {
+    max-width: 100%;
+    height: auto;
   }
 
   /* Code blocks scroll horizontally */
@@ -2742,6 +2770,11 @@ body:has(.hero) #title-block-header {
   margin: 0;
   position: relative;
   top: -0.05em; /* Optical centering */
+  /* Explicit size constraint - critical for mobile responsiveness */
+  width: 72px;
+  height: 72px;
+  max-width: 72px;
+  max-height: 72px;
   opacity: 0;
   animation: logoReveal 0.9s cubic-bezier(0.23, 1, 0.32, 1) forwards;
   filter: drop-shadow(0 2px 8px rgba(26, 39, 68, 0.08));
