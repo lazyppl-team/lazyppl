@@ -199,8 +199,8 @@ body {
 }
 
 /* Main content container - responsive width, harmonised with nav/footer/hero */
-/* Exclude text elements (h2-h4, p, ul, ol, dl, blockquote, pre, div.sourceCode) which get content-width */
-body > *:not(.navbar):not(.site-footer):not(.hero):not(h2):not(h3):not(h4):not(p):not(ul):not(ol):not(dl):not(blockquote):not(pre):not(div.sourceCode):not(details.code-details) {
+/* Container width (excludes text + img) */
+body > *:not(.navbar):not(.site-footer):not(.hero):not(h2):not(h3):not(h4):not(p):not(ul):not(ol):not(dl):not(blockquote):not(pre):not(div.sourceCode):not(details.code-details):not(img) {
   max-width: calc(var(--content-width) + clamp(2rem, 10vw, 6rem));
   margin-left: auto;
   margin-right: auto;
@@ -208,8 +208,7 @@ body > *:not(.navbar):not(.site-footer):not(.hero):not(h2):not(h3):not(h4):not(p
   padding-right: clamp(1rem, 5vw, 3rem);
 }
 
-/* Text content elements - narrower for readability */
-/* Using calc to add padding to content-width, with border-box for predictable sizing */
+/* Text content - narrower for readability */
 body > h2,
 body > h3,
 body > h4,
@@ -226,7 +225,7 @@ body > blockquote {
   padding-right: clamp(1rem, 5vw, 3rem);
 }
 
-/* Code blocks and plain preformatted output - slightly narrower than text for balance */
+/* Code blocks - narrower for balance */
 body > div.sourceCode,
 body > pre {
   box-sizing: border-box;
@@ -283,8 +282,6 @@ div.sourceCode {
 div.sourceCode + div.sourceCode {
   margin-top: 0;
 }
-
-/* Text after code blocks needs breathing room - achieved via code block margin-bottom */
 
 /* Images - block display with proper spacing */
 img {
@@ -643,7 +640,7 @@ div.sourceCode pre {
   overflow: visible;
 }
 
-/* Syntax highlighting - Haskell optimized (with !important to override Pandoc defaults) */
+/* Syntax highlighting - Haskell (!important overrides Pandoc) */
 code span.kw { color: #7c3aed !important; font-weight: 600 !important; } /* Keywords: purple */
 code span.dt { color: #0891b2 !important; font-weight: 500 !important; } /* Data types: cyan */
 code span.fu { color: #2563eb !important; } /* Functions: blue */
@@ -1341,6 +1338,7 @@ header {
     max-height: calc(100vh - 60px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    box-sizing: border-box;
   }
 
   .nav-menu.is-open {
@@ -1356,6 +1354,14 @@ header {
 
   .nav-item {
     width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .has-dropdown {
+    flex-direction: column;
+    align-items: stretch;
+    position: relative;
   }
 
   /* Remove separator on mobile */
@@ -1374,6 +1380,7 @@ header {
     padding: 0.875rem 1rem;
     min-height: 48px;
     border-radius: var(--radius-md);
+    box-sizing: border-box;
   }
 
   .nav-link.icon-link {
@@ -1393,17 +1400,22 @@ header {
   }
 
   .dropdown-menu {
-    position: static;
+    position: relative;
+    inset: auto;
+    transform: none;
+    width: 100%;
+    min-width: 0;
     opacity: 1;
     visibility: visible;
-    transform: none;
     box-shadow: none;
-    border: none;
-    background: rgba(74, 144, 164, 0.04);
+    border: 1px solid var(--border);
+    background: var(--bg);
     border-radius: var(--radius-md);
     margin: var(--space-xs) 0 var(--space-sm);
     padding: var(--space-xs);
     display: none;
+    z-index: auto;
+    box-sizing: border-box;
   }
 
   .dropdown-menu::before {
@@ -1447,7 +1459,8 @@ header {
   }
 
   [data-theme="dark"] .dropdown-menu {
-    background: rgba(91, 163, 184, 0.06);
+    background: var(--navy-800);
+    border-color: rgba(91, 163, 184, 0.25);
   }
 }
 
@@ -1458,7 +1471,8 @@ header {
   }
 
   html:not([data-theme="light"]) .dropdown-menu {
-    background: rgba(91, 163, 184, 0.06) !important;
+    background: var(--navy-800) !important;
+    border-color: rgba(91, 163, 184, 0.25) !important;
   }
 }
 
@@ -2141,8 +2155,7 @@ $endif$
     font-size: 1em;
   }
 
-  /* Content media - fluid sizing on mobile
-     :where() keeps specificity at 0, so UI element rules always win */
+  /* Fluid media (:where = zero specificity) */
   img:where(:not(.hero-logo):not([src*="logo"]):not([src*="badge"]):not([src*="shield"])),
   iframe, video, embed, object {
     max-width: 100%;
@@ -2204,8 +2217,7 @@ $endif$
     -webkit-hyphens: auto;
   }
 
-  /* Content media - fluid sizing on mobile
-     :where() keeps specificity at 0, so UI element rules always win */
+  /* Fluid media (:where = zero specificity) */
   img:where(:not(.hero-logo):not([src*="logo"]):not([src*="badge"]):not([src*="shield"])),
   iframe, video, embed, object {
     max-width: 100%;
@@ -2261,8 +2273,9 @@ $endif$
 
   /* Hero mobile */
   .hero {
-    padding: var(--space-xl) var(--space-md) var(--space-lg);
+    padding: var(--space-xl) clamp(0.75rem, 4vw, 1rem) var(--space-lg);
     margin-bottom: var(--space-lg);
+    box-sizing: border-box;
   }
 
   .hero::before {
@@ -2287,11 +2300,15 @@ $endif$
   .hero-actions {
     flex-direction: column;
     width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
     gap: var(--space-sm);
   }
 
   .btn {
     width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
     justify-content: center;
     padding: 0.875rem 1.25rem;
     font-size: 1rem;
@@ -2903,8 +2920,8 @@ body:has(.hero) #title-block-header {
   }
 }
 
-/* Hide bars on mobile */
-@media (max-width: 600px) {
+/* Hide bars on mobile/tablet */
+@media (max-width: 680px) {
   .hero-actions .lazy-bars {
     display: none;
   }
