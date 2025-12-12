@@ -468,7 +468,14 @@ a:visited {
 }
 
 [data-theme="dark"] a:visited {
-  color: var(--teal-300);
+  color: var(--teal-200);
+}
+
+/* System dark mode: visited links */
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) a:visited {
+    color: var(--teal-200);
+  }
 }
 
 /* External link indicator */
