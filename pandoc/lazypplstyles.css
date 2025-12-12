@@ -151,8 +151,8 @@
       radial-gradient(ellipse 80% 60% at 15% 10%, rgba(102, 181, 204, 0.08) 0%, transparent 55%),
       radial-gradient(ellipse 60% 45% at 85% 8%, rgba(196, 154, 108, 0.06) 0%, transparent 50%),
       radial-gradient(ellipse 70% 55% at 92% 90%, rgba(102, 181, 204, 0.05) 0%, transparent 48%),
-      radial-gradient(ellipse 50% 40% at 8% 88%, rgba(74, 90, 108, 0.15) 0%, transparent 52%),
-      linear-gradient(165deg, #0f1419 0%, #12171d 35%, #0d1318 70%, #0f1419 100%);
+      radial-gradient(ellipse 50% 40% at 8% 88%, rgba(90, 110, 132, 0.16) 0%, transparent 52%),
+      linear-gradient(165deg, #141b24 0%, #18212c 35%, #121a24 70%, #141b24 100%);
     background-attachment: fixed;
   }
 }
@@ -1441,6 +1441,17 @@ header {
   }
 }
 
+/* System dark mode: Mobile nav */
+@media (max-width: 768px) and (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) .nav-menu {
+    background: var(--navy-900) !important;
+  }
+
+  html:not([data-theme="light"]) .dropdown-menu {
+    background: rgba(91, 163, 184, 0.06) !important;
+  }
+}
+
 /* ==========================================================================
    Reduced Motion Support
    ========================================================================== */
@@ -1800,6 +1811,7 @@ header {
 
   .footer-col:nth-child(3) {
     grid-column: span 2;
+    justify-self: center;
   }
 
   .footer-col h4 {
@@ -3318,11 +3330,17 @@ h2.intro-title ~ h2.intro-title {
    ========================================================================== */
 
 @media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) .hero-title {
+    color: var(--text) !important;
+  }
   html:not([data-theme="light"]) .hero-title .hero-logo {
     filter: drop-shadow(0 2px 12px rgba(91, 163, 184, 0.15)) !important;
   }
   html:not([data-theme="light"]) .hero-title:hover .hero-logo {
     filter: drop-shadow(0 4px 20px rgba(91, 163, 184, 0.3)) !important;
+  }
+  html:not([data-theme="light"]) img[src*="logo"]:not(.hero-logo) {
+    filter: drop-shadow(0 0 2px rgba(180, 210, 220, 0.3)) brightness(1.1) !important;
   }
   html:not([data-theme="light"]) .hero-description {
     color: var(--text-muted) !important;
