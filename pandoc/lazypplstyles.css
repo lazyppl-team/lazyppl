@@ -212,9 +212,25 @@ body > *:not(.navbar):not(.site-footer):not(.hero):not(h2):not(h3):not(h4):not(p
 body > h2,
 body > h3,
 body > h4,
-body > p,
+body > p {
+  box-sizing: border-box;
+  max-width: calc(var(--content-width) + clamp(2rem, 10vw, 6rem));
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: clamp(1rem, 5vw, 3rem);
+  padding-right: clamp(1rem, 5vw, 3rem);
+}
+
 body > ul,
-body > ol,
+body > ol {
+  box-sizing: border-box;
+  max-width: calc(var(--content-width) + clamp(2rem, 10vw, 6rem));
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: clamp(3.5rem, 8vw, 4.5rem);
+  padding-right: clamp(1rem, 5vw, 3rem);
+}
+
 body > dl,
 body > blockquote {
   box-sizing: border-box;
