@@ -261,8 +261,8 @@ prettyAscent n alpha p = do
 -- --}
 -- 
 mh :: forall a g. (NFData a, RandomGen g) => g -> (forall g. RandomGen g => Int -> g -> Meas (Nagata Integer Double) a -> Tree Double -> (Double, Double, Double, Tree Double))
-      -> Int -> Meas (Nagata Integer Double) a -> IO [(a, Double)]
-mh g k burnin m = do
+      -> Int -> Maybe (Tree Double) -> Meas (Nagata Integer Double) a -> IO [(a, (Tree Double, Double))]
+mh g k burnin tstart m  = do
     -- The parameter k takes a monadic measure and a tree and proposes a new tree,
     -- also returning the acceptance ratio for the new tree.
     --
@@ -274,17 +274,19 @@ mh g k burnin m = do
     --g <- getStdGen
     let (g1,g2) = split g
     --let (g3, g4) = split g2
-    let t = (randomTree g1, 0)
+    let t = case tstart of
+          Nothing -> (randomTree g1, 0)
+          Just tree -> (tree, 0)
     --let Tree _ trees = fst t  
     --let weights = map (\x -> let (_, N w _ ) = runMeas m (dualizeTree x) in w) $ take 10 trees
     --let maxWeightTree = zipWith weights $ take 10 trees 
     -- Now run step over and over to get a stream of (tree,result,weight)s.
     let (g3, g4) = split g2
     let (warmsamples, _) = runState (iterateM (step 1) t) g3
-    let t' = warmsamples !! burnin
+    let t' = if burnin == 0 then t else (warmsamples !! (burnin-1))
     let (samples,_) = runState (iterateM (step 0) t') g4
     -- The stream of seeds is used to produce a stream of result/weight pairs.
-    return $ map (\(x, y) -> ((fst . runMeas m . dualizeTree) x, y)) samples
+    return $ map (\(x, y) -> ((fst . runMeas m . dualizeTree) x, (x, y))) samples
     {- NB There are three kinds of randomness in the step function.
     1. The start tree 't', which is the source of randomness for simulating the
     program m to start with. This is sort-of the point in the "state space".

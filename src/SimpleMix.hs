@@ -88,16 +88,15 @@ runSimpleMix (eps, steps, count, burnin, w1, w2, m1, m2, rep) =
     do
         --g <- getStdGen
         let g = mkStdGen rep
-        let (alg, alg2, alg_kernel) = ("lazyHMCmod", "lazyHMCmod", mh g (hmcKernel(LFConfig eps steps 0)) burnin)
-        --let (alg, alg2, alg_kernel) = ("lazyHMCOsc", "lazyHMCOsc", mh g (hmcOscKernel(LFConfig eps steps 0)) burnin)
-        --let (alg, alg2, alg_kernel) = ("lazyNUTS", "lazyNUTS", mh g (nutsKernel (LFConfig eps steps 0)) burnin)
+        let (alg, alg2, alg_kernel) = ("lazyHMCmod", "lazyHMCmod", mh g (hmcKernel(LFConfig eps steps 0)) burnin Nothing)
+        --let (alg, alg2, alg_kernel) = ("lazyHMCOsc", "lazyHMCOsc", mh g (hmcOscKernel(LFConfig eps steps 0)) burnin Nothing)
+        --let (alg, alg2, alg_kernel) = ("lazyNUTS", "lazyNUTS", mh g (nutsKernel (LFConfig eps steps 0)) burnin Nothing)
         print $ "start rep " ++ show rep
         let filename = "samples_produced/simple_mix/simpleMix2_m1" ++ show m1 ++ "_m2" ++ show m2 ++ "_w1" ++ show w1 ++ "_w2" ++ show w2 ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json"
         print filename
         start <- getCPUTime
         fs <- alg_kernel (simpleMix2 (toNagata w1) (toNagata w2) (toNagata m1) (toNagata m2))
         let results = map (map primal) $ take count $ drop burnin $ map fst fs 
-        print $ map exp $ take 100 $ map snd fs
         results `deepseq` return ()
         -- jsonVal :: Value
         end <- getCPUTime
@@ -135,16 +134,15 @@ runSimpleMix3 (eps, steps, count, burnin, n, w1, w2, m1, m2, rep) =
     do
         --g <- getStdGen
         let g = mkStdGen rep
-        --let (alg, alg2, alg_kernel) = ("lazyHMCmod", "lazyHMCmod", mh g (hmcKernel(LFConfig eps steps 0)) burnin)
-        --let (alg, alg2, alg_kernel) = ("lazyHMCOsc", "lazyHMCOsc", mh g (hmcOscKernel(LFConfig eps steps 0)) burinin)
-        let (alg, alg2, alg_kernel) = ("lazyNUTS", "lazyNUTS", mh g (nutsKernel (LFConfig eps steps 0)) burnin)
+        --let (alg, alg2, alg_kernel) = ("lazyHMCmod", "lazyHMCmod", mh g (hmcKernel(LFConfig eps steps 0)) burnin Nothing)
+        --let (alg, alg2, alg_kernel) = ("lazyHMCOsc", "lazyHMCOsc", mh g (hmcOscKernel(LFConfig eps steps 0)) burinin Nothing)
+        let (alg, alg2, alg_kernel) = ("lazyNUTS", "lazyNUTS", mh g (nutsKernel (LFConfig eps steps 0)) burnin Nothing)
         print $ "start rep " ++ show rep
         let filename = "samples_produced/simple_mix/simpleMix3_m1" ++ show m1 ++ "_m2" ++ show m2 ++ "_w1" ++ show w1 ++ "_w2" ++ show w2 ++ "_n" ++ show n ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json"
         print filename
         start <- getCPUTime
         fs <- alg_kernel (simpleMix3 n (toNagata w1) (toNagata w2) (toNagata m1) (toNagata m2))
         let results = map (map primal) $ take count $ drop burnin $ map fst fs 
-        print $ map exp $ take 10 $ map snd fs
         results `deepseq` return ()
         -- jsonVal :: Value
         end <- getCPUTime
@@ -183,16 +181,15 @@ runSimpleMix4 (eps, steps, count, burnin, n, w1, w2, m1, m2, rep) =
     do
         --g <- getStdGen
         let g = mkStdGen rep
-        --let (alg, alg2, alg_kernel) = ("lazyHMCmod", "lazyHMCmod", mh g (hmcKernel(LFConfig eps steps 0)) burnin)
-        --let (alg, alg2, alg_kernel) = ("lazyHMCOsc", "lazyHMCOsc", mh g (hmcOscKernel(LFConfig eps steps 0)) burnin)
-        let (alg, alg2, alg_kernel) = ("lazyNUTS", "lazyNUTS", mh g (nutsKernel (LFConfig eps steps 0)) burnin)
+        --let (alg, alg2, alg_kernel) = ("lazyHMCmod", "lazyHMCmod", mh g (hmcKernel(LFConfig eps steps 0)) burnin Nothing)
+        --let (alg, alg2, alg_kernel) = ("lazyHMCOsc", "lazyHMCOsc", mh g (hmcOscKernel(LFConfig eps steps 0)) burnin Nothing)
+        let (alg, alg2, alg_kernel) = ("lazyNUTS", "lazyNUTS", mh g (nutsKernel (LFConfig eps steps 0)) burnin Nothing)
         print $ "start rep " ++ show rep
         let filename = "samples_produced/simple_mix/simpleMix4_m1" ++ show m1 ++ "_m2" ++ show m2 ++ "_w1" ++ show w1 ++ "_w2" ++ show w2 ++ "_n" ++ show n ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json"
         print filename
         start <- getCPUTime
         fs <- alg_kernel (simpleMix4 n (toNagata w1) (toNagata w2) (toNagata m1) (toNagata m2))
         let results = map (map primal) $ take count $ drop burnin $ map fst fs 
-        print $ map exp $ take 10 $ map snd fs
         results `deepseq` return ()
         -- jsonVal :: Value
         end <- getCPUTime

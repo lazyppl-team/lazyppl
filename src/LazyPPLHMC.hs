@@ -307,6 +307,55 @@ mh k m = do
               then return (t', acc_ratio) -- trace ("---- Weight: " ++ show w') w')
               else return (t, acc_ratio) -- trace ("---- Weight: " ++ show w) w)
 
+
+mh2 :: forall a g. (NFData a, RandomGen g) => g -> (forall g. RandomGen g => Int -> g -> Meas (Nagata Integer Double) a -> Tree Double -> (Double, Double, Double, Tree Double))
+      -> Int -> Maybe (Tree Double) -> Meas (Nagata Integer Double) a -> IO [(a, (Tree Double, Double))]
+mh2 g k burnin tstart m  = do
+    -- The parameter k takes a monadic measure and a tree and proposes a new tree,
+    -- also returning the acceptance ratio for the new tree.
+    --
+    -- Top level: produce a stream of samples.
+    -- Split the random number generator in two
+    -- One part is used as the first seed for the simulation,
+    -- and one part is used for the randomness in the MH algorithm.
+    --newStdGen
+    --g <- getStdGen
+    let (g1,g2) = split g
+    --let (g3, g4) = split g2
+    let t = case tstart of
+          Nothing -> (randomTree g1, 0)
+          Just tree -> (tree, 0)
+    --let Tree _ trees = fst t  
+    --let weights = map (\x -> let (_, N w _ ) = runMeas m (dualizeTree x) in w) $ take 10 trees
+    --let maxWeightTree = zipWith weights $ take 10 trees 
+    -- Now run step over and over to get a stream of (tree,result,weight)s.
+    let (g3, g4) = split g2
+    let (warmsamples, _) = runState (iterateM (step 1) t) g3
+    let t' = if burnin == 0 then t else (warmsamples !! (burnin-1))
+    let (samples,_) = runState (iterateM (step 0) t') g4
+    -- The stream of seeds is used to produce a stream of result/weight pairs.
+    return $ map (\(x, y) -> ((fst . runMeas m . dualizeTree) x, (x, y))) samples
+    {- NB There are three kinds of randomness in the step function.
+    1. The start tree 't', which is the source of randomness for simulating the
+    program m to start with. This is sort-of the point in the "state space".
+    2. The randomness needed to propose a new tree ('g1')
+    3. The randomness needed to decide whether to accept or reject that ('g2')
+    The tree t is an argument and result,
+    but we use a state monad ('get'/'put') to deal with the other randomness '(g,g1,g2)' -}
+    where step :: RandomGen g => Int -> (Tree Double, Double) -> State g (Tree Double, Double)
+          step warmup (t, _) = do
+            g <- get
+            let (g1, g2) = split g
+            -- Call k, which proposes a new tree and gives the log ratio for it.
+            let (wlogratio, qlogratio, plogratio, t') = k warmup g1 m t
+            let logratio = if warmup == 0 then wlogratio + qlogratio + plogratio else wlogratio + qlogratio
+            let (r, g2') = (random g2)
+            put g2'
+            if r < min 1 (exp logratio) -- (trace ("-- Ratio: " ++ show logratio) (exp $ logratio))
+              then return (t', logratio) -- trace ("---- Weight: " ++ show w') w')
+              else return (t, logratio) -- trace ("---- Weight: " ++ show w) w)
+
+
 -- | Now here are three MH kernels: lmhKernel, grwKernel and malaKernel
 
 -- | Lightweight MH algorithm from POPL 2023
@@ -404,6 +453,16 @@ gradientStepP a eps dr (N x dx) = N (x + a * (eps * M.findWithDefault 0 key dr))
 -- gradientStepP a eps dr (N x dx) = trace (show key ++ "grad:"++show (M.findWithDefault 0 key dr)) (N (x + a * (eps * M.findWithDefault 0 key dr)) dx)
       where key = head (M.keys dx)
 
+-- keeps only the sites of the first tree which is in s, the rest of the sites will be the ones from the second tree
+keepOnly :: [Int] -> Tree (Nagata Integer Double) -> Tree (Nagata Integer Double) -> Tree (Nagata Integer Double)
+keepOnly s (Tree x xs) (Tree y ys) = let
+        (N vx dx) = x
+        (N vy dy) = y
+        key = head (M.keys dx)
+        x' = if (elem key s) then vx else vy
+        in (Tree (N x' dx) (keepOnly s xs ys))
+        
+
 gradientPrior :: Double -> Tree (Nagata Integer Double) -> Tree (Nagata Integer Double) -> Tree (Nagata Integer Double)
 gradientPrior eps (Tree x xs) (Tree y ys) = let
         (N p dp) = x
@@ -420,7 +479,7 @@ hmcKernel lfc g m q =
   -- (runMeas m (dualizeTree t)) :: (Nagata Integer Double, Nagata Integer Double)
   -- w :: Double
   -- dw :: (Map Integer Double)
-  let (LFConfig eps' steps' selected) =lfc in
+  let (LFConfig eps' steps' selected) = lfc in
   let (x, N w dU_dq) = runMeas m (dualizeTree q) in
   let ptree0 = unsafePerformIO $ do { evaluate (rnf x); evaluate (rnf (N w dU_dq)); trunc q } in
   let sites0 = getSites ptree0 in
@@ -447,14 +506,17 @@ hmcKernel lfc g m q =
   -- Find the union of the sites with non-zero gradient.
   -- let sites = merge (M.keys dU_dq) (M.keys dU_dq') in
   let sites = merge sites0 sites1 in
+  let q_prop2 = keepOnly sites q_prop (dualizeTree q) in
+
   -- Find the log ratio for p as the sum of squares.
   -- It's ok to ignore dimensions where both gradients are zero. 
   --let plogratio = trace ("initial: " ++ show (map (lookupTree p) (M.keys dU_dq)) ++ "proposed: " ++ show (map primal (map (lookupTree p_prop) (M.keys dU_dq')))) (Prelude.sum [(lookupTree p i)^2| i <- sites] - Prelude.sum [(primal (lookupTree p_prop i))^2 | i <- sites]) in
   let plogratio = Prelude.sum [lookupTree p i ^2| i <- sites] - Prelude.sum [primal (lookupTree p_prop i) ^2 | i <- sites] in
   --let qlogratio = Prelude.sum [normalLogPdf 0 1 (primal (lookupTree q_prop i))| i <- ((M.keys dU_dq) L.\\ (M.keys dU_dq'))] - Prelude.sum [normalLogPdf 0 1 (lookupTree q i)| i <- ((M.keys dU_dq') L.\\ (M.keys dU_dq))] in
   let qlogratio = Prelude.sum [normalLogPdf 0 1 (primal (lookupTree q_prop i))| i <- sites] - Prelude.sum [normalLogPdf 0 1 (lookupTree q i)| i <- sites] in
-  (w' - w + plogratio/2 + qlogratio, fmap primal q_prop) 
+  (w' - w + qlogratio + plogratio/2, fmap primal q_prop2) 
   --trace (show [lookupTree p i ^2| i <- M.keys dU_dq] ++ show [primal (lookupTree p_prop i)  | i <- sites] ++ "initial w:"++show w ++ " proposed w " ++ show w' ++ " pdiff: " ++ show (plogratio/2)++" log ratio: "++ show (w' - w + plogratio/2) ++ " ratio "++ show (exp (w' - w + plogratio/2))) (w' - w + plogratio/2 + qlogratio, fmap primal q_prop)
+
 
 
 -- look ahead hmc with persistence, can be transformed into NP-iMCMC?

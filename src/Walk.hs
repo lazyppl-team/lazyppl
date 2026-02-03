@@ -67,10 +67,10 @@ runWalk (eps, steps, count, burnin, distLim, rep) =
     do
         --g <- getStdGen
         let g = mkStdGen rep
-        let (alg, alg2, alg_kernel) = ("lazyHMCmod", "lazyHMCmod", mh g (hmcKernel (LFConfig eps steps 0)) burnin)
-        --let (alg, alg2, alg_kernel) = ("lazyHMCOsc", "lazyHMCOsc", mh g (hmcOscKernel (LFConfig eps steps 0)) burnin)
-        --let (alg, alg2, alg_kernel) = ("lazyNUTS", "lazyNUTS", mh g (nutsKernel (LFConfig eps steps 0)) burnin)
-        --let (alg, alg2, alg_kernel) = ("lazyLMH", "lazyLMH", mh g (lmhKernel 0.5) burnin)
+        --let (alg, alg2, alg_kernel) = ("lazyHMCmod", "lazyHMCmod", mh g (hmcKernel (LFConfig eps steps 0)) burnin Nothing)
+        --let (alg, alg2, alg_kernel) = ("lazyHMCOsc", "lazyHMCOsc", mh g (hmcOscKernel (LFConfig eps steps 0)) burnin Nothing)
+        --let (alg, alg2, alg_kernel) = ("lazyNUTS", "lazyNUTS", mh g (nutsKernel (LFConfig eps steps 0)) burnin Nothing)
+        let (alg, alg2, alg_kernel) = ("lazyLMH", "lazyLMH", mh g (lmhKernel eps) burnin Nothing)
 
         print $ "start rep " ++ show rep
         let filename = "samples_produced/walk/walkLazy_dist_lim" ++ show distLim ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json"
@@ -111,7 +111,7 @@ runWalk (eps, steps, count, burnin, distLim, rep) =
 
 runWalkAll =
     do
-        let configs = [(e, l, 1300, 100, 10, rep)| rep <- [0..9], e <- [0.05, 0.1], l <- [5, 10, 20]]
+        let configs = [(e, l, 20300, 100, 10, rep)| rep <- [0..9], e <- [0.5, 0.75], l <- [5]]
         let x = map runWalk configs
         sequence_ x
 

@@ -53,10 +53,10 @@ runGeom (eps, steps, count, burnin, p, rep) =
     do
         --g <- getStdGen
         let g = mkStdGen rep
-        let (alg, alg2, alg_kernel, filename) = ("lazyHMCmod", "lazyHMCmod", mh g (hmcKernel(LFConfig eps steps 0)) burnin,"samples_produced/geom/geomLazy_p" ++ show p ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
-        --let (alg, alg2, alg_kernel, filename) = ("lazyHMCOsc", "lazyHMCOsc", mh g (hmcOscKernel(LFConfig eps steps 0)) burnin, "samples_produced/geom/geomLazy_p" ++ show p ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
-        --let (alg, alg2, alg_kernel, filename) = ("lazyNUTS", "lazyNUTS", mh g (nutsKernel (LFConfig eps steps 0)) burnin, "samples_produced/geom/geomLazy_p" ++ show p ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
-        --let (alg, alg2, alg_kernel, filename) = ("lazyLMH", "lazyLMH", mh g (lmhKernel eps) burnin, "samples_produced/geom/geomLazy_p" ++ show p ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_burnin" ++ show burnin ++ ".json")
+        --let (alg, alg2, alg_kernel, filename) = ("lazyHMCmod", "lazyHMCmod", mh g (hmcKernel(LFConfig eps steps 0)) burnin Nothing,"samples_produced/geom/geomLazy_p" ++ show p ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
+        let (alg, alg2, alg_kernel, filename) = ("lazyHMCOsc", "lazyHMCOsc", mh g (hmcOscKernel(LFConfig eps steps 0)) burnin Nothing, "samples_produced/geom/geomLazy_p" ++ show p ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
+        --let (alg, alg2, alg_kernel, filename) = ("lazyNUTS", "lazyNUTS", mh g (nutsKernel (LFConfig eps steps 0)) burnin Nothing, "samples_produced/geom/geomLazy_p" ++ show p ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
+        --let (alg, alg2, alg_kernel, filename) = ("lazyLMH", "lazyLMH", mh g (lmhKernel eps) burnin Nothing, "samples_produced/geom/geomLazy_p" ++ show p ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_burnin" ++ show burnin ++ ".json")
         
         print $ "start rep " ++ show rep
         print filename
@@ -95,7 +95,7 @@ runGeom (eps, steps, count, burnin, p, rep) =
 
 runGeomAll =
     do
-        let configs = [(e, l, 1300, 0, 0.2, rep)| rep <- [0..9], l <- [5, 10, 15], e <- [0.05, 0.1]]
+        let configs = [(e, l, 1300, 0, 0.2, rep)| rep <- [0..9], l <- [15], e <- [0.1]]
         let x = map runGeom configs
         sequence_ x
 

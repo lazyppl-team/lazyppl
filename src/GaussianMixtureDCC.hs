@@ -151,10 +151,10 @@ runGaussianMixtureModel (eps, steps, count, burnin, dims, nbComp, trueMeans, tra
     do
         --g <- getStdGen
         let g = mkStdGen rep
-        --let (alg, alg2, alg_kernel, filename) = ("lazyHMCmod", "lazyHMCmod", mh g (hmcKernel(LFConfig eps steps 0)) burnin, "samples_produced/gmmDCC/gmmDCC_dims" ++ show dims ++ "_num_mix" ++ show nbComp ++ "_po_rate" ++ show (primal poRate) ++ "_std" ++ show sigma ++ "_id" ++ show modelId ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
-        --let (alg, alg2, alg_kernel, filename) = ("lazyHMCOsc", "lazyHMCOsc", mh g (hmcOscKernel(LFConfig eps steps 0)) burnin, "samples_produced/gmmDCC/gmmDCC_dims" ++ show dims ++ "_num_mix" ++ show nbComp ++ "_po_rate" ++ show (primal poRate) ++ "_std" ++ show sigma ++ "_id" ++ show modelId ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
-        let (alg, alg2, alg_kernel, filename) = ("lazyNUTS", "lazyNUTS", mh g (nutsKernel (LFConfig eps steps 0)) burnin, "samples_produced/gmmDCC/gmmDCC_dims" ++ show dims ++ "_num_mix" ++ show nbComp ++ "_po_rate" ++ show (primal poRate) ++ "_std" ++ show sigma ++ "_id" ++ show modelId ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
-        --let (alg, alg2, alg_kernel, filename) = ("lazyLMH", "lazyLMH", mh g (lmhKernel eps) burnin, "samples_produced/gmmDCC/gmmDCC_dims" ++ show dims ++ "_num_mix" ++ show nbComp ++ "_po_rate" ++ show (primal poRate) ++ "_std" ++ show sigma ++ "_id" ++ show modelId ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_p" ++ show eps ++ "_burnin" ++ show burnin ++ ".json")
+        --let (alg, alg2, alg_kernel, filename) = ("lazyHMCmod", "lazyHMCmod", mh g (hmcKernel(LFConfig eps steps 0)) burnin Nothing, "samples_produced/gmmDCC/gmmDCC_dims" ++ show dims ++ "_num_mix" ++ show nbComp ++ "_po_rate" ++ show (primal poRate) ++ "_std" ++ show sigma ++ "_id" ++ show modelId ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
+        --let (alg, alg2, alg_kernel, filename) = ("lazyHMCOsc", "lazyHMCOsc", mh g (hmcOscKernel(LFConfig eps steps 0)) burnin Nothing, "samples_produced/gmmDCC/gmmDCC_dims" ++ show dims ++ "_num_mix" ++ show nbComp ++ "_po_rate" ++ show (primal poRate) ++ "_std" ++ show sigma ++ "_id" ++ show modelId ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
+        --let (alg, alg2, alg_kernel, filename) = ("lazyNUTS", "lazyNUTS", mh g (nutsKernel (LFConfig eps steps 0)) burnin Nothing, "samples_produced/gmmDCC/gmmDCC_dims" ++ show dims ++ "_num_mix" ++ show nbComp ++ "_po_rate" ++ show (primal poRate) ++ "_std" ++ show sigma ++ "_id" ++ show modelId ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
+        let (alg, alg2, alg_kernel, filename) = ("lazyLMH", "lazyLMH", mh g (lmhKernel eps) burnin Nothing, "samples_produced/gmmDCC/gmmDCC_dims" ++ show dims ++ "_num_mix" ++ show nbComp ++ "_po_rate" ++ show (primal poRate) ++ "_std" ++ show sigma ++ "_id" ++ show modelId ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_p" ++ show eps ++ "_burnin" ++ show burnin ++ ".json")
         let nagataDataset = map (map toNagata) trainDataset
         print $ "start rep " ++ show rep
         print filename
@@ -200,64 +200,6 @@ runGaussianMixtureModel (eps, steps, count, burnin, dims, nbComp, trueMeans, tra
         B.writeFile filename (encode jsonVal)
 
 
-runGaussianMixtureModelUniform (eps, steps, count, burnin, dims, nbComp, trueMeans, trainDataset, testDataset, modelId, poRate, sigma, rep) =
-    do
-        --g <- getStdGen
-        let g = mkStdGen rep
-        let (alg, alg2, alg_kernel) = ("lazyHMCmod", "lazyHMCmod", mh g (hmcKernel(LFConfig eps steps 0)) burnin)
-        --let (alg, alg2, alg_kernel) = ("lazyHMCOsc", "lazyHMCOsc", mh g (hmcOscKernel(LFConfig eps steps 0)) burnin)
-        --let (alg, alg2, alg_kernel) = ("lazyNUTS", "lazyNUTS", mh g (nutsKernel (LFConfig eps steps 0)) burnin)
-        let lower = 8
-        let upper = 20
-        let nagataDataset = map (map toNagata) trainDataset
-        print $ "start rep " ++ show rep
-        let filename = "samples_produced/gmmDCC/gmmDCCuniform_dims" ++ show dims ++ "_num_mix" ++ show nbComp ++ "_po_rate" ++ show (primal poRate) ++ "_std" ++ show sigma ++ "_id" ++ show modelId ++ "_l" ++ show lower ++ "_u" ++ show upper ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json"
-        print filename
-        start <- getCPUTime
-        fs <- alg_kernel (gaussianMixtureModel dims (toNagata sigma) (uniformDiscrete lower upper) (uniformMeans (toNagata 100)) nagataDataset) 
-        let samples = take count $ drop burnin $ map fst fs
-        --let results = map (\xs -> map primal xs) samples
-        let results = map (\xs -> map (\ys -> map primal ys) xs) samples
-        results `deepseq` return ()
-        -- jsonVal :: Value
-        end <- getCPUTime
-        --let alg = "lazyHMCmod"
-        let time = fromIntegral (end - start) / (10^12)
-        let jsonVal = object
-                [ "metadata" .= object
-                    [ "alg" .= String alg2,
-                    "eps" .= eps,
-                    "leapfrog_steps" .= steps,
-                    "count" .= count,
-                    "burnin" .= burnin
-                    ],
-                alg2 .= object
-                    [ "eps" .= eps,
-                    "leapfrog_steps" .= steps,
-                    "burnin" .= burnin,
-                    "time" .= time,
-                    "samples" .= results,
-                    "model_info" .= object
-                        [ "model_hyperparam" .= object
-                            [ "po_rate" .= primal poRate,
-                            "dims" .= dims,
-                            "num_mix" .= nbComp,
-                            "std" .= sigma,
-                            "l" .= lower, 
-                            "u" .= upper
-                            ],
-                        "data_info" .= object
-                            [ "test_data" .= testDataset,
-                            "train_data" .= trainDataset,
-                            "data_means" .= trueMeans
-                            ],
-                        "model_id" .= modelId
-                        ]
-                    ]
-                ]
-        B.writeFile filename (encode jsonVal)
-        --print $ take 1 results
-
 
 runGaussianMixtureModelAll =
     do
@@ -268,10 +210,9 @@ runGaussianMixtureModelAll =
             Just [trueMeans, trainData, testData] -> do
                 print $ length trueMeans
                 print $ length trainData
-                print "PANDA"
                 let configs = [(0.05, 50, 1300, 0, 3, 9, trueMeans, trainData, testData, modelId, 10, 10, rep)| rep <- [0..9]]
                 let configs = [(e, l, 700, 0, 3, 9, trueMeans, trainData, testData, modelId, 10, 10, rep)| rep <- [0..9], e <- [0.05, 0.01, 0.1], l <- [25, 50, 75]]
-                let configs = [(eps, 6, 1300, 0, 1, 5, trueMeans, trainData, testData, modelId, 9, 1.5, rep)| rep <- [0..9], eps <- [0.05]] ++ [(eps, 6, 1300, 0, 1, 5, trueMeans, trainData, testData, modelId, 9, 1.5, rep)| rep <- [0..9], eps <- [0.1]]
+                let configs = [(eps, 20, 40000, 0, 1, 5, trueMeans, trainData, testData, modelId, 9, 1.5, rep)| rep <- [0..9], eps <- [0.05]] 
                 let x = map runGaussianMixtureModel configs
                 sequence_ x
             Just _ -> putStrLn "Unexpected JSON structure "
