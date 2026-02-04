@@ -454,13 +454,13 @@ gradientStepP a eps dr (N x dx) = N (x + a * (eps * M.findWithDefault 0 key dr))
       where key = head (M.keys dx)
 
 -- keeps only the sites of the first tree which is in s, the rest of the sites will be the ones from the second tree
-keepOnly :: [Int] -> Tree (Nagata Integer Double) -> Tree (Nagata Integer Double) -> Tree (Nagata Integer Double)
+keepOnly :: [Integer] -> Tree (Nagata Integer Double) -> Tree (Nagata Integer Double) -> Tree (Nagata Integer Double)
 keepOnly s (Tree x xs) (Tree y ys) = let
         (N vx dx) = x
         (N vy dy) = y
         key = head (M.keys dx)
         x' = if (elem key s) then vx else vy
-        in (Tree (N x' dx) (keepOnly s xs ys))
+        in (Tree (N x' dx) (zipWith (keepOnly s) xs ys))
         
 
 gradientPrior :: Double -> Tree (Nagata Integer Double) -> Tree (Nagata Integer Double) -> Tree (Nagata Integer Double)
