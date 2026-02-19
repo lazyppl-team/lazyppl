@@ -19,6 +19,9 @@ import Data.Aeson
 import qualified Data.ByteString.Lazy as B
 import qualified Data.Map.Strict as Map
 
+import System.Environment (getArgs)
+import Text.Read (readMaybe)
+
 import System.CPUTime
 import Control.DeepSeq (deepseq)
 
@@ -56,6 +59,9 @@ plotLinearPrior =
 
 dataset :: Floating d => [(d, d)]
 dataset = [(0,0.6), (1, 0.7), (2,1.2), (3,3.2), (4,6.8), (5, 8.2), (6,8.4)]
+
+dataset2 :: Floating d => [(d, d)]
+dataset2 = [(0.5, 1.0), (1.5, 1.2),  (2.5, 3.0),  (3.5, 3.2),  (4.5, 3.1),  (5.5, 5.0)]
 
 plotDataset =
   do
@@ -159,15 +165,18 @@ plotStepReg =
      plotFuns "images/mala/lmh-piecewiseconst-reg.png" dataset fs 0.02
      
 
-plotStepRegHMC (eps, steps) = 
-  do g <- getStdGen
-     fs' <- mh g (hmcKernel (LFConfig eps steps 0)) 0 Nothing (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
-     let fs = map (\f -> primal . f . toNagata) $ take 2000 $ drop 1 $ map fst fs'
-     let name = "images/hmc2/hmc-piecewiseconst-reg-eps-" ++ show eps ++ "steps-" ++ show steps ++ ".png"
+plotStepRegHMC (eps, steps, i) = 
+  do let g = mkStdGen i
+     let count = 100
+     let burnin = 1000
+     let thin = 10
+     fs' <- mh g (hmcKernel (LFConfig eps steps 0)) 0 Nothing (regress (toNagata 0.1) (splice (poissonPP 0 0.2) randConst) dataset2)
+     let fs = map (\f -> primal . f . toNagata) $ take count $ every thin $ drop burnin $ map fst fs'
+     let name = "images/step_reg/hmc1-plot2-piecewiseconst-reg-eps-" ++ show eps ++ "steps-" ++ show steps ++ "count-" ++ show count ++ "burnin-" ++ show burnin ++ "thin-" ++ show thin ++ "sigma-0.1" ++ "dataset2-("++ show i ++ ").png"
      --print ("done with eps: " ++ show eps ++ " steps: " ++ show steps)
-     plotFuns name dataset fs 0.02 
+     plotFunsFig name dataset2 fs 0.2 
 
-plotStepRegHMCAll =
+plotStepRegHMCAll seed =
   do g <- getStdGen
      let t = dualizeTree $ randomTree g
      let (_, N w dq) = runMeas (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset) t
@@ -175,7 +184,7 @@ plotStepRegHMCAll =
      --print w
      let configs = [(e, s) | e <- [0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5], s <- [15, 20, 25, 30, 35, 40]]
      let configs = [ (0.005, 15),  (0.005, 20), (0.005, 25), (0.005, 30), (0.001, 15),  (0.001, 20), (0.001, 25), (0.001, 30)]
-     let configs = [(0.05, 20)]
+     let configs = [(0.01, 30, seed)]
      let x = map plotStepRegHMC configs
      sequence_ x
 
@@ -200,14 +209,17 @@ plotStepRegLAHMCAll =
 
 plotStepRegNUTS (eps, depth, i) = 
   do 
-     g <- getStdGen
-     fs' <- mh g (nutsKernel (LFConfig eps depth 0)) 0 Nothing (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
-     let fs = map (\f -> primal . f . toNagata) $ take 2000 $ drop 1 $ map fst fs'
-     let name = "images/hmc2/nuts-piecewiseconst-reg-eps-" ++ show eps ++ "depth-" ++ show depth ++ "("++ show i ++ ").png"
+     let g = mkStdGen i
+     let count = 100
+     let burnin = 20000
+     let thin = 50
+     fs' <- mh g (nutsKernel (LFConfig eps depth 0)) 0 Nothing (regress (toNagata 0.1) (splice (poissonPP 0 0.2) randConst) dataset2)
+     let fs = map (\f -> primal . f . toNagata) $ take count $ every thin $ drop burnin $ map fst fs'
+     let name = "images/step_reg/nuts-piecewiseconst-reg-eps-" ++ show eps ++ "depth-" ++ show depth ++ "count-" ++ show count ++ "burnin-" ++ show burnin ++ "thin-" ++ show thin ++ "sigma-0.1" ++ "dataset2-("++ show i ++ ").png"
      --print ("done with eps: " ++ show eps ++ " steps: " ++ show steps)
-     plotFuns name dataset fs 0.02 
+     plotFuns name dataset2 fs 0.2 
 
-plotStepRegNUTSAll =
+plotStepRegNUTSAll seed =
   do
   --do g <- getStdGen
      --let t = dualizeTree $ randomTree g
@@ -217,7 +229,7 @@ plotStepRegNUTSAll =
      let configs = [(e, s) | e <- [0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5], s <- [15, 20, 25, 30, 35, 40]]
      let configs = [ (0.005, 15),  (0.005, 20), (0.005, 25), (0.005, 30), (0.001, 15),  (0.001, 20), (0.001, 25), (0.001, 30)]
      let configs = [(0.05, 20)]
-     let configs' = [(0.05, 6, x) | x<- [1..10]]
+     let configs' = [(eps, 6, seed) | eps <- [0.005, 0.01, 0.05]]
      let x = map plotStepRegNUTS configs'
      sequence_ x
 
@@ -460,6 +472,20 @@ plotFuns filename dataset funs alpha =
         putStrLn "Done."
         return ()
 
+plotFunsFig :: String -> [(Double,Double)] -> [Double -> Double] -> Double -> IO ()
+plotFunsFig filename ds funs alpha =
+    do  putStrLn $ "Plotting " ++ filename ++ "..."
+        let xs = [-0.5, -0.49 .. 6.5]
+        file filename $ foldl (\a f -> a % plot xs (map f xs)
+          @@ [o1 "g-", o2 "linewidth" (0.5 :: Double),
+              o2 "alpha" alpha, o2 "ms" (0 :: Int)])
+          (scatter (map fst ds) (map snd ds)
+            @@ [o2 "c" "black", o2 "zorder" (10::Int), o2 "s" (30::Int)]
+            % xlim (-0.5 :: Double) (6.5 :: Double)
+            % ylim (-1 :: Double) (7 :: Double)) funs
+        putStrLn "Done."
+        return ()
+
 plotHistogram :: (Show a , Eq a, Ord a) => String -> [a] -> IO ()
 plotHistogram filename xs = do
   putStrLn $ "Generating " ++ filename ++ "..."
@@ -503,5 +529,22 @@ plotTests = do
 -- main :: IO ()
 -- main = do {plotLinearPrior ; plotDataset ; plotLinReg ; plotPiecewisePrior ; plotPoissonPP ; plotPiecewiseReg ; plotPiecewiseConst }
 
+--simpleModelHMCAll
+--simpleModelNUTSAll
+--plotStepRegHMCAll
+--plotStepRegLAHMCAll
+--plotStepRegNUTSAll
+
 main :: IO ()
-main = simpleModelHMCAll
+main = do
+    args <- getArgs
+    let seed = case args of
+            ["--seed", s] ->
+                case readMaybe s of
+                    Just n  -> n
+                    Nothing -> error "Seed must be an integer"
+            _ -> error "Usage: --seed <int>"
+
+    putStrLn $ "Seed is: " ++ show seed
+    --plotStepRegNUTSAll seed
+    plotStepRegHMCAll seed
