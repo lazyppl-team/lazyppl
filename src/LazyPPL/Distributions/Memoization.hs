@@ -25,13 +25,9 @@ For illustrations, see the [graph example](https://lazyppl-team.github.io/GraphD
 module LazyPPL.Distributions.Memoization (MonadMemo, memoize, generalmemoize, memrec) where
 
 import Control.Monad
-import Control.Monad.Extra
-import Control.Monad.State.Lazy (State, get, put, runState, state)
 import Data.IORef
-import Data.List
 import Data.Map (empty, insert, keys, lookup, size)
-import Debug.Trace
-import LazyPPL 
+import LazyPPL
 import System.IO.Unsafe
 
 {-| Type class for memoizable argument types @a@ under a monad @m@ -}

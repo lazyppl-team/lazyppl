@@ -63,7 +63,6 @@ import Control.Monad.Trans.Class
 import Data.Monoid
 import System.Random hiding (uniform)
 import Control.Monad
-import Control.Monad.Extra
 import Control.Monad.State.Lazy (State, state , put, get, runState)
 import Numeric.Log
 
@@ -332,4 +331,10 @@ every :: Int -> [a] -> [a]
 every n xs = case drop (n -1) xs of
   (y : ys) -> y : every n ys
   [] -> []
+
+-- | Monadic iterate (inlined from monad-extras).
+iterateM :: Monad m => (a -> m a) -> a -> m [a]
+iterateM f x = do
+    x' <- f x
+    (x':) `liftM` iterateM f x'
 
