@@ -1,0 +1,477 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.34.6.
+--
+-- see: https://github.com/sol/hpack
+
+name:           lazyppl
+version:        1.0.1
+synopsis:       Lazy Probabilistic Programming Library
+description:    LazyPPL is a Haskell library for Bayesian probabilistic programming. It supports lazy use of probability, which is useful for specifying non-parametric models, and we provide new Metropolis-Hastings algorithms to allow this. For illustrations, see <https://lazyppl-team.github.io/>.
+category:       Statistics
+stability:      experimental
+homepage:       https://lazyppl-team.github.io/
+bug-reports:    https://github.com/lazyppl-team/lazyppl/issues
+author:         LazyPPL team
+maintainer:     sam.staton@cs.ox.ac.uk
+copyright:      2021-2026 LazyPPL team
+license:        MIT
+license-file:   LICENSE
+build-type:     Simple
+tested-with:
+    GHC == 8.10.7
+  , GHC == 9.6.7
+  , GHC == 9.8.4
+  , GHC == 9.10.1
+extra-source-files:
+    README.md
+    ChangeLog.md
+
+source-repository head
+  type: git
+  location: https://github.com/lazyppl-team/lazyppl
+
+library
+  exposed-modules:
+      AdditiveClustering
+      AdditiveClusteringDemo
+      ClusteringDemo
+      ControlFlowDemo
+      GaussianProcessDemo
+      GraphDemo
+      Helpers
+      Index
+      IrmDemo
+      IrmTest
+      LazyPPL
+      LazyPPL.Distributions
+      LazyPPL.Distributions.Counter
+      LazyPPL.Distributions.DirichletP
+      LazyPPL.Distributions.GP
+      LazyPPL.Distributions.IBP
+      LazyPPL.Distributions.Memoization
+      LazyPPL.Distributions.Mondrian
+      LazyPPL.SingleSite
+      MinimalDemo
+      MondrianExample
+      ProgramInductionDemo
+      RegressionDemo
+      WienerDemo
+  other-modules:
+      Paths_lazyppl
+  hs-source-dirs:
+      src
+  build-depends:
+      array
+    , base >=4.7 && <5
+    , colour
+    , containers >=0.6.5.1 && <0.8
+    , deepseq >=1.4.4.0 && <1.6
+    , ghc-heap >=8.10.7 && <9.13
+    , hmatrix >=0.20.2 && <0.22
+    , log-domain >=0.13.2 && <0.14
+    , math-functions >=0.3.4.2
+    , matplotlib
+    , mtl >=2.2.2 && <2.4
+    , random >=1.2.0 && <1.4
+    , transformers >=0.5.6.2 && <0.7
+  default-language: Haskell2010
+
+executable clustering-exe
+  main-is: ClusteringDemo.lhs
+  other-modules:
+      AdditiveClustering
+      AdditiveClusteringDemo
+      ControlFlowDemo
+      GaussianProcessDemo
+      GraphDemo
+      Helpers
+      Index
+      IrmDemo
+      IrmTest
+      LazyPPL
+      LazyPPL.Distributions
+      LazyPPL.Distributions.Counter
+      LazyPPL.Distributions.DirichletP
+      LazyPPL.Distributions.GP
+      LazyPPL.Distributions.IBP
+      LazyPPL.Distributions.Memoization
+      LazyPPL.Distributions.Mondrian
+      LazyPPL.SingleSite
+      MinimalDemo
+      MondrianExample
+      ProgramInductionDemo
+      RegressionDemo
+      WienerDemo
+      Paths_lazyppl
+  hs-source-dirs:
+      src
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is ClusteringDemo
+  build-depends:
+      array
+    , base >=4.7 && <5
+    , colour
+    , containers >=0.6.5.1 && <0.8
+    , deepseq >=1.4.4.0 && <1.6
+    , ghc-heap >=8.10.7 && <9.13
+    , hmatrix >=0.20.2 && <0.22
+    , lazyppl
+    , log-domain >=0.13.2 && <0.14
+    , math-functions >=0.3.4.2
+    , matplotlib
+    , mtl >=2.2.2 && <2.4
+    , random >=1.2.0 && <1.4
+    , transformers >=0.5.6.2 && <0.7
+  default-language: Haskell2010
+
+executable gaussianprocess-exe
+  main-is: GaussianProcessDemo.lhs
+  other-modules:
+      AdditiveClustering
+      AdditiveClusteringDemo
+      ClusteringDemo
+      ControlFlowDemo
+      GraphDemo
+      Helpers
+      Index
+      IrmDemo
+      IrmTest
+      LazyPPL
+      LazyPPL.Distributions
+      LazyPPL.Distributions.Counter
+      LazyPPL.Distributions.DirichletP
+      LazyPPL.Distributions.GP
+      LazyPPL.Distributions.IBP
+      LazyPPL.Distributions.Memoization
+      LazyPPL.Distributions.Mondrian
+      LazyPPL.SingleSite
+      MinimalDemo
+      MondrianExample
+      ProgramInductionDemo
+      RegressionDemo
+      WienerDemo
+      Paths_lazyppl
+  hs-source-dirs:
+      src
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is GaussianProcessDemo
+  build-depends:
+      array
+    , base >=4.7 && <5
+    , colour
+    , containers >=0.6.5.1 && <0.8
+    , deepseq >=1.4.4.0 && <1.6
+    , ghc-heap >=8.10.7 && <9.13
+    , hmatrix >=0.20.2 && <0.22
+    , lazyppl
+    , log-domain >=0.13.2 && <0.14
+    , math-functions >=0.3.4.2
+    , matplotlib
+    , mtl >=2.2.2 && <2.4
+    , random >=1.2.0 && <1.4
+    , transformers >=0.5.6.2 && <0.7
+  default-language: Haskell2010
+
+executable ibp-exe
+  main-is: AdditiveClustering.hs
+  other-modules:
+      AdditiveClusteringDemo
+      ClusteringDemo
+      ControlFlowDemo
+      GaussianProcessDemo
+      GraphDemo
+      Helpers
+      Index
+      IrmDemo
+      IrmTest
+      LazyPPL
+      LazyPPL.Distributions
+      LazyPPL.Distributions.Counter
+      LazyPPL.Distributions.DirichletP
+      LazyPPL.Distributions.GP
+      LazyPPL.Distributions.IBP
+      LazyPPL.Distributions.Memoization
+      LazyPPL.Distributions.Mondrian
+      LazyPPL.SingleSite
+      MinimalDemo
+      MondrianExample
+      ProgramInductionDemo
+      RegressionDemo
+      WienerDemo
+      Paths_lazyppl
+  hs-source-dirs:
+      src
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is AdditiveClustering
+  build-depends:
+      array
+    , base >=4.7 && <5
+    , colour
+    , containers >=0.6.5.1 && <0.8
+    , deepseq >=1.4.4.0 && <1.6
+    , ghc-heap >=8.10.7 && <9.13
+    , hmatrix >=0.20.2 && <0.22
+    , lazyppl
+    , log-domain >=0.13.2 && <0.14
+    , math-functions >=0.3.4.2
+    , matplotlib
+    , mtl >=2.2.2 && <2.4
+    , random >=1.2.0 && <1.4
+    , transformers >=0.5.6.2 && <0.7
+  default-language: Haskell2010
+
+executable index-exe
+  main-is: Index.lhs
+  other-modules:
+      AdditiveClustering
+      AdditiveClusteringDemo
+      ClusteringDemo
+      ControlFlowDemo
+      GaussianProcessDemo
+      GraphDemo
+      Helpers
+      IrmDemo
+      IrmTest
+      LazyPPL
+      LazyPPL.Distributions
+      LazyPPL.Distributions.Counter
+      LazyPPL.Distributions.DirichletP
+      LazyPPL.Distributions.GP
+      LazyPPL.Distributions.IBP
+      LazyPPL.Distributions.Memoization
+      LazyPPL.Distributions.Mondrian
+      LazyPPL.SingleSite
+      MinimalDemo
+      MondrianExample
+      ProgramInductionDemo
+      RegressionDemo
+      WienerDemo
+      Paths_lazyppl
+  hs-source-dirs:
+      src
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is Index
+  build-depends:
+      array
+    , base >=4.7 && <5
+    , colour
+    , containers >=0.6.5.1 && <0.8
+    , deepseq >=1.4.4.0 && <1.6
+    , ghc-heap >=8.10.7 && <9.13
+    , hmatrix >=0.20.2 && <0.22
+    , log-domain >=0.13.2 && <0.14
+    , math-functions >=0.3.4.2
+    , matplotlib
+    , mtl >=2.2.2 && <2.4
+    , random >=1.2.0 && <1.4
+    , transformers >=0.5.6.2 && <0.7
+  default-language: Haskell2010
+
+executable mondrian-exe
+  main-is: MondrianExample.hs
+  other-modules:
+      AdditiveClustering
+      AdditiveClusteringDemo
+      ClusteringDemo
+      ControlFlowDemo
+      GaussianProcessDemo
+      GraphDemo
+      Helpers
+      Index
+      IrmDemo
+      IrmTest
+      LazyPPL
+      LazyPPL.Distributions
+      LazyPPL.Distributions.Counter
+      LazyPPL.Distributions.DirichletP
+      LazyPPL.Distributions.GP
+      LazyPPL.Distributions.IBP
+      LazyPPL.Distributions.Memoization
+      LazyPPL.Distributions.Mondrian
+      LazyPPL.SingleSite
+      MinimalDemo
+      ProgramInductionDemo
+      RegressionDemo
+      WienerDemo
+      Paths_lazyppl
+  hs-source-dirs:
+      src
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is MondrianExample
+  build-depends:
+      array
+    , base >=4.7 && <5
+    , colour
+    , containers >=0.6.5.1 && <0.8
+    , deepseq >=1.4.4.0 && <1.6
+    , ghc-heap >=8.10.7 && <9.13
+    , hmatrix >=0.20.2 && <0.22
+    , lazyppl
+    , log-domain >=0.13.2 && <0.14
+    , math-functions >=0.3.4.2
+    , matplotlib
+    , mtl >=2.2.2 && <2.4
+    , random >=1.2.0 && <1.4
+    , transformers >=0.5.6.2 && <0.7
+  default-language: Haskell2010
+
+executable programinduction-exe
+  main-is: ProgramInductionDemo.lhs
+  other-modules:
+      AdditiveClustering
+      AdditiveClusteringDemo
+      ClusteringDemo
+      ControlFlowDemo
+      GaussianProcessDemo
+      GraphDemo
+      Helpers
+      Index
+      IrmDemo
+      IrmTest
+      LazyPPL
+      LazyPPL.Distributions
+      LazyPPL.Distributions.Counter
+      LazyPPL.Distributions.DirichletP
+      LazyPPL.Distributions.GP
+      LazyPPL.Distributions.IBP
+      LazyPPL.Distributions.Memoization
+      LazyPPL.Distributions.Mondrian
+      LazyPPL.SingleSite
+      MinimalDemo
+      MondrianExample
+      RegressionDemo
+      WienerDemo
+      Paths_lazyppl
+  hs-source-dirs:
+      src
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is ProgramInductionDemo
+  build-depends:
+      array
+    , base >=4.7 && <5
+    , colour
+    , containers >=0.6.5.1 && <0.8
+    , deepseq >=1.4.4.0 && <1.6
+    , ghc-heap >=8.10.7 && <9.13
+    , hmatrix >=0.20.2 && <0.22
+    , lazyppl
+    , log-domain >=0.13.2 && <0.14
+    , math-functions >=0.3.4.2
+    , matplotlib
+    , mtl >=2.2.2 && <2.4
+    , random >=1.2.0 && <1.4
+    , transformers >=0.5.6.2 && <0.7
+  default-language: Haskell2010
+
+executable regression-exe
+  main-is: RegressionDemo.lhs
+  other-modules:
+      AdditiveClustering
+      AdditiveClusteringDemo
+      ClusteringDemo
+      ControlFlowDemo
+      GaussianProcessDemo
+      GraphDemo
+      Helpers
+      Index
+      IrmDemo
+      IrmTest
+      LazyPPL
+      LazyPPL.Distributions
+      LazyPPL.Distributions.Counter
+      LazyPPL.Distributions.DirichletP
+      LazyPPL.Distributions.GP
+      LazyPPL.Distributions.IBP
+      LazyPPL.Distributions.Memoization
+      LazyPPL.Distributions.Mondrian
+      LazyPPL.SingleSite
+      MinimalDemo
+      MondrianExample
+      ProgramInductionDemo
+      WienerDemo
+      Paths_lazyppl
+  hs-source-dirs:
+      src
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is RegressionDemo
+  build-depends:
+      array
+    , base >=4.7 && <5
+    , colour
+    , containers >=0.6.5.1 && <0.8
+    , deepseq >=1.4.4.0 && <1.6
+    , ghc-heap >=8.10.7 && <9.13
+    , hmatrix >=0.20.2 && <0.22
+    , lazyppl
+    , log-domain >=0.13.2 && <0.14
+    , math-functions >=0.3.4.2
+    , matplotlib
+    , mtl >=2.2.2 && <2.4
+    , random >=1.2.0 && <1.4
+    , transformers >=0.5.6.2 && <0.7
+  default-language: Haskell2010
+
+executable wiener-exe
+  main-is: WienerDemo.lhs
+  other-modules:
+      AdditiveClustering
+      AdditiveClusteringDemo
+      ClusteringDemo
+      ControlFlowDemo
+      GaussianProcessDemo
+      GraphDemo
+      Helpers
+      Index
+      IrmDemo
+      IrmTest
+      LazyPPL
+      LazyPPL.Distributions
+      LazyPPL.Distributions.Counter
+      LazyPPL.Distributions.DirichletP
+      LazyPPL.Distributions.GP
+      LazyPPL.Distributions.IBP
+      LazyPPL.Distributions.Memoization
+      LazyPPL.Distributions.Mondrian
+      LazyPPL.SingleSite
+      MinimalDemo
+      MondrianExample
+      ProgramInductionDemo
+      RegressionDemo
+      Paths_lazyppl
+  hs-source-dirs:
+      src
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is WienerDemo
+  build-depends:
+      array
+    , base >=4.7 && <5
+    , colour
+    , containers >=0.6.5.1 && <0.8
+    , deepseq >=1.4.4.0 && <1.6
+    , ghc-heap >=8.10.7 && <9.13
+    , hmatrix >=0.20.2 && <0.22
+    , lazyppl
+    , log-domain >=0.13.2 && <0.14
+    , math-functions >=0.3.4.2
+    , matplotlib
+    , mtl >=2.2.2 && <2.4
+    , random >=1.2.0 && <1.4
+    , transformers >=0.5.6.2 && <0.7
+  default-language: Haskell2010
+
+test-suite logpdf-test
+  type: exitcode-stdio-1.0
+  main-is: TestLogPdf.hs
+  other-modules:
+      Paths_lazyppl
+  hs-source-dirs:
+      test
+  build-depends:
+      array
+    , base >=4.7 && <5
+    , colour
+    , containers >=0.6.5.1 && <0.8
+    , deepseq >=1.4.4.0 && <1.6
+    , ghc-heap >=8.10.7 && <9.13
+    , hmatrix >=0.20.2 && <0.22
+    , lazyppl
+    , log-domain >=0.13.2 && <0.14
+    , math-functions >=0.3.4.2
+    , matplotlib
+    , mtl >=2.2.2 && <2.4
+    , random >=1.2.0 && <1.4
+    , transformers >=0.5.6.2 && <0.7
+  default-language: Haskell2010

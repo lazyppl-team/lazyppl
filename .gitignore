@@ -50,7 +50,6 @@ Thumbs.db
 
 
 ### Haskell ###
-lazyppl.cabal
 stack.yaml.lock
 dist
 dist-*
