@@ -1,9 +1,9 @@
 name:                lazyppl
-version:             1.0
+version:             1.0.1
 license:             MIT
 author:              "LazyPPL team"
 maintainer:          "sam.staton@cs.ox.ac.uk"
-copyright:           "2021-2024 LazyPPL team"
+copyright:           "2021-2026 LazyPPL team"
 stability:       experimental
 homepage: https://lazyppl-team.github.io/
 
