@@ -36,22 +36,9 @@ dependencies:
 # for SingleSite 
 - deepseq >= 1.4.4.0 && < 1.5
 - ghc-heap >= 8.10.7 && < 8.11
-# for exe's
 - array
-- vector
-- bytestring
-- cassava
-- gamma
 - colour
-- data-default-class
-- lens
-- lazyio
-- spoon
-- Histogram
-- monad-loops
 - matplotlib
-- aeson
-- bytestring
 
 library:
   source-dirs: src
