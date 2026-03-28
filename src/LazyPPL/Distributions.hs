@@ -9,9 +9,14 @@ For more distributions, see the Statistics.Distribution in the statistics packag
 
 module LazyPPL.Distributions (
         -- * Continuous distributions
-        normal,normalPdf,exponential,expPdf,gamma, beta, dirichlet, uniformbounded,
+        normal,normalPdf,normalLogPdf,exponential,expPdf,exponentialLogPdf,
+        gamma, gammaLogPdf, beta, betaLogPdf, dirichlet, dirichletLogPdf,
+        uniformbounded, uniformBoundedLogPdf,
+        logNormalLogPdf,
         -- * Discrete distributions
-        bernoulli, uniformdiscrete, categorical, poisson, poissonPdf,
+        bernoulli, bernoulliLogPmf, uniformdiscrete, categorical, categoricalLogPmf,
+        poisson, poissonPdf, poissonLogPmf,
+        binomialLogPmf,
         -- * Streams
         iid)
       where
@@ -130,3 +135,70 @@ categorical xs = do
 {-| Returns an infinite stream of samples from the given distribution. --}
 iid :: Prob a -> Prob [a]
 iid p = do r <- p; rs <- iid p; return $ r : rs
+
+normalLogPdf :: Double -> Double -> Double -> Double
+normalLogPdf mu sigma x =
+  let d = x - mu
+  in -0.5 * log (2 * pi) - log sigma - (d * d) / (2 * sigma * sigma)
+
+exponentialLogPdf :: Double -> Double -> Double
+exponentialLogPdf rate x
+  | x < 0    = -1e300
+  | otherwise = log rate - rate * x
+
+gammaLogPdf :: Double -> Double -> Double -> Double
+gammaLogPdf k theta x
+  | x <= 0   = -1e300
+  | otherwise = (k - 1) * log x - x / theta - k * log theta - logGamma k
+
+betaLogPdf :: Double -> Double -> Double -> Double
+betaLogPdf a b x
+  | x <= 0 || x >= 1 = -1e300
+  | otherwise = (a - 1) * log x + (b - 1) * log (1 - x) - logBeta a b
+
+bernoulliLogPmf :: Double -> Bool -> Double
+bernoulliLogPmf p True  = log (max 1e-300 p)
+bernoulliLogPmf p False = log (max 1e-300 (1 - p))
+
+categoricalLogPmf :: [Double] -> Int -> Double
+categoricalLogPmf probs k
+  | k < 0 || k >= length probs = -1e300
+  | otherwise = log (max 1e-300 (probs !! k))
+
+uniformBoundedLogPdf :: Double -> Double -> Double -> Double
+uniformBoundedLogPdf lower upper x
+  | x < lower || x > upper = -1e300
+  | otherwise = -log (upper - lower)
+
+dirichletLogPdf :: [Double] -> [Double] -> Double
+dirichletLogPdf alphas xs
+  | length alphas /= length xs = -1e300
+  | any (<= 0) xs              = -1e300
+  | otherwise =
+      let lnB = sum (map logGamma alphas) - logGamma (sum alphas)
+      in sum (zipWith (\a x -> (a - 1) * log x) alphas xs) - lnB
+
+logNormalLogPdf :: Double -> Double -> Double -> Double
+logNormalLogPdf mu sigma x
+  | x <= 0   = -1e300
+  | otherwise =
+      let lx = log x
+          d  = lx - mu
+      in -0.5 * log (2 * pi) - log sigma - lx - (d * d) / (2 * sigma * sigma)
+
+binomialLogPmf :: Int -> Double -> Int -> Double
+binomialLogPmf n p k
+  | k < 0 || k > n  = -1e300
+  | p <= 0 && k > 0 = -1e300
+  | p >= 1 && k < n = -1e300
+  | otherwise =
+      logGamma (fromIntegral n + 1)
+      - logGamma (fromIntegral k + 1)
+      - logGamma (fromIntegral (n - k) + 1)
+      + fromIntegral k * log (max 1e-300 p)
+      + fromIntegral (n - k) * log (max 1e-300 (1 - p))
+
+poissonLogPmf :: Double -> Integer -> Double
+poissonLogPmf lambda k
+  | k < 0    = -1e300
+  | otherwise = fromIntegral k * log lambda - lambda - logGamma (fromIntegral k + 1)

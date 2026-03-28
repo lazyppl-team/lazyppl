@@ -57,6 +57,13 @@ dependencies:
 library:
   source-dirs: src
 
+tests:
+  logpdf-test:
+    main: TestLogPdf.hs
+    source-dirs: test
+    dependencies:
+    - lazyppl
+
 executables:
   ibp-exe:
     main:                AdditiveClustering.hs

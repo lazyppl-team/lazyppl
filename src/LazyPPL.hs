@@ -50,7 +50,7 @@ module LazyPPL
       -- * Basic interface
       --
       -- | There are three building blocks for measures: `uniform` for probability measures; `sample` and `score` for unnormalized measures. Combined with the monad structure, these give all s-finite measures.
-      uniform, sample, score,
+      uniform, sample, score, scoreLog, scoreProductLog,
       -- * Monte Carlo simulation
       --
       -- | The `Meas` type describes unnormalized measures. Monte Carlo simulation allows us to sample from an unnormalized measure. Our main Monte Carlo simulator is `mh`. 
