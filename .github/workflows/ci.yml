@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [master, 'upgrade/**']
+  pull_request:
+    branches: [master]
+
+jobs:
+  generate-matrix:
+    name: Generate GHC matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Generate matrix from tested-with
+        id: matrix
+        uses: kleidukos/get-tested@v0.1.9.1
+        with:
+          cabal-file: lazyppl.cabal
+
+  build:
+    name: GHC ${{ matrix.ghc }} / ${{ matrix.os }}
+    needs: generate-matrix
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix: ${{ fromJSON(needs.generate-matrix.outputs.matrix) }}
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: haskell-actions/setup@v2
+        id: setup
+        with:
+          ghc-version: ${{ matrix.ghc }}
+          cabal-version: 'latest'
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y liblapack-dev libblas-dev
+
+      - name: Configure
+        run: cabal configure --enable-tests --test-show-details=direct
+
+      - name: Generate build plan
+        run: cabal build all --dry-run
+
+      - name: Restore cache
+        uses: actions/cache/restore@v4
+        id: cache-restore
+        with:
+          path: ${{ steps.setup.outputs.cabal-store }}
+          key: ${{ runner.os }}-ghc-${{ matrix.ghc }}-${{ hashFiles('**/plan.json') }}
+          restore-keys: |
+            ${{ runner.os }}-ghc-${{ matrix.ghc }}-
+
+      - name: Install dependencies
+        if: steps.cache-restore.outputs.cache-hit != 'true'
+        run: cabal build all --only-dependencies
+
+      - name: Save cache
+        uses: actions/cache/save@v4
+        if: steps.cache-restore.outputs.cache-hit != 'true'
+        with:
+          path: ${{ steps.setup.outputs.cabal-store }}
+          key: ${{ runner.os }}-ghc-${{ matrix.ghc }}-${{ hashFiles('**/plan.json') }}
+
+      - name: Build
+        run: cabal build all
+
+      - name: Run tests
+        run: cabal test all
+
+      - name: Check hpack sync
+        if: matrix.ghc == '9.6.7'
+        run: |
+          cabal install hpack --overwrite-policy=always
+          hpack
+          git diff --exit-code lazyppl.cabal || (echo "lazyppl.cabal is out of sync with package.yaml" && exit 1)
+
+      - name: cabal check
+        if: matrix.ghc == '9.6.7'
+        run: cabal check
+
+      - name: Build documentation
+        if: matrix.ghc == '9.6.7'
+        run: cabal haddock all
+
+      - name: Create source distribution
+        if: matrix.ghc == '9.6.7'
+        run: cabal sdist
