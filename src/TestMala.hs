@@ -23,8 +23,9 @@ linear =
     return f
 
 plotLinearPrior =
-  do
-    fs' <- mh (grwKernel 0.2) (sample linear) 
+  do 
+    g <- getStdGen
+    fs' <- mh g (grwKernel 0.2) 0 Nothing (sample linear) 
     let fs = map (\f -> primal . f . toNagata) $ take 1000 $ every 100 $ map fst fs'
     plotFuns "images/mala-linear-prior.png" [] fs 0.1
 
@@ -43,29 +44,31 @@ normalPdf m s x = let x' = (x - m)/s in  exp (negate (x' * x') / 2) / (sqrt (2 *
 
 regress :: (Floating d,Show d,Show a) => d -> Prob d (a -> d) -> [(a, d)] -> Meas d (a -> d)
 regress sigma prior dataset =
-  do
+  do 
     f <- sample prior
     --forM_ dataset (\(x, y) -> scoreLog $ traceShow (normalLogPdf (f x) sigma y,x,y) $ normalLogPdf (f x) sigma y)
     forM_ dataset (\(x, y) -> scoreLog $ (normalLogPdf (f x) sigma y))
     return f
 
 plotLinReg =
-  do fs' <- mh (hmcKernel (LFConfig 0.001 10 0)) (regress (toNagata 0.5) linear dataset)
+  do g <- getStdGen
+     fs' <- mh g (hmcKernel (LFConfig 0.001 10 0)) 0 Nothing (regress (toNagata 0.5) linear dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 1000 $ map fst fs'
      plotFuns "images/mala/hmc-linear-reg.png" dataset fs 0.05
-     fs' <- mh (malaKernel 0.0005) (regress (toNagata 0.5) linear dataset)
+     fs' <- mh g (malaKernel 0.0005) 0 Nothing (regress (toNagata 0.5) linear dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 500 $ map fst fs'
      plotFuns "images/mala/mala-linear-reg.png" dataset fs 0.05
-     fs' <- mh (grwKernel 0.1) (regress (toNagata 0.5) linear dataset)
+     fs' <- mh g (grwKernel 0.1) 0 Nothing (regress (toNagata 0.5) linear dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 500 $ map fst fs'
      plotFuns "images/mala/grw-linear-reg.png" dataset fs 0.05
-     fs' <- mh (lmhKernel 0.5) (regress (toNagata 0.5) linear dataset)
+     fs' <- mh g (lmhKernel 0.5) 0 Nothing (regress (toNagata 0.5) linear dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 500 $ map fst fs'
      plotFuns "images/mala/lmh-linear-reg.png" dataset fs 0.05
      
   
 plotLinRegHMC (eps, steps) = 
-  do fs' <- mh (hmcKernel (LFConfig eps steps 0)) (regress (toNagata 0.5) linear dataset)
+  do g <- getStdGen
+     fs' <- mh g (hmcKernel (LFConfig eps steps 0)) 0 Nothing (regress (toNagata 0.5) linear dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 1000 $ map fst fs'
      let name = "images/mala/hmc-linear-reg-eps-" ++ show eps ++ "steps-" ++ show steps ++ ".png"
      --print ("done with eps: " ++ show eps ++ " steps: " ++ show steps)
@@ -115,22 +118,24 @@ randConst =
 
 plotStepReg =
   -- eps, steps = (0.0005, 25), (0.005, 30), (0.005, 20)
-  do fs' <- mh (hmcKernel (LFConfig 0.005 30 0)) (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
+  do g <- getStdGen
+     fs' <- mh g (hmcKernel (LFConfig 0.005 30 0)) 0 Nothing (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 2000 $ map fst fs'
      plotFuns "images/mala/hmc-piecewiseconst-reg.png" dataset fs 0.02 
-     fs' <- mh (malaKernel 0.0005) (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
+     fs' <- mh g (malaKernel 0.0005) 0 Nothing (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 2000 $ map fst fs'
      plotFuns "images/mala/mala-piecewiseconst-reg.png" dataset fs 0.02
-     fs' <- mh (grwKernel 0.1) (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
+     fs' <- mh g (grwKernel 0.1) 0 Nothing (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 2000 $ map fst fs'
      plotFuns "images/mala/grw-piecewiseconst-reg.png" dataset fs 0.01
-     fs' <- mh (lmhKernel 0.5) (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
+     fs' <- mh g (lmhKernel 0.5) 0 Nothing (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 2000 $ map fst fs'
      plotFuns "images/mala/lmh-piecewiseconst-reg.png" dataset fs 0.02
      
 
 plotStepRegHMC (eps, steps, i) = 
-  do fs' <- mh (hmcKernel (LFConfig eps steps 0)) (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
+  do g <- getStdGen
+     fs' <- mh g (hmcKernel (LFConfig eps steps 0)) 0 Nothing (regress (toNagata 0.5) (splice (poissonPP 0 0.2) randConst) dataset)
      let fs = map (\f -> primal . f . toNagata) $ take 2000 $ drop 100 $ map fst fs'
      let name = "images/mala/hmc-piecewiseconst-reg-eps-" ++ show eps ++ "steps-" ++ show steps ++ "chain" ++ show i ++ ".png"
      --print ("done with eps: " ++ show eps ++ " steps: " ++ show steps)

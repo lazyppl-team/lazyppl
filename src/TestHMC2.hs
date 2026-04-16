@@ -7,7 +7,7 @@ import Data.Colour.Names
 import Control.Monad
 import Data.Number.Erf
 import Data.List (sort,nub)
-import LazyPPLHMC2 hiding (uniform)
+import LazyPPLHMC hiding (uniform)
 
 import System.Random hiding (uniform)
 

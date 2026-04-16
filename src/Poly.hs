@@ -7,7 +7,8 @@ import Data.Colour.Names
 import Control.Monad
 import Data.Number.Erf
 import Data.List (sort,nub)
-import LazyPPLHMC2 hiding (uniform, logSumExp, findIndex)
+--import LazyPPLHMC2 hiding (uniform, logSumExp, findIndex)
+import LazyPPLHMC hiding (uniform, logSumExp, findIndex)
 
 import System.Random hiding (uniform)
 
@@ -107,8 +108,8 @@ runPolyModel (eps, steps, count, burnin, xTrain, yTrain, xTest, yTest, trueCoeff
         let g = mkStdGen rep
         --let (alg, alg2, alg_kernel, filename) = ("lazyHMCmod", "lazyHMCmod", mh g (hmcKernel(LFConfig eps steps 0)) burnin Nothing, "samples_produced/poly/poly_po_rate" ++ show (primal poRate) ++ "_coefstd" ++ show coefStd ++ "_alpha" ++ show alpha ++ "_noisestd" ++ show noiseStd ++ "_mindeg" ++ show minDegree ++ "_id" ++ show modelId ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
         --let (alg, alg2, alg_kernel, filename) = ("lazyHMCOsc", "lazyHMCOsc", mh g (hmcOscKernel(LFConfig eps steps 0)) burnin Nothing, "samples_produced/poly/poly_po_rate" ++ show (primal poRate) ++ "_coefstd" ++ show coefStd ++ "_alpha" ++ show alpha ++ "_noisestd" ++ show noiseStd ++ "_mindeg" ++ show minDegree ++ "_id" ++ show modelId ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
-        let (alg, alg2, alg_kernel, filename) = ("lazyNUTS", "lazyNUTS", mh g (nutsKernel (LFConfig eps steps 0)) burnin Nothing, "samples_produced/poly/poly_po_rate" ++ show (primal poRate) ++ "_coefstd" ++ show coefStd ++ "_alpha" ++ show alpha ++ "_noisestd" ++ show noiseStd ++ "_mindeg" ++ show minDegree ++ "_id" ++ show modelId ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
-        --let (alg, alg2, alg_kernel, filename) = ("lazyLMH","lazyLMH", mh g (lmhKernel eps) burnin Nothing, "samples_produced/poly/poly_po_rate" ++ show (primal poRate) ++ "_coefstd" ++ show coefStd ++ "_alpha" ++ show alpha ++ "_noisestd" ++ show noiseStd ++ "_mindeg" ++ show minDegree ++ "_id" ++ show modelId ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_p" ++ show eps ++ "_burnin" ++ show burnin ++ ".json")
+        --let (alg, alg2, alg_kernel, filename) = ("lazyNUTS", "lazyNUTS", mh g (nutsKernel (LFConfig eps steps 0)) burnin Nothing, "samples_produced/poly/poly_po_rate" ++ show (primal poRate) ++ "_coefstd" ++ show coefStd ++ "_alpha" ++ show alpha ++ "_noisestd" ++ show noiseStd ++ "_mindeg" ++ show minDegree ++ "_id" ++ show modelId ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
+        let (alg, alg2, alg_kernel, filename) = ("lazyLMH","lazyLMH", mh g (lmhKernel eps) burnin Nothing, "samples_produced/poly/poly_po_rate" ++ show (primal poRate) ++ "_coefstd" ++ show coefStd ++ "_alpha" ++ show alpha ++ "_noisestd" ++ show noiseStd ++ "_mindeg" ++ show minDegree ++ "_id" ++ show modelId ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_p" ++ show eps ++ "_burnin" ++ show burnin ++ ".json")
         print $ "start rep " ++ show rep
         print filename
         start <- getCPUTime
@@ -166,7 +167,7 @@ runPolyModelAll seed =
                 let alpha = 0
                 let noiseStd = 0.25
                 let minDegree = 1
-                let configs = [(eps, 6, 3000, 0, xTrain, yTrain, xTest, yTest, trueCoeffs, modelId, po, coefStd, alpha, noiseStd, minDegree, seed) | eps <- [0.005], po <- [4]]
+                let configs = [(eps, 6, 1000000, 0, xTrain, yTrain, xTest, yTest, trueCoeffs, modelId, po, coefStd, alpha, noiseStd, minDegree, seed) | eps <- [0.5], po <- [4]]
                 let x = map runPolyModel configs
                 sequence_ x
                 --let configs = (0.008, 6, 2000, 0, xTrain, yTrain, xTest, yTest, trueCoeffs, modelId, poRate, coefStd, alpha, noiseStd, minDegree, seed)
