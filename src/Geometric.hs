@@ -22,6 +22,8 @@ import Data.Aeson
 import qualified Data.ByteString.Lazy as B
 import qualified Data.Map.Strict as Map
 
+import System.Environment (getArgs)
+import Text.Read (readMaybe)
 
 import System.CPUTime
 import Control.DeepSeq (deepseq)
@@ -49,14 +51,16 @@ geometricLazy p = do
     return (1+n)
 
 
-runGeom (eps, steps, count, burnin, p, rep) =
+runGeom (algName, eps, steps, count, burnin, p, rep) =
     do
-        --g <- getStdGen
         let g = mkStdGen rep
-        --let (alg, alg2, alg_kernel, filename) = ("lazyHMCmod", "lazyHMCmod", mh g (hmcKernel(LFConfig eps steps 0)) burnin Nothing,"samples_produced/geom/geomLazy_p" ++ show p ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
-        let (alg, alg2, alg_kernel, filename) = ("lazyHMCOsc", "lazyHMCOsc", mh g (hmcOscKernel(LFConfig eps steps 0)) burnin Nothing, "samples_produced/geom/geomLazy_p" ++ show p ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
-        --let (alg, alg2, alg_kernel, filename) = ("lazyNUTS", "lazyNUTS", mh g (nutsKernel (LFConfig eps steps 0)) burnin Nothing, "samples_produced/geom/geomLazy_p" ++ show p ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
-        --let (alg, alg2, alg_kernel, filename) = ("lazyLMH", "lazyLMH", mh g (lmhKernel eps) burnin Nothing, "samples_produced/geom/geomLazy_p" ++ show p ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_burnin" ++ show burnin ++ ".json")
+        let (alg, alg2, alg_kernel, filename) =
+                case algName of
+                    "hmc" -> ("lazyHMCmod", "lazyHMCmod", mh g (hmcKernel(LFConfig eps steps 0)) burnin Nothing,"samples_produced/geom/geomLazy_p" ++ show p ++ "-" ++ show rep ++ "_" ++ "lazyHMCmod" ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
+                    "hmcosc" -> ("lazyHMCOsc", "lazyHMCOsc", mh g (hmcOscKernel(LFConfig eps steps 0)) burnin Nothing, "samples_produced/geom/geomLazy_p" ++ show p ++ "-" ++ show rep ++ "_" ++ "lazyHMCOsc" ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
+                    "nuts" -> ("lazyNUTSnew", "lazyNUTSnew", mh g (nutsKernel (LFConfig eps steps 0)) burnin Nothing, "samples_produced/geom/geomLazy_p" ++ show p ++ "-" ++ show rep ++ "_" ++ "lazyNUTSnew" ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
+                    "lmh" -> ("lazyLMH", "lazyLMH", mh g (lmhKernel eps) burnin Nothing, "samples_produced/geom/geomLazy_p" ++ show p ++ "-" ++ show rep ++ "_" ++ "lazyLMH" ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_burnin" ++ show burnin ++ ".json")
+                    _ -> error "Unknown algorithm"
         
         print $ "start rep " ++ show rep
         print filename
@@ -64,7 +68,6 @@ runGeom (eps, steps, count, burnin, p, rep) =
         fs <- alg_kernel (geometricLazy (toNagata p))
         let results = take count $ drop burnin $ map fst fs
         results `deepseq` return ()
-        -- jsonVal :: Value
         end <- getCPUTime
         let time = fromIntegral (end - start) / (10^12)
         let jsonVal = object
@@ -93,13 +96,40 @@ runGeom (eps, steps, count, burnin, p, rep) =
                 ]
         B.writeFile filename (encode jsonVal)
 
-runGeomAll =
+runGeomAll seed =
     do
-        let configs = [(e, l, 1300, 0, 0.2, rep)| rep <- [0..9], l <- [15], e <- [0.1]]
+        let configs = [(e, l, 1300, 0, 0.2, seed)| l <- [5], e <- [0.1]]
         let x = map runGeom configs
         sequence_ x
 
 
 
 main :: IO ()
-main = runGeomAll
+main = do
+    args <- getArgs
+
+    let getArgMaybe name =
+            case dropWhile (/= name) args of
+                (_:val:_) -> Just val
+                _         -> Nothing
+
+    let getArgDef name def =
+            case getArgMaybe name of
+                Just v  -> v
+                Nothing -> def
+
+    let getArgNum name def =
+            case getArgMaybe name of
+                Just v  -> maybe def id (readMaybe v)
+                Nothing -> def
+
+    let alg    = getArgDef "--alg" "nuts"
+    let seed   = maybe (error "Seed must be an integer") id (readMaybe (getArgDef "--seed" "0"))
+    let eps    = getArgNum "--eps" 0.1
+    let steps  = getArgNum "--steps" 5
+    let count  = getArgNum "--count" 1300
+    let burnin = getArgNum "--burnin" 0
+    let p      = getArgNum "--p" 0.2
+
+    putStrLn $ "Seed is: " ++ show seed
+    runGeom (alg, eps, steps, count, burnin, p, seed)

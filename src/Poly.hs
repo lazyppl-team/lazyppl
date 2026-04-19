@@ -103,13 +103,17 @@ polyModel poRate coefStd alpha noiseStd minDegree xTrain yTrain =
         scoreLog ll
         return bs
 
-runPolyModel (eps, steps, count, burnin, xTrain, yTrain, xTest, yTest, trueCoeffs, modelId, poRate, coefStd, alpha, noiseStd, minDegree, rep) =
+runPolyModel (algName, eps, steps, count, burnin, xTrain, yTrain, xTest, yTest, trueCoeffs, modelId, poRate, coefStd, alpha, noiseStd, minDegree, rep) =
     do
         let g = mkStdGen rep
-        --let (alg, alg2, alg_kernel, filename) = ("lazyHMCmod", "lazyHMCmod", mh g (hmcKernel(LFConfig eps steps 0)) burnin Nothing, "samples_produced/poly/poly_po_rate" ++ show (primal poRate) ++ "_coefstd" ++ show coefStd ++ "_alpha" ++ show alpha ++ "_noisestd" ++ show noiseStd ++ "_mindeg" ++ show minDegree ++ "_id" ++ show modelId ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
-        --let (alg, alg2, alg_kernel, filename) = ("lazyHMCOsc", "lazyHMCOsc", mh g (hmcOscKernel(LFConfig eps steps 0)) burnin Nothing, "samples_produced/poly/poly_po_rate" ++ show (primal poRate) ++ "_coefstd" ++ show coefStd ++ "_alpha" ++ show alpha ++ "_noisestd" ++ show noiseStd ++ "_mindeg" ++ show minDegree ++ "_id" ++ show modelId ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
-        --let (alg, alg2, alg_kernel, filename) = ("lazyNUTS", "lazyNUTS", mh g (nutsKernel (LFConfig eps steps 0)) burnin Nothing, "samples_produced/poly/poly_po_rate" ++ show (primal poRate) ++ "_coefstd" ++ show coefStd ++ "_alpha" ++ show alpha ++ "_noisestd" ++ show noiseStd ++ "_mindeg" ++ show minDegree ++ "_id" ++ show modelId ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
-        let (alg, alg2, alg_kernel, filename) = ("lazyLMH","lazyLMH", mh g (lmhKernel eps) burnin Nothing, "samples_produced/poly/poly_po_rate" ++ show (primal poRate) ++ "_coefstd" ++ show coefStd ++ "_alpha" ++ show alpha ++ "_noisestd" ++ show noiseStd ++ "_mindeg" ++ show minDegree ++ "_id" ++ show modelId ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_p" ++ show eps ++ "_burnin" ++ show burnin ++ ".json")
+        let (alg, alg2, alg_kernel, filename) =
+                case algName of
+                    "hmc" -> ("lazyHMCmod", "lazyHMCmod", mh g (hmcKernel(LFConfig eps steps 0)) burnin Nothing, "samples_produced/poly/poly_po_rate" ++ show (primal poRate) ++ "_coefstd" ++ show coefStd ++ "_alpha" ++ show alpha ++ "_noisestd" ++ show noiseStd ++ "_mindeg" ++ show minDegree ++ "_id" ++ show modelId ++ "-" ++ show rep ++ "_" ++ "lazyHMCmod" ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
+                    "hmcosc" -> ("lazyHMCOsc", "lazyHMCOsc", mh g (hmcOscKernel(LFConfig eps steps 0)) burnin Nothing, "samples_produced/poly/poly_po_rate" ++ show (primal poRate) ++ "_coefstd" ++ show coefStd ++ "_alpha" ++ show alpha ++ "_noisestd" ++ show noiseStd ++ "_mindeg" ++ show minDegree ++ "_id" ++ show modelId ++ "-" ++ show rep ++ "_" ++ "lazyHMCOsc" ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
+                    "nuts" -> ("lazyNUTSnew", "lazyNUTSnew", mh g (nutsKernel (LFConfig eps steps 0)) burnin Nothing, "samples_produced/poly/poly_po_rate" ++ show (primal poRate) ++ "_coefstd" ++ show coefStd ++ "_alpha" ++ show alpha ++ "_noisestd" ++ show noiseStd ++ "_mindeg" ++ show minDegree ++ "_id" ++ show modelId ++ "-" ++ show rep ++ "_" ++ "lazyNUTSnew" ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
+                    "lmh" -> ("lazyLMH","lazyLMH", mh g (lmhKernel eps) burnin Nothing, "samples_produced/poly/poly_po_rate" ++ show (primal poRate) ++ "_coefstd" ++ show coefStd ++ "_alpha" ++ show alpha ++ "_noisestd" ++ show noiseStd ++ "_mindeg" ++ show minDegree ++ "_id" ++ show modelId ++ "-" ++ show rep ++ "_" ++ "lazyLMH" ++ "__count" ++ show count ++ "_p" ++ show eps ++ "_burnin" ++ show burnin ++ ".json")
+                    _ -> error "Unknown algorithm"
+
         print $ "start rep " ++ show rep
         print filename
         start <- getCPUTime
@@ -167,7 +171,7 @@ runPolyModelAll seed =
                 let alpha = 0
                 let noiseStd = 0.25
                 let minDegree = 1
-                let configs = [(eps, 6, 1000000, 0, xTrain, yTrain, xTest, yTest, trueCoeffs, modelId, po, coefStd, alpha, noiseStd, minDegree, seed) | eps <- [0.5], po <- [4]]
+                let configs = [(eps, 6, 3000, 0, xTrain, yTrain, xTest, yTest, trueCoeffs, modelId, po, coefStd, alpha, noiseStd, minDegree, seed) | eps <- [0.005], po <- [4]]
                 let x = map runPolyModel configs
                 sequence_ x
                 --let configs = (0.008, 6, 2000, 0, xTrain, yTrain, xTest, yTest, trueCoeffs, modelId, poRate, coefStd, alpha, noiseStd, minDegree, seed)
@@ -178,12 +182,40 @@ runPolyModelAll seed =
 main :: IO ()
 main = do
     args <- getArgs
-    let seed = case args of
-            ["--seed", s] ->
-                case readMaybe s of
-                    Just n  -> n
-                    Nothing -> error "Seed must be an integer"
-            _ -> error "Usage: --seed <int>"
 
-    putStrLn $ "Seed is: " ++ show seed
-    runPolyModelAll seed
+    let getArgMaybe name =
+            case dropWhile (/= name) args of
+                (_:val:_) -> Just val
+                _         -> Nothing
+
+    let getArgDef name def =
+            case getArgMaybe name of
+                Just v  -> v
+                Nothing -> def
+
+    let getArgNum name def =
+            case getArgMaybe name of
+                Just v  -> maybe def id (readMaybe v)
+                Nothing -> def
+
+    let alg    = getArgDef "--alg" "nuts"
+    let seed   = maybe (error "Seed must be an integer") id (readMaybe (getArgDef "--seed" "0"))
+    let eps    = getArgNum "--eps" 0.005
+    let steps  = getArgNum "--steps" 6
+    let count  = getArgNum "--count" 3000
+    let burnin = getArgNum "--burnin" 0
+
+    let modelId = 0
+    bs <- B.readFile "samples_produced/poly/poly_alpha0.0_coef_std0.5_cores3_min_degree1_noise_std0.25_po_rate4.0_true_degree5_id_0.json"
+    let parsed = decode bs :: Maybe [[Double]]
+
+    case parsed of
+        Just [xTrain, yTrain, xTest, yTest, trueCoeffs] -> do
+            let poRate = 4
+            let coefStd = 0.5
+            let alpha = 0
+            let noiseStd = 0.25
+            let minDegree = 1
+            runPolyModel (alg, eps, steps, count, burnin, xTrain, yTrain, xTest, yTest, trueCoeffs, modelId, poRate, coefStd, alpha, noiseStd, minDegree, seed)
+        Just _ -> putStrLn "Unexpected JSON structure "
+        Nothing -> putStrLn "Failed to parse JSON"

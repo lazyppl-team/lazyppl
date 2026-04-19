@@ -22,6 +22,8 @@ import Data.Aeson
 import qualified Data.ByteString.Lazy as B
 import qualified Data.Map.Strict as Map
 
+import System.Environment (getArgs)
+import Text.Read (readMaybe)
 
 import System.CPUTime
 import Control.DeepSeq (deepseq)
@@ -63,23 +65,23 @@ walkModelLazy distLim = do
         return start
 
 
-runWalk (eps, steps, count, burnin, distLim, rep) =
+runWalk (algName, eps, steps, count, burnin, distLim, rep) =
     do
-        --g <- getStdGen
         let g = mkStdGen rep
-        --let (alg, alg2, alg_kernel) = ("lazyHMCmod", "lazyHMCmod", mh g (hmcKernel (LFConfig eps steps 0)) burnin Nothing)
-        --let (alg, alg2, alg_kernel) = ("lazyHMCOsc", "lazyHMCOsc", mh g (hmcOscKernel (LFConfig eps steps 0)) burnin Nothing)
-        --let (alg, alg2, alg_kernel) = ("lazyNUTS", "lazyNUTS", mh g (nutsKernel (LFConfig eps steps 0)) burnin Nothing)
-        let (alg, alg2, alg_kernel) = ("lazyLMH", "lazyLMH", mh g (lmhKernel eps) burnin Nothing)
+        let (alg, alg2, alg_kernel, filename) =
+                case algName of
+                    "hmc" -> ("lazyHMCmod", "lazyHMCmod", mh g (hmcKernel (LFConfig eps steps 0)) burnin Nothing, "samples_produced/walk/walkLazy_dist_lim" ++ show distLim ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
+                    "hmcosc" -> ("lazyHMCOsc", "lazyHMCOsc", mh g (hmcOscKernel (LFConfig eps steps 0)) burnin Nothing, "samples_produced/walk/walkLazy_dist_lim" ++ show distLim ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
+                    "nuts" -> ("lazyNUTS", "lazyNUTS", mh g (nutsKernel (LFConfig eps steps 0)) burnin Nothing, "samples_produced/walk/walkLazy_dist_lim" ++ show distLim ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
+                    "lmh" -> ("lazyLMH", "lazyLMH", mh g (lmhKernel eps) burnin Nothing, "samples_produced/walk/walkLazy_dist_lim" ++ show distLim ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
+                    _ -> error "Unknown algorithm"
 
         print $ "start rep " ++ show rep
-        let filename = "samples_produced/walk/walkLazy_dist_lim" ++ show distLim ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json"
         print filename
         start <- getCPUTime
         fs <- alg_kernel (walkModelLazy (toNagata distLim))
         let results = map primal $ take count $ drop burnin $ map fst fs 
         results `deepseq` return ()
-        -- jsonVal :: Value
         end <- getCPUTime
         let time = fromIntegral (end - start) / (10^12)
         let jsonVal = object
@@ -109,13 +111,45 @@ runWalk (eps, steps, count, burnin, distLim, rep) =
         B.writeFile filename (encode jsonVal)
         print "done"
 
-runWalkAll =
-    do
-        let configs = [(e, l, 20300, 100, 10, rep)| rep <- [0..9], e <- [0.5, 0.75], l <- [5]]
-        let x = map runWalk configs
-        sequence_ x
-
 
 
 main :: IO ()
-main = runWalkAll
+main = do
+    args <- getArgs
+
+    let getArgMaybe name =
+            case dropWhile (/= name) args of
+                (_:val:_) -> Just val
+                _         -> Nothing
+
+    let getArgDef name def =
+            case getArgMaybe name of
+                Just v  -> v
+                Nothing -> def
+
+    let getArgNum name def =
+            case getArgMaybe name of
+                Just v  -> maybe def id (readMaybe v)
+                Nothing -> def
+
+    let eps    = getArgNum "--eps" 0.1
+    let steps  = getArgNum "--steps" 10
+    let count  = getArgNum "--count" 100
+    let burnin = getArgNum "--burnin" 100
+    let dist   = getArgNum "--dist" 10
+    let alg    = getArgDef "--alg" "hmc"
+
+    case getArgMaybe "--seed" of
+        Just s ->
+            case readMaybe s of
+                Just seed -> do
+                    putStrLn $ "Seed is: " ++ show seed
+                    runWalk (alg, eps, steps, count, burnin, dist, seed)
+                Nothing -> error "Seed must be an integer"
+
+        Nothing -> do
+            putStrLn "No seed provided, running seeds 0 to 10"
+            mapM_ (\seed -> do
+                putStrLn $ "Seed is: " ++ show seed
+                runWalk (alg, eps, steps, count, burnin, dist, seed)
+                ) [0..10]

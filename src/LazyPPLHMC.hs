@@ -669,9 +669,10 @@ nutsKernel lfc warmup g m q =
   --let epsq = possible_eps !! (floor (a * fromIntegral (length possible_eps-1))) in
   let epsq = (a + 0.5) * eps' in
   let (b, g'') = random g' :: (Double, g) in
-  let p = randomTree g' in 
+  let (g1, g2) = split g'' in
+  let p = randomTree g1 in 
   let epsp = getEpsp epsq in
-  let treeStates = nutsTree m g'' epsq epsp max_depth 0 [(dualizeTree q, dualizeTree p, N w dU_dq)] in 
+  let treeStates = nutsTree m g2 epsq epsp max_depth 0 [(dualizeTree q, dualizeTree p, N w dU_dq)] in 
   let sites = foldr merge [] (map (\(x, y, N w dU_dq) -> M.keys dU_dq) treeStates) in
   let log_weights = if warmup == 0 then map ((\(q, p, N w dU_dq) -> w - (Prelude.sum [(primal (lookupTree p i))^2 + (primal (lookupTree q i))^2| i <- sites])/2)) treeStates else map ((\(q, p, N w dU_dq) -> w - (Prelude.sum [(primal (lookupTree q i))^2| i <- sites])/2)) treeStates in
   let normConst = logSumExp log_weights in 
@@ -701,11 +702,9 @@ nutsTree m g epsq epsp max_depth depth nodeTree =
   let (a, g') = random g :: (Double, g) in
   let dir = a > 0.5 in
   let startState = if dir then (last nodeTree) else (head nodeTree) in
-  -- check that the startStateis not modified
   let newSubTree = buildTree m epsq epsp depth dir startState in
   let newTree = if dir then (nodeTree ++ newSubTree) else (newSubTree ++ nodeTree) in
   if ((makesUTurn (head newTree) (last newTree)) || null newSubTree || depth == max_depth -1) then newTree else nutsTree m g' epsq epsp max_depth (depth + 1) newTree
-
 
 buildTree :: Meas (Nagata Integer Double) a -> Double -> Double -> Int -> Bool -> TreeState -> [TreeState]
 buildTree m epsq epsp 0 dir startState = 
@@ -738,7 +737,6 @@ makesUTurn leftmost rightmost =
   let (q, p, N w dU_dq) = leftmost in 
   let (q', p', N w' dU_dq') = rightmost in
   let sites = merge (M.keys dU_dq) (M.keys dU_dq') in
-  -- change this
   let dist = Prelude.sum [(primal (lookupTree q i) - primal (lookupTree q' i)) * (primal (lookupTree p i)) | i <- sites] in 
   let dist2 = Prelude.sum [(primal (lookupTree q i) - primal (lookupTree q' i)) * (primal (lookupTree p' i)) | i <- sites] in 
   (dist > 0 && dist2 > 0)

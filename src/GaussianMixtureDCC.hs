@@ -22,6 +22,8 @@ import Data.Aeson
 import qualified Data.ByteString.Lazy as B
 import qualified Data.Map.Strict as Map
 
+import System.Environment (getArgs)
+import Text.Read (readMaybe)
 
 import System.CPUTime
 import Control.DeepSeq (deepseq)
@@ -147,14 +149,17 @@ getDataset g n f =
     in map (\i -> fst (runMeas (sample f) (xs!!i))) [0..n-1]
 
 
-runGaussianMixtureModel (eps, steps, count, burnin, dims, nbComp, trueMeans, trainDataset, testDataset, modelId, poRate, sigma, rep) =
+runGaussianMixtureModel (algName, eps, steps, count, burnin, dims, nbComp, trueMeans, trainDataset, testDataset, modelId, poRate, sigma, rep) =
     do
-        --g <- getStdGen
         let g = mkStdGen rep
-        --let (alg, alg2, alg_kernel, filename) = ("lazyHMCmod", "lazyHMCmod", mh g (hmcKernel(LFConfig eps steps 0)) burnin Nothing, "samples_produced/gmmDCC/gmmDCC_dims" ++ show dims ++ "_num_mix" ++ show nbComp ++ "_po_rate" ++ show (primal poRate) ++ "_std" ++ show sigma ++ "_id" ++ show modelId ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
-        --let (alg, alg2, alg_kernel, filename) = ("lazyHMCOsc", "lazyHMCOsc", mh g (hmcOscKernel(LFConfig eps steps 0)) burnin Nothing, "samples_produced/gmmDCC/gmmDCC_dims" ++ show dims ++ "_num_mix" ++ show nbComp ++ "_po_rate" ++ show (primal poRate) ++ "_std" ++ show sigma ++ "_id" ++ show modelId ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
-        --let (alg, alg2, alg_kernel, filename) = ("lazyNUTS", "lazyNUTS", mh g (nutsKernel (LFConfig eps steps 0)) burnin Nothing, "samples_produced/gmmDCC/gmmDCC_dims" ++ show dims ++ "_num_mix" ++ show nbComp ++ "_po_rate" ++ show (primal poRate) ++ "_std" ++ show sigma ++ "_id" ++ show modelId ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
-        let (alg, alg2, alg_kernel, filename) = ("lazyLMH", "lazyLMH", mh g (lmhKernel eps) burnin Nothing, "samples_produced/gmmDCC/gmmDCC_dims" ++ show dims ++ "_num_mix" ++ show nbComp ++ "_po_rate" ++ show (primal poRate) ++ "_std" ++ show sigma ++ "_id" ++ show modelId ++ "-" ++ show rep ++ "_" ++ alg ++ "__count" ++ show count ++ "_p" ++ show eps ++ "_burnin" ++ show burnin ++ ".json")
+        let (alg, alg2, alg_kernel, filename) =
+                case algName of
+                    "hmc" -> ("lazyHMCmod", "lazyHMCmod", mh g (hmcKernel(LFConfig eps steps 0)) burnin Nothing, "samples_produced/gmmDCC/gmmDCC_dims" ++ show dims ++ "_num_mix" ++ show nbComp ++ "_po_rate" ++ show (primal poRate) ++ "_std" ++ show sigma ++ "_id" ++ show modelId ++ "-" ++ show rep ++ "_" ++ "lazyHMCmod" ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
+                    "hmcosc" -> ("lazyHMCOsc", "lazyHMCOsc", mh g (hmcOscKernel(LFConfig eps steps 0)) burnin Nothing, "samples_produced/gmmDCC/gmmDCC_dims" ++ show dims ++ "_num_mix" ++ show nbComp ++ "_po_rate" ++ show (primal poRate) ++ "_std" ++ show sigma ++ "_id" ++ show modelId ++ "-" ++ show rep ++ "_" ++ "lazyHMCOsc" ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
+                    "nuts" -> ("lazyNUTS", "lazyNUTS", mh g (nutsKernel (LFConfig eps steps 0)) burnin Nothing, "samples_produced/gmmDCC/gmmDCC_dims" ++ show dims ++ "_num_mix" ++ show nbComp ++ "_po_rate" ++ show (primal poRate) ++ "_std" ++ show sigma ++ "_id" ++ show modelId ++ "-" ++ show rep ++ "_" ++ "lazyNUTS" ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
+                    "lmh" -> ("lazyLMH", "lazyLMH", mh g (lmhKernel eps) burnin Nothing, "samples_produced/gmmDCC/gmmDCC_dims" ++ show dims ++ "_num_mix" ++ show nbComp ++ "_po_rate" ++ show (primal poRate) ++ "_std" ++ show sigma ++ "_id" ++ show modelId ++ "-" ++ show rep ++ "_" ++ "lazyLMH" ++ "__count" ++ show count ++ "_p" ++ show eps ++ "_burnin" ++ show burnin ++ ".json")
+                    _ -> error "Unknown algorithm"
+
         let nagataDataset = map (map toNagata) trainDataset
         print $ "start rep " ++ show rep
         print filename
@@ -163,7 +168,6 @@ runGaussianMixtureModel (eps, steps, count, burnin, dims, nbComp, trueMeans, tra
         let samples = take count $ drop burnin $ map fst fs
         let results = map (map (map primal)) samples
         results `deepseq` return ()
-        -- jsonVal :: Value
         end <- getCPUTime
         let time = fromIntegral (end - start) / (10^12)
         print(time)
@@ -201,28 +205,38 @@ runGaussianMixtureModel (eps, steps, count, burnin, dims, nbComp, trueMeans, tra
 
 
 
-runGaussianMixtureModelAll =
-    do
-        let modelId = 0
-        bs <- B.readFile "samples_produced/gmmDCC/datasets/dims1_num_mix5_po_rate9_std1.5_id0.json"
-        let parsed = decode bs :: Maybe [[[Double]]]
-        case parsed of
-            Just [trueMeans, trainData, testData] -> do
-                print $ length trueMeans
-                print $ length trainData
-                let configs = [(0.05, 50, 1300, 0, 3, 9, trueMeans, trainData, testData, modelId, 10, 10, rep)| rep <- [0..9]]
-                let configs = [(e, l, 700, 0, 3, 9, trueMeans, trainData, testData, modelId, 10, 10, rep)| rep <- [0..9], e <- [0.05, 0.01, 0.1], l <- [25, 50, 75]]
-                let configs = [(eps, 20, 40000, 0, 1, 5, trueMeans, trainData, testData, modelId, 9, 1.5, rep)| rep <- [0..9], eps <- [0.05]] 
-                let x = map runGaussianMixtureModel configs
-                sequence_ x
-            Just _ -> putStrLn "Unexpected JSON structure "
-            Nothing -> putStrLn "Failed to parse JSON"
-
-testPoisson =
-    do
-    let rate = 10
-    print $ map (\y -> 1 - incompleteGamma (fromIntegral (y + 1)) rate) [0,1..20]
-    print $ take 20 $ gammaQs rate
-
 main :: IO ()
-main = runGaussianMixtureModelAll
+main = do
+    args <- getArgs
+
+    let getArgMaybe name =
+            case dropWhile (/= name) args of
+                (_:val:_) -> Just val
+                _         -> Nothing
+
+    let getArgDef name def =
+            case getArgMaybe name of
+                Just v  -> v
+                Nothing -> def
+
+    let getArgNum name def =
+            case getArgMaybe name of
+                Just v  -> maybe def id (readMaybe v)
+                Nothing -> def
+
+    let alg    = getArgDef "--alg" "hmc"
+    let seed   = maybe (error "Seed must be an integer") id (readMaybe (getArgDef "--seed" "0"))
+    let eps    = getArgNum "--eps" 0.05
+    let steps  = getArgNum "--steps" 20
+    let count  = getArgNum "--count" 2000
+    let burnin = getArgNum "--burnin" 0
+
+    let modelId = 0
+    bs <- B.readFile "samples_produced/gmmDCC/datasets/dims1_num_mix5_po_rate9_std1.5_id0.json"
+    let parsed = decode bs :: Maybe [[[Double]]]
+
+    case parsed of
+        Just [trueMeans, trainData, testData] -> do
+            runGaussianMixtureModel (alg, eps, steps, count, burnin, 1, 5, trueMeans, trainData, testData, modelId, 9, 1.5, seed)
+        Just _ -> putStrLn "Unexpected JSON structure "
+        Nothing -> putStrLn "Failed to parse JSON"
