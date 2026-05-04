@@ -1,15 +1,12 @@
 # Changelog for lazyppl
 
-## 1.0.1 — 2026-03-28
+## 1.0.1
 
-- Support GHC 9.6, 9.8, and 9.10 (retaining GHC 8.10 backward compatibility)
-- Widen dependency bounds: ghc-heap, deepseq, containers, hmatrix, random
-- Remove monad-extras dependency (inline iterateM)
-- Remove 11 unused dependencies
-- Add log-density scoring functions (normalLogPdf, gammaLogPdf, etc.)
-- Export scoreLog and scoreProductLog
-- Add test suite (logpdf-test)
-- Add CI via GitHub Actions (GHC 8.10, 9.6, 9.8, 9.10)
+- Add support for GHC 9.8 and 9.10
+- Drop upper bounds on dependencies (except `base`)
+- Add log-density / log-PMF functions: `normalLogPdf`, `gammaLogPdf`, etc.
+- Export `scoreLog` and `scoreProductLog` (already defined in 1.0, now visible)
+- Remove `monad-extras` dependency
 
 ## 1.0
 

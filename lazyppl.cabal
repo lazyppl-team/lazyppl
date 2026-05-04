@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.6.
+-- This file has been generated from package.yaml by hpack version 0.38.1.
 --
 -- see: https://github.com/sol/hpack
 
@@ -8,6 +8,8 @@ name:           lazyppl
 version:        1.0.1
 synopsis:       Lazy Probabilistic Programming Library
 description:    LazyPPL is a Haskell library for Bayesian probabilistic programming. It supports lazy use of probability, which is useful for specifying non-parametric models, and we provide new Metropolis-Hastings algorithms to allow this. For illustrations, see <https://lazyppl-team.github.io/>.
+                .
+                Note: the Gaussian process module (@LazyPPL.Distributions.GP@) uses @hmatrix@, which links against LAPACK. On Ubuntu install with @sudo apt-get install libgsl0-dev liblapack-dev@.
 category:       Statistics
 stability:      experimental
 homepage:       https://lazyppl-team.github.io/
@@ -63,18 +65,18 @@ library
       src
   build-depends:
       array
-    , base >=4.7 && <5
+    , base >=4.7 && <9
     , colour
-    , containers >=0.6.5.1 && <0.8
-    , deepseq >=1.4.4.0 && <1.6
-    , ghc-heap >=8.10.7 && <9.13
-    , hmatrix >=0.20.2 && <0.22
-    , log-domain >=0.13.2 && <0.14
+    , containers >=0.6.5.1
+    , deepseq >=1.4.4.0
+    , ghc-heap >=8.10.7
+    , hmatrix >=0.20.2
+    , log-domain >=0.13.2
     , math-functions >=0.3.4.2
     , matplotlib
-    , mtl >=2.2.2 && <2.4
-    , random >=1.2.0 && <1.4
-    , transformers >=0.5.6.2 && <0.7
+    , mtl >=2.2.2
+    , random >=1.2.0
+    , transformers >=0.5.6.2
   default-language: Haskell2010
 
 executable clustering-exe
@@ -109,19 +111,19 @@ executable clustering-exe
   ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is ClusteringDemo
   build-depends:
       array
-    , base >=4.7 && <5
+    , base >=4.7 && <9
     , colour
-    , containers >=0.6.5.1 && <0.8
-    , deepseq >=1.4.4.0 && <1.6
-    , ghc-heap >=8.10.7 && <9.13
-    , hmatrix >=0.20.2 && <0.22
+    , containers >=0.6.5.1
+    , deepseq >=1.4.4.0
+    , ghc-heap >=8.10.7
+    , hmatrix >=0.20.2
     , lazyppl
-    , log-domain >=0.13.2 && <0.14
+    , log-domain >=0.13.2
     , math-functions >=0.3.4.2
     , matplotlib
-    , mtl >=2.2.2 && <2.4
-    , random >=1.2.0 && <1.4
-    , transformers >=0.5.6.2 && <0.7
+    , mtl >=2.2.2
+    , random >=1.2.0
+    , transformers >=0.5.6.2
   default-language: Haskell2010
 
 executable gaussianprocess-exe
@@ -156,19 +158,19 @@ executable gaussianprocess-exe
   ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is GaussianProcessDemo
   build-depends:
       array
-    , base >=4.7 && <5
+    , base >=4.7 && <9
     , colour
-    , containers >=0.6.5.1 && <0.8
-    , deepseq >=1.4.4.0 && <1.6
-    , ghc-heap >=8.10.7 && <9.13
-    , hmatrix >=0.20.2 && <0.22
+    , containers >=0.6.5.1
+    , deepseq >=1.4.4.0
+    , ghc-heap >=8.10.7
+    , hmatrix >=0.20.2
     , lazyppl
-    , log-domain >=0.13.2 && <0.14
+    , log-domain >=0.13.2
     , math-functions >=0.3.4.2
     , matplotlib
-    , mtl >=2.2.2 && <2.4
-    , random >=1.2.0 && <1.4
-    , transformers >=0.5.6.2 && <0.7
+    , mtl >=2.2.2
+    , random >=1.2.0
+    , transformers >=0.5.6.2
   default-language: Haskell2010
 
 executable ibp-exe
@@ -203,19 +205,19 @@ executable ibp-exe
   ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is AdditiveClustering
   build-depends:
       array
-    , base >=4.7 && <5
+    , base >=4.7 && <9
     , colour
-    , containers >=0.6.5.1 && <0.8
-    , deepseq >=1.4.4.0 && <1.6
-    , ghc-heap >=8.10.7 && <9.13
-    , hmatrix >=0.20.2 && <0.22
+    , containers >=0.6.5.1
+    , deepseq >=1.4.4.0
+    , ghc-heap >=8.10.7
+    , hmatrix >=0.20.2
     , lazyppl
-    , log-domain >=0.13.2 && <0.14
+    , log-domain >=0.13.2
     , math-functions >=0.3.4.2
     , matplotlib
-    , mtl >=2.2.2 && <2.4
-    , random >=1.2.0 && <1.4
-    , transformers >=0.5.6.2 && <0.7
+    , mtl >=2.2.2
+    , random >=1.2.0
+    , transformers >=0.5.6.2
   default-language: Haskell2010
 
 executable index-exe
@@ -250,18 +252,18 @@ executable index-exe
   ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is Index
   build-depends:
       array
-    , base >=4.7 && <5
+    , base >=4.7 && <9
     , colour
-    , containers >=0.6.5.1 && <0.8
-    , deepseq >=1.4.4.0 && <1.6
-    , ghc-heap >=8.10.7 && <9.13
-    , hmatrix >=0.20.2 && <0.22
-    , log-domain >=0.13.2 && <0.14
+    , containers >=0.6.5.1
+    , deepseq >=1.4.4.0
+    , ghc-heap >=8.10.7
+    , hmatrix >=0.20.2
+    , log-domain >=0.13.2
     , math-functions >=0.3.4.2
     , matplotlib
-    , mtl >=2.2.2 && <2.4
-    , random >=1.2.0 && <1.4
-    , transformers >=0.5.6.2 && <0.7
+    , mtl >=2.2.2
+    , random >=1.2.0
+    , transformers >=0.5.6.2
   default-language: Haskell2010
 
 executable mondrian-exe
@@ -296,19 +298,19 @@ executable mondrian-exe
   ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is MondrianExample
   build-depends:
       array
-    , base >=4.7 && <5
+    , base >=4.7 && <9
     , colour
-    , containers >=0.6.5.1 && <0.8
-    , deepseq >=1.4.4.0 && <1.6
-    , ghc-heap >=8.10.7 && <9.13
-    , hmatrix >=0.20.2 && <0.22
+    , containers >=0.6.5.1
+    , deepseq >=1.4.4.0
+    , ghc-heap >=8.10.7
+    , hmatrix >=0.20.2
     , lazyppl
-    , log-domain >=0.13.2 && <0.14
+    , log-domain >=0.13.2
     , math-functions >=0.3.4.2
     , matplotlib
-    , mtl >=2.2.2 && <2.4
-    , random >=1.2.0 && <1.4
-    , transformers >=0.5.6.2 && <0.7
+    , mtl >=2.2.2
+    , random >=1.2.0
+    , transformers >=0.5.6.2
   default-language: Haskell2010
 
 executable programinduction-exe
@@ -343,19 +345,19 @@ executable programinduction-exe
   ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is ProgramInductionDemo
   build-depends:
       array
-    , base >=4.7 && <5
+    , base >=4.7 && <9
     , colour
-    , containers >=0.6.5.1 && <0.8
-    , deepseq >=1.4.4.0 && <1.6
-    , ghc-heap >=8.10.7 && <9.13
-    , hmatrix >=0.20.2 && <0.22
+    , containers >=0.6.5.1
+    , deepseq >=1.4.4.0
+    , ghc-heap >=8.10.7
+    , hmatrix >=0.20.2
     , lazyppl
-    , log-domain >=0.13.2 && <0.14
+    , log-domain >=0.13.2
     , math-functions >=0.3.4.2
     , matplotlib
-    , mtl >=2.2.2 && <2.4
-    , random >=1.2.0 && <1.4
-    , transformers >=0.5.6.2 && <0.7
+    , mtl >=2.2.2
+    , random >=1.2.0
+    , transformers >=0.5.6.2
   default-language: Haskell2010
 
 executable regression-exe
@@ -390,19 +392,19 @@ executable regression-exe
   ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is RegressionDemo
   build-depends:
       array
-    , base >=4.7 && <5
+    , base >=4.7 && <9
     , colour
-    , containers >=0.6.5.1 && <0.8
-    , deepseq >=1.4.4.0 && <1.6
-    , ghc-heap >=8.10.7 && <9.13
-    , hmatrix >=0.20.2 && <0.22
+    , containers >=0.6.5.1
+    , deepseq >=1.4.4.0
+    , ghc-heap >=8.10.7
+    , hmatrix >=0.20.2
     , lazyppl
-    , log-domain >=0.13.2 && <0.14
+    , log-domain >=0.13.2
     , math-functions >=0.3.4.2
     , matplotlib
-    , mtl >=2.2.2 && <2.4
-    , random >=1.2.0 && <1.4
-    , transformers >=0.5.6.2 && <0.7
+    , mtl >=2.2.2
+    , random >=1.2.0
+    , transformers >=0.5.6.2
   default-language: Haskell2010
 
 executable wiener-exe
@@ -437,19 +439,19 @@ executable wiener-exe
   ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is WienerDemo
   build-depends:
       array
-    , base >=4.7 && <5
+    , base >=4.7 && <9
     , colour
-    , containers >=0.6.5.1 && <0.8
-    , deepseq >=1.4.4.0 && <1.6
-    , ghc-heap >=8.10.7 && <9.13
-    , hmatrix >=0.20.2 && <0.22
+    , containers >=0.6.5.1
+    , deepseq >=1.4.4.0
+    , ghc-heap >=8.10.7
+    , hmatrix >=0.20.2
     , lazyppl
-    , log-domain >=0.13.2 && <0.14
+    , log-domain >=0.13.2
     , math-functions >=0.3.4.2
     , matplotlib
-    , mtl >=2.2.2 && <2.4
-    , random >=1.2.0 && <1.4
-    , transformers >=0.5.6.2 && <0.7
+    , mtl >=2.2.2
+    , random >=1.2.0
+    , transformers >=0.5.6.2
   default-language: Haskell2010
 
 test-suite logpdf-test
@@ -461,17 +463,17 @@ test-suite logpdf-test
       test
   build-depends:
       array
-    , base >=4.7 && <5
+    , base >=4.7 && <9
     , colour
-    , containers >=0.6.5.1 && <0.8
-    , deepseq >=1.4.4.0 && <1.6
-    , ghc-heap >=8.10.7 && <9.13
-    , hmatrix >=0.20.2 && <0.22
+    , containers >=0.6.5.1
+    , deepseq >=1.4.4.0
+    , ghc-heap >=8.10.7
+    , hmatrix >=0.20.2
     , lazyppl
-    , log-domain >=0.13.2 && <0.14
+    , log-domain >=0.13.2
     , math-functions >=0.3.4.2
     , matplotlib
-    , mtl >=2.2.2 && <2.4
-    , random >=1.2.0 && <1.4
-    , transformers >=0.5.6.2 && <0.7
+    , mtl >=2.2.2
+    , random >=1.2.0
+    , transformers >=0.5.6.2
   default-language: Haskell2010

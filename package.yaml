@@ -18,7 +18,10 @@ category:            Statistics
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description: LazyPPL is a Haskell library for Bayesian probabilistic programming. It supports lazy use of probability, which is useful for specifying non-parametric models, and we provide new Metropolis-Hastings algorithms to allow this. For illustrations, see <https://lazyppl-team.github.io/>.
+description: |
+  LazyPPL is a Haskell library for Bayesian probabilistic programming. It supports lazy use of probability, which is useful for specifying non-parametric models, and we provide new Metropolis-Hastings algorithms to allow this. For illustrations, see <https://lazyppl-team.github.io/>.
+
+  Note: the Gaussian process module (@LazyPPL.Distributions.GP@) uses @hmatrix@, which links against LAPACK. On Ubuntu install with @sudo apt-get install libgsl0-dev liblapack-dev@.
 
 github: lazyppl-team/lazyppl
 
@@ -29,18 +32,18 @@ tested-with:
   - GHC == 9.10.1
 
 dependencies:
-- base >= 4.7 && < 5
-- random >= 1.2.0 && < 1.4
-- log-domain >=0.13.2 && < 0.14
-- mtl >= 2.2.2 && < 2.4 
-- transformers >= 0.5.6.2 && < 0.7 
-- containers >= 0.6.5.1 && < 0.8
+- base >= 4.7 && < 9
+- random >= 1.2.0
+- log-domain >= 0.13.2
+- mtl >= 2.2.2
+- transformers >= 0.5.6.2
+- containers >= 0.6.5.1
 - math-functions >= 0.3.4.2
-# for GP 
-- hmatrix >= 0.20.2 && < 0.22
-# for SingleSite 
-- deepseq >= 1.4.4.0 && < 1.6
-- ghc-heap >= 8.10.7 && < 9.13
+# for GP
+- hmatrix >= 0.20.2
+# for SingleSite
+- deepseq >= 1.4.4.0
+- ghc-heap >= 8.10.7
 - array
 - colour
 - matplotlib
