@@ -44,6 +44,7 @@ dependencies:
 # for SingleSite
 - deepseq >= 1.4.4.0
 - ghc-heap >= 8.10.7
+# for exes
 - array
 - colour
 - matplotlib
