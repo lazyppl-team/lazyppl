@@ -1,0 +1,27 @@
+{
+  "name": "LazyPPL",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "remoteUser": "vscode",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "haskell.haskell",
+        "justusadam.literate-haskell"
+      ],
+      "settings": {
+        "haskell.manageHLS": "GHCup",
+        "files.exclude": {
+          ".stack-work": true,
+          "dist-newstyle": true
+        }
+      }
+    }
+  },
+  "postCreateCommand": "stack build --only-dependencies",
+  "remoteEnv": {
+    "MPLBACKEND": "Agg"
+  }
+}
