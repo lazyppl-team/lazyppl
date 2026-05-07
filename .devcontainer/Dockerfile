@@ -57,3 +57,7 @@ RUN git clone --depth 1 -b master https://github.com/lazyppl-team/lazyppl /works
        done \
     && [ -d .stack-work ] \
     && mv /workspaces/lazyppl/.stack-work /home/$USERNAME/lazyppl-stack-work-cache
+
+# Print a welcome hint on each new interactive shell.
+COPY --chown=$USER_UID:$USER_GID .devcontainer/banner.sh /home/$USERNAME/.lazyppl-banner.sh
+RUN echo '. ~/.lazyppl-banner.sh' >> /home/$USERNAME/.bashrc

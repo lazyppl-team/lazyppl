@@ -1,9 +1,6 @@
 {
   "name": "LazyPPL",
-  "build": {
-    "dockerfile": "Dockerfile",
-    "context": ".."
-  },
+  "image": "ghcr.io/lazyppl-team/lazyppl:latest",
   "remoteUser": "vscode",
   "customizations": {
     "vscode": {
