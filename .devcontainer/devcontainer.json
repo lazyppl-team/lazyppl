@@ -1,0 +1,23 @@
+{
+  "name": "LazyPPL",
+  "image": "ghcr.io/lazyppl-team/lazyppl:latest",
+  "remoteUser": "vscode",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "haskell.haskell",
+        "justusadam.literate-haskell"
+      ],
+      "settings": {
+        "files.exclude": {
+          ".stack-work": true,
+          "dist-newstyle": true
+        }
+      }
+    }
+  },
+  "containerEnv": {
+    "MPLBACKEND": "Agg"
+  },
+  "postCreateCommand": "cp -r /home/vscode/lazyppl-stack-work-cache /workspaces/lazyppl/.stack-work 2>&1 | tee /home/vscode/.postcreate.log || (echo 'See /home/vscode/.postcreate.log'; exit 1)"
+}

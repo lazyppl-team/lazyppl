@@ -49,7 +49,9 @@ Run a demo: `stack run wiener-exe` (or `regression-exe`, `clustering-exe`, etc.)
 
 The `hmatrix`-based Gaussian process module needs LAPACK. On Ubuntu: `sudo apt-get install libgsl-dev liblapack-dev libblas-dev`. The plotting demos use the `matplotlib` Haskell wrapper, which calls into Python: `python3 -m pip install -U matplotlib numpy scipy`.
 
-A pre-built Docker image is also available at [youkad/lazyppl](https://hub.docker.com/r/youkad/lazyppl) for users who prefer that.
+To try lazyppl in your browser without installing anything, click [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/lazyppl-team/lazyppl). This opens a ready-to-use VS Code environment with GHC, stack, and the system libraries already in place.
+
+A pre-built Docker image is at [`ghcr.io/lazyppl-team/lazyppl`](https://github.com/lazyppl-team/lazyppl/pkgs/container/lazyppl).
 
 
 ## Writing your own probabilistic models
