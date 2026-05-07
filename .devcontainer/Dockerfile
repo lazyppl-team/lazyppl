@@ -37,6 +37,12 @@ RUN if id -u $USER_UID >/dev/null 2>&1; then \
     && mkdir -p /workspaces \
     && chown $USER_UID:$USER_GID /workspaces
 
+# Welcome banner sourced from /etc/bash.bashrc so it fires on every interactive
+# shell (login or not). The LAZYPPL_GREETED env var inside guards against
+# double-printing in nested shells.
+COPY .devcontainer/banner.sh /etc/lazyppl-banner.sh
+RUN echo '. /etc/lazyppl-banner.sh' >> /etc/bash.bashrc
+
 USER $USERNAME
 WORKDIR /home/$USERNAME
 
@@ -57,7 +63,3 @@ RUN git clone --depth 1 -b master https://github.com/lazyppl-team/lazyppl /works
        done \
     && [ -d .stack-work ] \
     && mv /workspaces/lazyppl/.stack-work /home/$USERNAME/lazyppl-stack-work-cache
-
-# Print a welcome hint on each new interactive shell.
-COPY --chown=$USER_UID:$USER_GID .devcontainer/banner.sh /home/$USERNAME/.lazyppl-banner.sh
-RUN echo '. ~/.lazyppl-banner.sh' >> /home/$USERNAME/.bashrc
