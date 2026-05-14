@@ -41,13 +41,13 @@ oneDimMondrian :: Double -> (Double, Double) -> Prob [Double]
 oneDimMondrian budget (low, high) = do
   cutCost <- exponential (high - low)
   if budget < cutCost
-    then return []
+    then pure []
     else do
       let remaining = budget - cutCost
       cut <- uniformbounded low high
       leftcuts <- oneDimMondrian remaining (low, cut)
       rightcuts <- oneDimMondrian remaining (cut, high)
-      return $ leftcuts ++ [cut] ++ rightcuts
+      pure $ leftcuts ++ [cut] ++ rightcuts
 
 -- | Some data types. Intuitively, Matrix is a type of 2D exchangeable arrays, and 'Mondrian Double' would be the type of block-structured graphons.
 
@@ -66,10 +66,10 @@ lookup :: MatrixIO -> Row -> Col -> Bool
 lookup (MatrixIO _ _ matrix) (Row r) (Col c) = matrix !! r !! c
 
 newRow :: MatrixIO -> Prob Row
-newRow (MatrixIO c _ _) = readAndIncrement c >>= (return . Row)
+newRow (MatrixIO c _ _) = readAndIncrement c >>= (pure . Row)
 
 newCol :: MatrixIO -> Prob Col
-newCol (MatrixIO _ c _) = readAndIncrement c >>= (return . Col)
+newCol (MatrixIO _ c _) = readAndIncrement c >>= (pure . Col)
 
 data Matrix = Matrix [[Bool]]
 
@@ -82,7 +82,7 @@ randomMondrian base budget abs = do
   let sumLengths = sum lengths
   cutCost <- exponential sumLengths
   if budget < cutCost
-    then do p <- base; return $ Block p abs
+    then do p <- base; pure $ Block p abs
     else do
       let remaining = budget - cutCost
       dim <- categorical $ map (/sumLengths) lengths -- if dim is true then cut is perpendicular to (a_d, b_d)
@@ -92,7 +92,7 @@ randomMondrian base budget abs = do
         $ zipWith (\ab i -> if i == dim then (a_d, cut) else ab) abs [0 ..]
       rightMondrian <- randomMondrian base remaining
         $ zipWith (\ab i -> if i == dim then (cut, b_d) else ab) abs [0 ..]
-      return $ Partition dim cut abs leftMondrian rightMondrian
+      pure $ Partition dim cut abs leftMondrian rightMondrian
 
 -- | Given a Mondrian tree and two data points, apply a function on the biais of the corresponding block. 
 applyOnBiaisFromMondrian2D :: Mondrian Double -> Double -> Double -> (Double -> a) -> a
@@ -128,16 +128,16 @@ sampleRelationFromMondrian2D mondrian = do
   rs <- iid uniform
   cs <- iid uniform
   matrix <- mapM (\r -> mapM (sampleFromMondrian2D mondrian r) cs) rs
-  return $ Matrix matrix
+  pure $ Matrix matrix
 
 sampleMapRelationFromMondrian2D :: Mondrian Double -> Int -> Prob (Map (Double, Double) Bool)
 sampleMapRelationFromMondrian2D mondrian size = do
   xs <- iid uniform
   ys <- iid uniform
   matrix <- mapM (\x ->
-    mapM (\y -> (do b <- sampleFromMondrian2D mondrian x y; return ((x, y), b))) (take size xs))
+    mapM (\y -> (do b <- sampleFromMondrian2D mondrian x y; pure ((x, y), b))) (take size xs))
     (take size ys)
-  return $ fromList $ concat matrix
+  pure $ fromList $ concat matrix
 
 sampleMatrixRelationFromMondrian2D :: Mondrian Double -> Prob Matrix
 sampleMatrixRelationFromMondrian2D mondrian = do
@@ -145,7 +145,7 @@ sampleMatrixRelationFromMondrian2D mondrian = do
   cs <- iid uniform
   matrix <- mapM (\r ->
     mapM (sampleFromMondrian2D mondrian r) cs) rs
-  return $ Matrix matrix
+  pure $ Matrix matrix
 
 plotMondrian2D :: Mondrian Double -> Matplotlib
 plotMondrian2D mondrian = case mondrian of
@@ -218,4 +218,4 @@ plotMapRelation mp rel =
 \      path = marker_obj.get_path().transformed(marker_obj.get_transform())\n\
 \      paths.append(path)\n\
 \    sc.set_paths(paths)\n\
-\  return sc\n"
+\  pure sc\n"

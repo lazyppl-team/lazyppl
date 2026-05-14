@@ -32,7 +32,7 @@ example = do
   mapM_ nottalks [("mary", "fred"), ("mary", "jim"), ("sue", "fred"), ("sue", "tom"), ("ann", "jim"), ("ann", "tom")]
   -- We want to know whether Tom and Fred are at the same table,
   -- and whether Tom and Mary are at the same table.
-  return (table "tom" == table "fred", table "tom" == table "mary")
+  pure (table "tom" == table "fred", table "tom" == table "mary")
 
 test = do
   bcws <- mh 0.2 example
@@ -43,7 +43,7 @@ test = do
 main = test
 
 {-- Web Church Program from http://v1.probmods.org/non-parametric-models.html#example-the-infinite-relational-model
-Seems to return the wrong result: Says ~35% chance of Tom and Mary in the same group.
+Seems to pure the wrong result: Says ~35% chance of Tom and Mary in the same group.
 
 (define samples
   (mh-query

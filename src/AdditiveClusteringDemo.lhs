@@ -121,7 +121,7 @@ We score based on how closely this similarity matches the experimental data.
 
 We return the feature assignment. 
 
->     return features
+>     pure features
 
 Simulation
 ---
@@ -130,7 +130,7 @@ We sample from this using Metropolis Hastings simulation, and plot some MAP feat
 
 > test = do
 >   samples <- mhirreducible 0.2 0.01 $ additiveClustering 2 6 0.3 similarityData
->   return $ plotFeatureMatrix $ maxap $ take 100000 samples
+>   pure $ plotFeatureMatrix $ maxap $ take 100000 samples
 
 ![Inferred feature matrices.](images/additiveclustering-matrix.svg)
 

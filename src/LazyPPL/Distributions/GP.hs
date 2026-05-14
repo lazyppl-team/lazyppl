@@ -31,22 +31,22 @@ wiener = Prob $ \(Tree r gs) ->
                    unsafePerformIO $ do
                                  ref <- newIORef Data.Map.empty
                                  modifyIORef' ref (Data.Map.insert 0 0)
-                                 return $ \x -> unsafePerformIO $ do
+                                 pure $ \x -> unsafePerformIO $ do
                                         table <- readIORef ref
                                         case Data.Map.lookup x table of
-                                             Just y -> do {return y}
+                                             Just y -> do {pure y}
                                              Nothing -> do let lower = do {l <- findMaxLower x (keys table) ;
-                                                                           v <- Data.Map.lookup l table ; return (l,v) }
+                                                                           v <- Data.Map.lookup l table ; pure (l,v) }
                                                            let upper = do {u <- find (> x) (keys table) ;
-                                                                           v <- Data.Map.lookup u table ; return (u,v) }
+                                                                           v <- Data.Map.lookup u table ; pure (u,v) }
                                                            let m = bridge lower x upper
                                                            let y = runProb m (gs !! (1 + size table))
                                                            modifyIORef' ref (Data.Map.insert x y)
-                                                           return y
+                                                           pure y
 
 bridge :: Maybe (Double,Double) -> Double -> Maybe (Double,Double) -> Prob Double
 -- not needed since the table is always initialized with (0, 0)
--- bridge Nothing y Nothing = if y==0 then return 0 else normal 0 (sqrt y) 
+-- bridge Nothing y Nothing = if y==0 then pure 0 else normal 0 (sqrt y) 
 bridge (Just (x,x')) y Nothing = normal x' (sqrt (y-x))
 bridge Nothing y (Just (z,z')) = normal z' (sqrt (z-y))
 bridge (Just (x,x')) y (Just (z,z')) = normal (x' + ((y-x)*(z'-x')/(z-x))) (sqrt ((z-y)*(y-x)/(z-x)))
@@ -71,16 +71,16 @@ Although it uses hidden state, it is still safe, i.e. statistically commutative 
 gp :: (Double -> Double -> Double) -- ^ Covariance function
       -> Prob (Double -> Double) -- ^ Returns a random function
 gp cov = do ns <- iid $ normal 0 1
-            return $ unsafePerformIO $ do
+            pure $ unsafePerformIO $ do
                                  ref <- newIORef Data.Map.empty
                                  modifyIORef' ref (Data.Map.insert 0 0)
-                                 return $ \x -> unsafePerformIO $ do
+                                 pure $ \x -> unsafePerformIO $ do
                                         table <- readIORef ref
                                         case Data.Map.lookup x table of
-                                             Just y -> do {return y}
+                                             Just y -> do {pure y}
                                              Nothing -> do let y = step cov table x $ ns !! (1 + size table)
                                                            modifyIORef' ref (Data.Map.insert x y)
-                                                           return y
+                                                           pure y
 
 step :: (Double -> Double -> Double) -> Data.Map.Map Double Double -> Double -> Double -> Double
 step cov table x seed =

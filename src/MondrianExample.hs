@@ -105,7 +105,7 @@ datasetMapRelations = do
   rels' <- mh 0.2 $ sample 
     $ sampleMapRelationFromMondrian2D paintingPietMondrian1921 20
   let rels = map fst $ take 100 $ every 10 rels'
-  return rels
+  pure rels
 
 -- plotPietPlusRelation :: Matplotlib
 -- plotPietPlusRelation = plotMapRelation plotPietMondrian (head $ unsafePerformIO datasetMapRelations)
@@ -115,7 +115,7 @@ datasetMatrixRelations = do
   rels' <- mh 0.2 $ sample 
     $ sampleMatrixRelationFromMondrian2D paintingPietMondrian1921
   let rels = map fst $ take 100 $ every 10 rels'
-  return rels
+  pure rels
 
 -- | Statistical model 1: infers the hyperparameters of a Mondrian by observing
 -- Map relations generated from it.
@@ -130,7 +130,7 @@ inferMondrianMap dataset base budget intervals = do
           (\(r, c) -> score $ likelihoodFromMondrian2D mondrian r c (rel ! (r, c)))
           (keys rel)
   mapM_ scoreRel dataset
-  return mondrian
+  pure mondrian
 
 
 -- | Statistical model 2: infers the hyperparameters of a Mondrian by observing 
@@ -150,7 +150,7 @@ inferMondrianMatrix size dataset base budget intervals = do
             (likelihoodFromMondrian2D mondrian x y (rel !! r !! c))
         ) ycs) xrs
   mapM_ scoreRel dataset
-  return mondrian
+  pure mondrian
 
 mhInferenceMap :: IO Matplotlib
 mhInferenceMap = do
@@ -159,7 +159,7 @@ mhInferenceMap = do
   mws <- takeWithProgress 5000 $ every 100 $ drop 100 mws'
   let maxw = maximum $ map snd mws
   let (Just m) = Data.List.lookup maxw $ map (\(m, w) -> (w, m)) mws
-  return $ plotMondrian2D m
+  pure $ plotMondrian2D m
 
 mhInferenceMatrix :: Int -> IO Matplotlib
 mhInferenceMatrix size = do
@@ -168,7 +168,7 @@ mhInferenceMatrix size = do
   mws <- takeWithProgress 5000 $ every 1000 $ drop 1000 mws'
   let maxw = maximum $ map snd mws
   let (Just m) = Data.List.lookup maxw $ map (\(m, w) -> (w, m)) mws
-  return $ plotMondrian2D m
+  pure $ plotMondrian2D m
 
 -- mh1Inference :: IO Matplotlib
 -- mh1Inference = do
@@ -177,7 +177,7 @@ mhInferenceMatrix size = do
 --   let mws = take 500 $ every 1000 $ drop 10000 mws'
 --   let maxw = maximum $ map snd mws
 --   let (Just m) = Data.List.lookup maxw $ map (\(m, w) -> (w, m)) mws
---   return $ plotMondrian2D m
+--   pure $ plotMondrian2D m
 
 lwisInference :: IO Matplotlib
 lwisInference = do
@@ -186,7 +186,7 @@ lwisInference = do
   let mws = take 1000 mws'
   let maxw = maximum $ map snd mws
   let (Just m) = Data.List.lookup maxw $ map (\(m, w) -> (w, m)) mws
-  return $ plotMondrian2D m
+  pure $ plotMondrian2D m
 
 mhResultMap :: Matplotlib
 mhResultMap = unsafePerformIO mhInferenceMap

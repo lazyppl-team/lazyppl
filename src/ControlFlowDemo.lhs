@@ -23,7 +23,7 @@ prior1 :: Prob (Bool,Bool)
 prior1 = 
   do x <- bernoulli 0.5
      y <- if x then bernoulli 0.4 else bernoulli 0.7
-     return (x,y)
+     pure (x,y)
 \end{code}
 Our model conditions on the two booleans being equal. This means that if `x` changes, `y` has to change too, and vice versa. 
 \begin{code}
@@ -31,7 +31,7 @@ model :: Prob (Bool,Bool) -> Meas Bool
 model prior =
   do (x,y) <- sample prior
      score (if x==y then 1 else 0)
-     return x
+     pure x
 \end{code}
 The posterior probability of `(model prior1)` returning true is 4/7. 
 
@@ -44,7 +44,7 @@ prior2 =
   do x <- bernoulli 0.5
      ytrue <- bernoulli 0.4
      yfalse <- bernoulli 0.7
-     return (if x then (x,ytrue) else (x,yfalse)) 
+     pure (if x then (x,ytrue) else (x,yfalse)) 
 \end{code}
 Of course, we could solve this particular program analytically. The point is rather that we have a universal program transformation manipulation that could be applied automatically. 
 
@@ -63,7 +63,7 @@ meanPrec m n k =
      let as = map ((\x -> x / (fromIntegral k)). sum . map fst . take k) xwss
      let mean = (sum as) / (fromIntegral n) -- sample mean
      let var = (sum (map (\x -> (x - mean)^2) as)) / (fromIntegral n) -- sample variance
-     return (mean,1/var)
+     pure (mean,1/var)
 
 \end{code}
 </details>
@@ -102,7 +102,7 @@ softModel :: Prob (Bool,Bool) -> Meas Bool
 softModel prior =
   do (x,y) <- sample prior
      score (if x==y then 0.9 else 0.1)
-     return x
+     pure x
 \end{code}
 ![](images/controlflow-essB.png)
 <details class="code-details">
@@ -136,7 +136,7 @@ linreg =
     b <- sample $ normal 0 3
     let dataset = [(0,5), (0.1,10), (0.2,0)]
     mapM (\(x, y) -> score $ normalPdf (a*x + b) 0.5 y) dataset
-    return (a,b)
+    pure (a,b)
 \end{code}
 ![](images/controlflow-prec.png)
 

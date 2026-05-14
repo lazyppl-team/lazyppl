@@ -52,13 +52,13 @@ Here is a routine for picking a random expression, essentially a probabilistic c
 randexpralt :: Prob Expr
 randexpralt = do
   i <- categorical [0.3,0.3,0.18,0.18,0.04]
-  e <- [return Var ,
-        do { n <- normal 0 5 ; return $ Constt n },
-        do { e1 <- randexpralt ; e2 <- randexpralt ; return $ Add e1 e2},
-        do { e1 <- randexpralt ; e2 <- randexpralt ; return $ Mult e1 e2},
-        do { r <- normal 0 5 ; e1 <- randexpralt ; e2 <- randexpralt ; return $ IfLess r e1 e2}]
+  e <- [pure Var ,
+        do { n <- normal 0 5 ; pure $ Constt n },
+        do { e1 <- randexpralt ; e2 <- randexpralt ; pure $ Add e1 e2},
+        do { e1 <- randexpralt ; e2 <- randexpralt ; pure $ Mult e1 e2},
+        do { r <- normal 0 5 ; e1 <- randexpralt ; e2 <- randexpralt ; pure $ IfLess r e1 e2}]
        !! i        
-  return e
+  pure e
 \end{code}
 The following transformed code is equivalent but works much better. We simultaneously generate all the random choices, lazily. It only makes sense when lazy, because `es` is an infinite thing.
 This kind of transformation, which uses laziness (also "affine monads", "discardability") is discussed more [here](ControlFlowDemo.html).
@@ -67,19 +67,19 @@ randexpr :: Prob Expr
 randexpr = do
   i <- categorical [0.3,0.3,0.18,0.18,0.04]
   es <- sequence
-     [return Var ,
-     do { n <- normal 0 5 ; return $ Constt n },
-     do { e1 <- randexpr ; e2 <- randexpr ; return $ Add e1 e2},
-     do { e1 <- randexpr ; e2 <- randexpr ; return $ Mult e1 e2},
-     do { r <- normal 0 5 ; e1 <- randexpr ; e2 <- randexpr ; return $ IfLess r e1 e2}]
-  return $ es !! i
+     [pure Var ,
+     do { n <- normal 0 5 ; pure $ Constt n },
+     do { e1 <- randexpr ; e2 <- randexpr ; pure $ Add e1 e2},
+     do { e1 <- randexpr ; e2 <- randexpr ; pure $ Mult e1 e2},
+     do { r <- normal 0 5 ; e1 <- randexpr ; e2 <- randexpr ; pure $ IfLess r e1 e2}]
+  pure $ es !! i
 \end{code}
 We can use the random expression `randexpr` to define a random function. Ideally we'd just return the function (`eval e`), but we also keep a string so we can print things. 
 \begin{code}
 randfun :: Prob (Double -> Double,String)
 randfun = do
   e <- randexpr
-  return (eval e,show e)
+  pure (eval e,show e)
 \end{code}
 For program induction, we will treat `randfun` as a prior distribution, include some observations,
 and then find a posterior distribution on program expressions. 
@@ -95,7 +95,7 @@ regress :: Double -> Prob (a -> Double,String) -> [(a,Double)]
 regress sigma prior dataset =
   do (f,s) <- sample prior
      forM_ dataset $ \(x,y) -> score $ normalPdf (f x) sigma y
-     return (f,s)
+     pure (f,s)
 \end{code}
 
 We sample from this distribution using Metropolis Hastings and plot three examples.
@@ -135,7 +135,7 @@ plotFuns filename dataset funs =
     do putStrLn $ "Plotting " ++ filename ++ "..."
        file filename $ (foldl (\a (f,s) -> let xys = sampleFun f in a % plot (map fst xys) (map snd xys) @@ [o2 "label" s]) (scatter (map fst dataset) (map snd dataset) @@ [o2 "c" "black"] % xlim (0 :: Int) (6 :: Int) % ylim (-2 :: Int) (10 :: Int)) funs) % legend @@ [o2 "loc" "lower left",o2 "bbox_to_anchor" ((0.2 :: Double), (0.01 :: Double))]
        putStrLn "Done."
-       return ()
+       pure ()
 
 
 

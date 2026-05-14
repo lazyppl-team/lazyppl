@@ -58,7 +58,7 @@ mh1 (Meas m) = do
         (x0, w0) = runProb (runWriterT m) tree
         p = unsafePerformIO $ do { evaluate (rnf x0); evaluate (rnf w0) ; trunc tree }
         samples = map (\(_,_,_,_,s) -> s) $ iterate step (gTree, g', M.empty, p, (x0, w0))
-    return samples
+    pure samples
   where step :: RandomGen g => (g, g, Subst, PTree, (a, Product (Log Double))) -> (g, g, Subst, PTree, (a, Product (Log Double)))
         step (treeSeed, seed, sub, ptree, (x,w)) =
             let (seed1, seed2) = split seed
@@ -82,7 +82,7 @@ getGCClosureData b = do c <- getBoxedClosureData b
                         case c of
                           BlackholeClosure _ n -> getGCClosureData n
                           -- SelectorClosure _ n -> getGCClosureData n
-                          _ -> return c
+                          _ -> pure c
 
 helperT :: Box -> IO PTree
 helperT b = do
@@ -95,19 +95,19 @@ helperT b = do
           case (n',l') of
             (ConstrClosure {dataArgs = [d], name = "D#"}, ConstrClosure {name = ":"}) ->
               do  l'' <- helperB l
-                  return $ PTree (Just $ unsafeCoerce d) l''
+                  pure $ PTree (Just $ unsafeCoerce d) l''
             (ThunkClosure {}, ConstrClosure {name = ":"}) ->
               do  l'' <- helperB l
-                  return $ PTree Nothing l''
+                  pure $ PTree Nothing l''
             (ConstrClosure {dataArgs = [d], name = "D#"}, ThunkClosure {}) ->
-                  return $ PTree (Just $ unsafeCoerce d) []
+                  pure $ PTree (Just $ unsafeCoerce d) []
             (SelectorClosure {}, ThunkClosure {}) ->
-              return $ PTree Nothing []
+              pure $ PTree Nothing []
             (SelectorClosure {}, ConstrClosure {name = ":"}) ->
               do  l'' <- helperB l
-                  return $ PTree Nothing l''
-            _ -> return $ error $ "Missing case:\n" ++ show n' ++ "\n" ++ show l'
-    ThunkClosure {} -> return $ PTree Nothing []
+                  pure $ PTree Nothing l''
+            _ -> pure $ error $ "Missing case:\n" ++ show n' ++ "\n" ++ show l'
+    ThunkClosure {} -> pure $ PTree Nothing []
 
 helperB :: Box -> IO [Maybe PTree]
 helperB b = do
@@ -120,17 +120,17 @@ helperB b = do
             (ConstrClosure {name = "Tree"}, ConstrClosure {name = ":"}) ->
               do  n'' <- helperT n
                   l'' <- helperB l
-                  return $ Just n'' : l''
+                  pure $ Just n'' : l''
             (ConstrClosure {name = "Tree"}, ThunkClosure {}) ->
               do  n'' <- helperT n
-                  return [Just n'']
+                  pure [Just n'']
             (ThunkClosure {}, ConstrClosure {name = ":"}) ->
               do  l'' <- helperB l
-                  return $ Nothing : l''
+                  pure $ Nothing : l''
             (ThunkClosure {}, ThunkClosure {}) ->
-              return [] -- alternatively, Nothing : []
-            _ -> return $ error $ "Missing case:\n" ++ show n' ++ "\n" ++ show l'
-    ThunkClosure {} -> return []
+              pure [] -- alternatively, Nothing : []
+            _ -> pure $ error $ "Missing case:\n" ++ show n' ++ "\n" ++ show l'
+    ThunkClosure {} -> pure []
 
 trunc :: Tree -> IO PTree
 trunc t = helperT $ asBox t

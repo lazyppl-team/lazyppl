@@ -38,7 +38,7 @@ linear =
     a <- normal 0 3
     b <- normal 0 3
     let f = \x -> a * x + b
-    return f
+    pure f
 \end{code}
 Note that this returns a random function. 
 Here are 1000 draws from the distribution.
@@ -82,7 +82,7 @@ regress sigma prior dataset =
   do
     f <- sample prior
     forM_ dataset (\(x, y) -> score $ normalPdf (f x) sigma y)
-    return f
+    pure f
 \end{code}
 Now we can run Bayesian linear regression by sampling from the unnormalized measure using Metropolis-Hastings. The result is the posterior distribution over linear functions.
 \begin{code}
@@ -109,7 +109,7 @@ splice pointProcess randomFun =
         h [] x = default_f x
         h ((a, f) : xfs) x | x <= a = f x
         h ((a, f) : xfs) x | x > a = h xfs x
-    return (h (zip xs fs))
+    pure (h (zip xs fs))
 \end{code}
 
 Note that this second-order function works for any point process and for any random function. We will use the random linear function `linear`, and for a point process we will use the following Poisson point process, `poissonPP`. This generates an infinite random list of points, where the gaps between them are exponentially distributed.
@@ -120,7 +120,7 @@ poissonPP lower rate =
     step <- exponential rate
     let x = lower + step
     xs <- poissonPP x rate
-    return (x : xs)
+    pure (x : xs)
 \end{code}
 Here are five draws from the process. Each draw is really an infinite set of points, but we have truncated the display to the viewport [0,20]. Laziness then takes care of truncating the infinite sequences appropriately.
 ![](images/regression-poissonpp.svg)
@@ -174,7 +174,7 @@ randConst =
   do
     b <- normal 0 3
     let f = \x -> b
-    return f
+    pure f
 \end{code}
 Using the same recipe as before, we can construct our prior by calling `splice (poissonPP 0 0.1) randConst`{.haskell} and perform inference on it to get the resultant unnormalized distribution of piecewise constant functions.
 \begin{code}
@@ -213,7 +213,7 @@ plotFuns filename dataset funs alpha =
     do  putStrLn $ "Plotting " ++ filename ++ "..."
         file filename $ foldl (\a f -> let xfs = sampleFun f in a % plot (map fst xfs) (map snd xfs) @@ [o1 "go-", o2 "linewidth" (0.5 :: Double), o2 "alpha" alpha, o2 "ms" (0 :: Int)]) (scatter (map fst dataset) (map snd dataset) @@ [o2 "c" "black"] % xlim (0 :: Int) (6 :: Int) % ylim (-2 :: Int) (10 :: Int)) funs
         putStrLn "Done."
-        return ()
+        pure ()
 
 
 main :: IO ()

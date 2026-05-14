@@ -74,7 +74,7 @@ additive_clustering alpha lambda1 lambda2 similarityData = do
     let similarity :: Int -> Int -> Double
         similarity i j = sum [weights a | a <- features!!j, a `elem` features!!i]
     mapM_ (\(i, j) -> score $ normalPdf (similarityData!!i!!j) 0.1 (similarity i j)) [ (i, j) | i <- [0..(n-1)], j <- [0..(i-1)] ]
-    return (features,weights)
+    pure (features,weights)
 
 
 countList :: Eq a => [a] -> a -> Int
@@ -93,7 +93,7 @@ mtransdish v = map (\i -> D i `elem` v) [0..(k-1)] ++ [True]
         D k = maximum v
 
 -- given a group of countries (just the list of indices) 
--- return whether they are a "feature" in matrix
+-- pure whether they are a "feature" in matrix
 -- idea is to represent the matrix as an actual Boolean matrix, make it a square matr 
 hasFeature :: [Int] -> [[Dish]] -> Bool
 hasFeature group matrix =

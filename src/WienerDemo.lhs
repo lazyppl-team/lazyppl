@@ -48,7 +48,7 @@ example = do g <- sample wiener
              a <- sample $ normal 0 3
              let f x = a + 2 * (g x)
              forM_ dataset (\(x,y) -> score $ normalPdf (f x) 0.3 y)
-             return f
+             pure f
 \end{code}
 We can now sample from the unnormalized distribution, using Metropolis-Hastings. 
 Because of laziness, the values of the functions will be sampled at different times,
@@ -83,7 +83,7 @@ splice pointProcess randomFun =
         h [] x = default_f x
         h ((a, f) : xfs) x | x <= a = f x
         h ((a, f) : xfs) x | x > a = h xfs x
-    return (h (zip xs fs))
+    pure (h (zip xs fs))
 
 poissonPP :: Double -> Double -> Prob [Double]
 poissonPP lower rate =
@@ -91,14 +91,14 @@ poissonPP lower rate =
     step <- exponential rate
     let x = lower + step
     xs <- poissonPP x rate
-    return (x : xs)
+    pure (x : xs)
 
 regress :: Double -> Prob (a -> Double) -> [(a, Double)] -> Meas (a -> Double)
 regress sigma prior dataset =
   do
     f <- sample prior
     forM_ dataset (\(x, y) -> score $ normalPdf (f x) sigma y)
-    return f
+    pure f
 \end{code}
 </details>
 
@@ -106,7 +106,7 @@ regress sigma prior dataset =
 jump :: Prob (Double -> Double)
 jump = let p = do f <- wiener
                   a <- normal 0 3
-                  return $ \x -> a + f x
+                  pure $ \x -> a + f x
        in splice (poissonPP 0 0.2) p
 \end{code}
 Here are six samples from this distribution.
@@ -145,7 +145,7 @@ plotCoords filename dataset xyss ymin ymax alpha =
     do  putStrLn $ "Plotting " ++ filename ++ "..."
         file filename $ foldl (\a xys -> a % plot (map fst xys) (map snd xys) @@ [o1 "go-", o2 "linewidth" (0.5 :: Double), o2 "alpha" alpha, o2 "ms" (0 :: Int)]) (scatter (map fst dataset) (map snd dataset) @@ [o2 "c" "black"] % xlim (0 :: Int) (6 :: Int) % ylim ymin ymax) xyss
         putStrLn "Done."
-        return ()
+        pure ()
     
 
 main :: IO ()

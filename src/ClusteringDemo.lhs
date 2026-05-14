@@ -70,7 +70,7 @@ cluster xs pparam like =
       ( \x -> do
           i <- sample $ newCustomer rest   
           score $ like (param i) x
-          return (x, color i, param i)
+          pure (x, color i, param i)
       )
 \end{code}
 
@@ -95,7 +95,7 @@ example =
   cluster
     dataset
     (do x <- normal 5 4; y <- normal 5 4; prec <- gamma 2 4;
-                                        return (x, y, 1 / sqrt prec))
+                                        pure (x, y, 1 / sqrt prec))
     (\(x, y, s) (x', y') -> normalPdf x s x' * normalPdf y s y')
 \end{code}
 
