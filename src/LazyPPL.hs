@@ -97,7 +97,7 @@ instance Monad Prob where
         (Prob m') = f (m g1)
     in m' g2
 instance Functor Prob where fmap = liftM
-instance Applicative Prob where {pure = return ; (<*>) = ap}
+instance Applicative Prob where {pure = pure ; (<*>) = ap}
 
 {- | An unnormalized measure is represented by a probability distribution over pairs of a weight and a result. -}
 newtype Meas a = Meas (WriterT (Product (Log Double)) Prob a)
@@ -148,12 +148,12 @@ weightedsamples (Meas m) =
         helper = do
           (x, w) <- runWriterT m
           rest <- helper
-          return $ (x, w) : rest
+          pure $ (x, w) : rest
     newStdGen
     g <- getStdGen
     let rs = randomTree g
     let xws = runProb helper rs
-    return $ map (\(x,w) -> (x, getProduct w)) xws
+    pure $ map (\(x,w) -> (x, getProduct w)) xws
 
 {- | Weighted importance sampling first draws n weighted samples,
     and then samples a stream of results from that, regarded as an empirical distribution. Sometimes called "likelihood weighted importance sampling". 
@@ -170,7 +170,7 @@ wis n m = do
   newStdGen
   g <- getStdGen
   let rs = (randoms g :: [Double])
-  return $ map (\r -> fst $ head $ filter (\(x, w) -> w >= Exp (log r) * max) xws') rs
+  pure $ map (\r -> fst $ head $ filter (\(x, w) -> w >= Exp (log r) * max) xws') rs
   where accumulate ((x, w) : xws) a = (x, w + a) : (x, w + a) : accumulate xws (w + a)
         accumulate [] a = []
 
@@ -232,7 +232,7 @@ mh p (Meas m) = do
     -- Now run step over and over to get a stream of (tree,result,weight)s.
     let (samples,_) = runState (iterateM step (t,x,w)) g2
     -- The stream of seeds is used to produce a stream of result/weight pairs.
-    return $ map (\(_,x,w) -> (x,w)) samples
+    pure $ map (\(_,x,w) -> (x,w)) samples
     {- NB There are three kinds of randomness in the step function.
     1. The start tree 't', which is the source of randomness for simulating the
     program m to start with. This is sort-of the point in the "state space".
@@ -255,8 +255,8 @@ mh p (Meas m) = do
             let (r, g2') = random g2
             put g2'
             if r < min 1 (exp $ ln ratio) -- (trace ("-- Ratio: " ++ show ratio) ratio))
-              then return (t', x', w') -- trace ("---- Weight: " ++ show w') w')
-              else return (t, x, w) -- trace ("---- Weight: " ++ show w) w)
+              then pure (t', x', w') -- trace ("---- Weight: " ++ show w') w')
+              else pure (t, x, w) -- trace ("---- Weight: " ++ show w) w)
 
 
 -- | Replace the labels of a tree randomly, with probability p
@@ -296,7 +296,7 @@ mhirreducible p q (Meas m) = do
     -- Now run step over and over to get a stream of (tree,result,weight)s.
     let (samples,_) = runState (iterateM step (t,x,w)) g2
     -- The stream of seeds is used to produce a stream of result/weight pairs.
-    return $ map (\(t,x,w) -> (x,w)) samples
+    pure $ map (\(t,x,w) -> (x,w)) samples
     {- NB There are three kinds of randomness in the step function.
     1. The start tree 't', which is the source of randomness for simulating the
     program m to start with. This is sort-of the point in the "state space".
@@ -320,7 +320,7 @@ mhirreducible p q (Meas m) = do
             let ratio = getProduct w' / getProduct w
             let (r,g2') = random g2
             put g2'
-            if r < min 1 (exp $ ln ratio) then return (t',x',w') else return (t,x,w)
+            if r < min 1 (exp $ ln ratio) then pure (t',x',w') else pure (t,x,w)
 
 
 

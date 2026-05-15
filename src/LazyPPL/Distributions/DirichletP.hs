@@ -36,14 +36,14 @@ newCustomer :: Restaurant -> Prob Table
 newCustomer (R restaurant) =
   do
     r <- uniform
-    return $ T $ fromJust $ findIndex (> r) (scanl1 (+) restaurant)
+    pure $ T $ fromJust $ findIndex (> r) (scanl1 (+) restaurant)
 
 {-| Create a new restaurant with concentration parameter alpha. -}
 newRestaurant :: Double -- ^ Concentration parameter, alpha
               -> Prob Restaurant
 newRestaurant alpha = do
   sticks <- stickBreaking alpha 0
-  return $ R sticks
+  pure $ R sticks
 
 {- | Stick breaking breaks the unit interval into an
     infinite number of parts (lazily) --}
@@ -53,7 +53,7 @@ stickBreaking alpha lower =
     r <- beta 1 alpha
     let v = r * (1 - lower)
     vs <- stickBreaking alpha (lower + v)
-    return (v : vs)
+    pure (v : vs)
 
 {-| [Dirichlet Process](https://en.wikipedia.org/wiki/Dirichlet_process) as a random distribution. -}
 dp :: Double -- ^ Concentration parameter, alpha
@@ -62,6 +62,6 @@ dp :: Double -- ^ Concentration parameter, alpha
 dp alpha p = do
   xs <- iid p
   vs <- stickBreaking alpha 0
-  return $ do
+  pure $ do
     r <- uniform
-    return $ xs !! fromJust (findIndex (> r) (scanl1 (+) vs))
+    pure $ xs !! fromJust (findIndex (> r) (scanl1 (+) vs))

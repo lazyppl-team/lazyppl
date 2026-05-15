@@ -127,7 +127,7 @@ model = do
   let rate = if sunday then 3 else 10
   -- observe 4 buses
   score $ poissonPdf rate 4
-  return sunday
+  pure sunday
 \end{code}
 
 We run a Metropolis-Hastings simulation to get a stream of draws from

@@ -46,7 +46,7 @@ example = do g <- sample $ gp $ rbf 1 1
              b <- sample $ normal 0 3
              let f x = a + b * x + (g x)
              forM_ dataset (\(x,y) -> score $ normalPdf (f x) 0.3 y)
-             return f
+             pure f
 \end{code}
 We can now sample from the unnormalized distribution, using Metropolis-Hastings. 
 Because of laziness, the values of the functions will be sampled at different times,
@@ -68,7 +68,7 @@ plotCoords filename dataset xyss ymin ymax alpha =
     do  putStrLn $ "Plotting " ++ filename ++ "..."
         file filename $ foldl (\a xys -> a % plot (map fst xys) (map snd xys) @@ [o1 "go-", o2 "linewidth" (0.5 :: Double), o2 "alpha" alpha, o2 "ms" (0 :: Int)]) (scatter (map fst dataset) (map snd dataset) @@ [o2 "c" "black"] % xlim (0 :: Int) (6 :: Int) % ylim ymin ymax) xyss
         putStrLn "Done."
-        return ()
+        pure ()
     
 main :: IO ()
 main = do { plotGPPrior ; plotGPRegression } 

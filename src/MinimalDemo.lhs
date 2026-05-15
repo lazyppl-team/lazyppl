@@ -41,7 +41,7 @@ voteModel = do
   -- incorporate each poll result as an observation, using bernoulli likelihood
   mapM_ (\actualVote-> score (bernoulliPdf voteShare actualVote)) poll
   -- I win if my vote share is more than 50%.
-  return $ voteShare > 0.5
+  pure $ voteShare > 0.5
 \end{code}
 
 <details class="code-details">
@@ -79,7 +79,7 @@ poissonPP start rate = do
   step <- exponential rate
   let next = start + step
   rest <- poissonPP next rate 
-  return $ next : rest
+  pure $ next : rest
 \end{code}
 
 We can simulate the Poisson distribution by counting how many points in the unit interval of a Poisson point process.
@@ -87,7 +87,7 @@ We can simulate the Poisson distribution by counting how many points in the unit
 poissonSim :: Double -> Prob Int
 poissonSim rate = do
   xs <- poissonPP 0 rate
-  return $ length $ takeWhile (<1) xs
+  pure $ length $ takeWhile (<1) xs
 \end{code}
 
 <details class="code-details">

@@ -114,7 +114,7 @@ instance RandomGraph SphGrph SphVert where
      -- compute the length
      let r = sqrt $ sum $ map (^ 2) xs
      -- normalize, to get something on the sphere
-     return $ SV $ map (/ r) xs
+     pure $ SV $ map (/ r) xs
   edge (SG d theta) (SV xs) (SV ys) =
    theta > (acos $ sum $ (zipWith (*) xs ys))
 \end{code}
@@ -138,7 +138,7 @@ instance RandomGraph Graphon GraphonVertex where
   new (Graphon f) = do
     x <- uniform
     p <- memoize $ \y -> bernoulli $ sqrt $ f x y
-    return $ GV x p
+    pure $ GV x p
   edge _ (GV x p) (GV y q) = p y && q x
 \end{code}
 We use an encoding of vertices, firstly a number in the unit interval $[0,1]$ and secondly a function $[0,1]\to 2$.
@@ -160,7 +160,7 @@ isTriangle p = do
            x <- new p
            y <- new p
            z <- new p
-           return (edge p x y && edge p y z && edge p x z)
+           pure (edge p x y && edge p y z && edge p x z)
 \end{code}
 In the Erdős-Rényi graph, this will return true with probability $1/{r^3}$. In other graphs, including the geometric graphs, it will be more complicated. 
 
@@ -171,7 +171,7 @@ ngraph :: RandomGraph p v => Int -> p -> Prob ([[Bool]],String)
 ngraph n p = do vs <- replicateM n $ new p
                 let matrix = [[edge p v w | w <- vs] | v <- vs]
                 let csv = concat [show v ++ "\n" | v <- vs]
-                return (matrix,csv)
+                pure (matrix,csv)
 \end{code}
 
 Graph inference
@@ -189,7 +189,7 @@ like :: Double -> [[Bool]] -> [[Bool]] -> Meas Int
 like r a b = do
    let n = sum [if a!!i!!j==b!!i!!j then 1 else 0 | i <- [0..length a-1] , j <- [0..(i-1)]]
    score $ r ^ n * (1-r) ^ ((floor $ 0.5 * fromIntegral (length a * (length a-1)))-n)
-   return n
+   pure n
 \end{code}
 
 <details class="code-details">
@@ -198,7 +198,7 @@ like r a b = do
 superuniformbounded n a b = do
    xs <- replicateM n uniform
    let x = sum xs
-   return $ x * (b - a) + a
+   pure $ x * (b - a) + a
 \end{code}
 </details>
 
@@ -213,7 +213,7 @@ exampleA = do
      (x,csv) <- sample (ngraph 15 p)
      -- Observe that the test graph is very similar to x
      n <- like 0.999 test x
-     return ((n,theta),(x,csv))
+     pure ((n,theta),(x,csv))
 \end{code}
 
 <details class="code-details">
@@ -246,8 +246,8 @@ As a first step, we consider instances of the `RandomGraph` interface that can b
 \begin{code}
 instance (RandomGraph a v,RandomGraph b w) 
   => RandomGraph (Either a b) (Either v w) where
-  new (Left a) = do {x <- new a ; return $ Left x}
-  new (Right b) = do {x <- new b ; return $ Right x}
+  new (Left a) = do {x <- new a ; pure $ Left x}
+  new (Right b) = do {x <- new b ; pure $ Right x}
   edge (Left a) (Left x) (Left y) = edge a x y
   edge (Right b) (Right x) (Right y) = edge b x y 
   edge _ _ _ = False
@@ -262,10 +262,10 @@ exampleB = do
      b <- sample $ bernoulli 0.5 
      let p = if b then Left (erdosRenyi 0.5) else Right (SG 2 (pi / 2))
      -- Randomly sample two vertices and ask whether there is an edge
-     c <- sample $ do {a <- new p ; b <- new p ; return $ edge p a b}
+     c <- sample $ do {a <- new p ; b <- new p ; pure $ edge p a b}
      -- Observation that there is in fact an edge
      if c then score 1 else score 0 
-     return b
+     pure b
 \end{code}
 (In a Metropolis-Hastings simulation, `score 0` has the effect of rejecting that run of the program.)
 
@@ -290,7 +290,7 @@ exampleC = do
      c <- sample $ isTriangle p
      -- Observation that there is a triangle
      if c then score 1 else score 0 
-     return b
+     pure b
 \end{code}
 
 <details class="code-details">

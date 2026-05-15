@@ -37,14 +37,14 @@ class (Monad m) => MonadMemo m a where
   memoize f = 
     do
       t <- ini 0 (f . toEnum)
-      return $ \x -> look t (fromEnum x)
+      pure $ \x -> look t (fromEnum x)
 
 {-- Basic trie based integer-indexed memo table.
     NB Currently ignores negative integers --}
 data BinTree a = Branch a (BinTree a) (BinTree a)
 
 ini :: (Monad m) => Int -> (Int -> m a) -> m (BinTree a)
-ini n f = do x <- f n; l <- ini (2 * n + 1) f; r <- ini (2 * n + 2) f; return $ Branch x l r
+ini n f = do x <- f n; l <- ini (2 * n + 1) f; r <- ini (2 * n + 2) f; pure $ Branch x l r
 
 look :: BinTree a -> Int -> a
 look (Branch x l r) 0 = x
@@ -68,15 +68,15 @@ generalmemoize :: Ord a => (a -> Prob b) -> Prob (a -> b)
 generalmemoize f = Prob $ \(Tree _ gs) ->
   unsafePerformIO $ do
     ref <- newIORef Data.Map.empty
-    return $ \x -> unsafePerformIO $ do
+    pure $ \x -> unsafePerformIO $ do
       m <- liftM (Data.Map.lookup x) (readIORef ref)
       case m of
-        Just y -> return y
+        Just y -> pure y
         Nothing -> do
           n <- readIORef ref
           let y = runProb (f x) (gs !! (1 + size n))
           modifyIORef' ref (Data.Map.insert x y)
-          return y
+          pure y
 
 {-- Stochastic memoization for recursive functions.
     Applying 'memoize' to a recursively defined function only memoizes at the
@@ -92,11 +92,11 @@ memrec f =
       let memoized_fixpoint = \x -> unsafePerformIO $ do
             m <- liftM (Data.Map.lookup x) (readIORef ref)
             case m of
-              Just y -> return y
+              Just y -> pure y
               Nothing -> do
                 n <- readIORef ref
                 let fix = f memoized_fixpoint
                 let y = runProb (fix x) (gs !! (1 + size n))
                 modifyIORef' ref (Data.Map.insert x y)
-                return y
-      return memoized_fixpoint
+                pure y
+      pure memoized_fixpoint

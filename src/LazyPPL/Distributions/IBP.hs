@@ -28,7 +28,7 @@ newtype Dish = D Int  deriving (Eq,Ord,Show,MonadMemo Prob)
 newCustomer :: Restaurant -> Prob [Dish]
 newCustomer (R (matrix, ref)) = do
     i <- readAndIncrement ref
-    return [ D k | k <- [0..(length (matrix!!i) - 1)], matrix!!i!!k ]
+    pure [ D k | k <- [0..(length (matrix!!i) - 1)], matrix!!i!!k ]
 
 
 newRestaurant :: Double -> Prob Restaurant
@@ -36,7 +36,7 @@ newRestaurant alpha = do
         r <- uniform
         ref <- newCounter
         matrix <- ibp alpha
-        return $ R (matrix, ref)
+        pure $ R (matrix, ref)
 
 
 matrix :: Double -> Int -> [Int] -> Prob [[Bool]]
@@ -49,7 +49,7 @@ matrix alpha index features =
         let fixZero = if features == [] && nNewDishes == 0 then 1 else nNewDishes
         let newRow = existingDishes ++ take fixZero (repeat True)
         rest           <- matrix alpha (index + 1) (newFeatures ++ take fixZero (repeat 1))
-        return $ newRow : rest
+        pure $ newRow : rest
 
 -- the distribution on matrices 
 ibp :: Double -> Prob [[Bool]]
@@ -77,15 +77,15 @@ newtype DishS = DS Int deriving (Eq,Ord,Show)
 newCustomerS :: RestaurantS -> Prob [DishS]
 newCustomerS (RS rs) = do 
   fs <- mapM bernoulli rs
-  return $ map DS $ findIndices id fs
+  pure $ map DS $ findIndices id fs
 
 newRestaurantS :: Double -> Prob RestaurantS
 newRestaurantS a = RS <$> stickScale 1
   where stickScale p = do r' <- beta a 1
                           let r = p * r'
                           -- Truncate when the probabilities are getting small
-                          rs <- if r < 0.01 then return [] else stickScale r
-                          return $ r : rs
+                          rs <- if r < 0.01 then pure [] else stickScale r
+                          pure $ r : rs
 
 
 

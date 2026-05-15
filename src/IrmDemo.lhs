@@ -71,7 +71,7 @@ The data set:
 
 Finally we return the assignment of tables to people.
 
->   return table
+>   pure table
 
 
 Running the model

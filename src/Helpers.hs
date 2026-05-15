@@ -8,35 +8,35 @@ import qualified Data.List as L (lookup)
 
 
 iterateNM :: Int -> (a -> IO a) -> a -> IO [a]
-iterateNM 0 f a = return []
+iterateNM 0 f a = pure []
 iterateNM n f a = do
   a' <- f a
   as <- iterateNM (n -1) f a'
-  return $ a : as
+  pure $ a : as
 
 -- | Take eagerly from a list and print the current progress. 
 takeWithProgress :: Int -> [a] -> IO [a]
 takeWithProgress n = helper n n
   where
     helper :: Int -> Int -> [a] -> IO [a]
-    helper _ i _ | i <= 0 = return []
-    helper _ _ []        = return []
+    helper _ i _ | i <= 0 = pure []
+    helper _ _ []        = pure []
     helper n i ((!x):xs)    = do
       putStrLn $ "Progress: " ++ show (fromIntegral (100*(n-i)) / fromIntegral n) ++ "%"
       xs' <- helper n (i-1) xs
-      return $ x : xs'
+      pure $ x : xs'
 
 -- | Take as eagerly as possible from a list of tuples and print the current progress. 
 hardTakeWithProgress :: NFData a => Int -> [a] -> IO [a]
 hardTakeWithProgress n = helper n n
   where
     helper :: NFData a =>  Int -> Int -> [a] -> IO [a]
-    helper _ i _ | i <= 0 = return []
-    helper _ _ []        = return []
+    helper _ i _ | i <= 0 = pure []
+    helper _ _ []        = pure []
     helper n i (x:xs)    = do
       putStrLn $ x `deepseq` ("Progress: " ++ show (fromIntegral (100*(n-i)) / fromIntegral n) ++ "%")
       xs' <- helper n (i-1) xs
-      return $ x : xs'
+      pure $ x : xs'
 
 takeEager :: Int -> [a] -> [a]
 takeEager n = helper n n
@@ -79,8 +79,8 @@ exampleProb = do
   y <- uniform
   z <- uniform
   case floor (choice * 4.0) of
-    0 -> return w
-    1 -> return x
-    2 -> return y
-    3 -> return z
+    0 -> pure w
+    1 -> pure x
+    2 -> pure y
+    3 -> pure z
 

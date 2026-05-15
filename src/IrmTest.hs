@@ -32,7 +32,7 @@ example = do
   mapM_ nottalks [("mary", "fred"), ("mary", "jim"), ("sue", "fred"), ("sue", "tom"), ("ann", "jim"), ("ann", "tom")]
   -- We want to know whether Tom and Fred are at the same table,
   -- and whether Tom and Mary are at the same table.
-  return (table "tom" == table "fred", table "tom" == table "mary")
+  pure (table "tom" == table "fred", table "tom" == table "mary")
 
 test = do
   bcws <- mh 0.2 example

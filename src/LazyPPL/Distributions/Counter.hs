@@ -20,14 +20,14 @@ data Counter = C (IORef Int)
 
 newCounter :: Prob Counter
 newCounter = do r <- uniform
-                return $ C $ unsafePerformIO $ newIORef (round (r-r))
+                pure $ C $ unsafePerformIO $ newIORef (round (r-r))
 
 readAndIncrement :: Counter -> Prob Int 
 readAndIncrement (C ref) = do
     r <- uniform
-    return $ unsafePerformIO $ do 
+    pure $ unsafePerformIO $ do 
         !i <- readIORef ref 
         () <- writeIORef ref (i + 1 + round (r - r))
-        return i 
+        pure i 
 
 

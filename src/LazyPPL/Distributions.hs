@@ -34,7 +34,7 @@ normal :: Double -- ^ mu, mean
         -> Prob Double
 normal m s = do
   x <- uniform
-  return $ (- invErfc (2 * x)) * (m_sqrt_2 * s) + m
+  pure $ (- invErfc (2 * x)) * (m_sqrt_2 * s) + m
 normalPdf :: Double -> Double -> Double -> Double
 normalPdf m s x = exp (- ((x - m) * (x - m) / (2 * s * s)) - log (m_sqrt_2_pi * s))
 
@@ -46,7 +46,7 @@ exponential :: Double -- ^ lambda, rate
             -> Prob Double
 exponential rate = do
   x <- uniform
-  return $ - (log x / rate)
+  pure $ - (log x / rate)
 expPdf :: Double -> Double -> Double
 expPdf rate x = exp (- (rate * x)) * rate
 
@@ -58,7 +58,7 @@ gamma :: Double -- ^ k, shape
       -> Prob Double
 gamma a b = do
   x <- uniform
-  return $ b * invIncompleteGamma a x
+  pure $ b * invIncompleteGamma a x
 
 {-|
   [Beta distribution](https://en.wikipedia.org/wiki/Beta_distribution)
@@ -68,7 +68,7 @@ beta :: Double -- ^ alpha
       -> Prob Double
 beta a b = do
   x <- uniform
-  return $ invIncompleteBeta a b x
+  pure $ invIncompleteBeta a b x
 
 {-|
   [Poisson distribution](https://en.wikipedia.org/wiki/Poisson_distribution)
@@ -79,7 +79,7 @@ poisson lambda = do
   x <- uniform
   let cmf = map (\x -> 1 - incompleteGamma (fromIntegral (x + 1)) lambda) [0,1..]
   let (Just n) = findIndex (> x) cmf
-  return $ fromIntegral n
+  pure $ fromIntegral n
 
 poissonPdf :: Double -> Integer -> Double
 poissonPdf rate n = let result = exp(-rate) * rate ^^ fromIntegral n / factorial (fromIntegral n) in
@@ -95,7 +95,7 @@ dirichlet as = do
   xs <- mapM (\a -> gamma a 1) as
   let s = Prelude.sum xs
   let ys = map (/ s) xs
-  return ys
+  pure ys
 
 -- | [Continuous uniform distribution on a bounded interval](https://en.wikipedia.org/wiki/Continuous_uniform_distribution)
 uniformbounded :: Double -- ^ lower
@@ -103,14 +103,14 @@ uniformbounded :: Double -- ^ lower
                 -> Prob Double
 uniformbounded lower upper = do
   x <- uniform
-  return $ (upper - lower) * x + lower
+  pure $ (upper - lower) * x + lower
 
 -- | [Bernoulli distribution](https://en.wikipedia.org/wiki/Bernoulli_distribution)
 bernoulli :: Double -- ^ bias
           -> Prob Bool
 bernoulli r = do
   x <- uniform
-  return $ x < r
+  pure $ x < r
 
 {-|
   [Discrete uniform distribution](https://en.wikipedia.org/wiki/Discrete_uniform_distribution) on [0, ..., n-1]
@@ -121,7 +121,7 @@ uniformdiscrete n =
   do
     let upper = fromIntegral n
     r <- uniformbounded 0 upper
-    return $ floor r
+    pure $ floor r
 
 {-| [Categorical distribution](https://www.google.com/search?client=safari&rls=en&q=categorical+distribution&ie=UTF-8&oe=UTF-8): Takes a list of k numbers that sum to 1, 
     and returns a random number between 0 and (k-1), weighted accordingly -}
@@ -129,12 +129,12 @@ categorical :: [Double] -> Prob Int
 categorical xs = do
   r <- uniform
   case findIndex (>r) $ tail $ scanl (+) 0 xs of
-    Just i -> return i
+    Just i -> pure i
     Nothing -> error "categorical: probabilities do not sum to 1"
 
 {-| Returns an infinite stream of samples from the given distribution. --}
 iid :: Prob a -> Prob [a]
-iid p = do r <- p; rs <- iid p; return $ r : rs
+iid p = do r <- p; rs <- iid p; pure $ r : rs
 
 normalLogPdf :: Double -> Double -> Double -> Double
 normalLogPdf mu sigma x =
