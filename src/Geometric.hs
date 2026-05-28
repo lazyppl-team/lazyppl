@@ -58,7 +58,7 @@ runGeom (algName, eps, steps, count, burnin, p, rep) =
                 case algName of
                     "hmc" -> ("lazyHMCmod", "lazyHMCmod", mh g (hmcKernel(LFConfig eps steps 0)) burnin Nothing,"samples_produced/geom/geomLazy_p" ++ show p ++ "-" ++ show rep ++ "_" ++ "lazyHMCmod" ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
                     "hmcosc" -> ("lazyHMCOsc", "lazyHMCOsc", mh g (hmcOscKernel(LFConfig eps steps 0)) burnin Nothing, "samples_produced/geom/geomLazy_p" ++ show p ++ "-" ++ show rep ++ "_" ++ "lazyHMCOsc" ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
-                    "nuts" -> ("lazyNUTSnew", "lazyNUTSnew", mh g (nutsKernel (LFConfig eps steps 0)) burnin Nothing, "samples_produced/geom/geomLazy_p" ++ show p ++ "-" ++ show rep ++ "_" ++ "lazyNUTSnew" ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
+                    "nuts" -> ("lazyNUTS", "lazyNUTS", mh g (nutsKernel (LFConfig eps steps 0)) burnin Nothing, "samples_produced/geom/geomLazy_p" ++ show p ++ "-" ++ show rep ++ "_" ++ "lazyNUTS" ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_leapfrogsteps" ++ show steps ++ "_burnin" ++ show burnin ++ ".json")
                     "lmh" -> ("lazyLMH", "lazyLMH", mh g (lmhKernel eps) burnin Nothing, "samples_produced/geom/geomLazy_p" ++ show p ++ "-" ++ show rep ++ "_" ++ "lazyLMH" ++ "__count" ++ show count ++ "_eps" ++ show eps ++ "_burnin" ++ show burnin ++ ".json")
                     _ -> error "Unknown algorithm"
         
@@ -96,11 +96,6 @@ runGeom (algName, eps, steps, count, burnin, p, rep) =
                 ]
         B.writeFile filename (encode jsonVal)
 
-runGeomAll seed =
-    do
-        let configs = [(e, l, 1300, 0, 0.2, seed)| l <- [5], e <- [0.1]]
-        let x = map runGeom configs
-        sequence_ x
 
 
 
@@ -123,13 +118,36 @@ main = do
                 Just v  -> maybe def id (readMaybe v)
                 Nothing -> def
 
-    let alg    = getArgDef "--alg" "nuts"
-    let seed   = maybe (error "Seed must be an integer") id (readMaybe (getArgDef "--seed" "0"))
-    let eps    = getArgNum "--eps" 0.1
-    let steps  = getArgNum "--steps" 5
-    let count  = getArgNum "--count" 1300
-    let burnin = getArgNum "--burnin" 0
-    let p      = getArgNum "--p" 0.2
+    let defaultConfigs =
+            [ ("hmc", 0.1, 15, 1300, 0, 0.2), ("hmcosc", 0.1, 15, 1300, 0, 0.2), ("nuts", 0.1, 5, 1300, 0, 0.2), ("lmh", 0.5, 10, 10000, 0, 0.2)]
+            
+    let seeds =
+            case getArgMaybe "--seed" of
+                Just s ->
+                    case readMaybe s of
+                        Just seed -> [seed]
+                        Nothing -> error "Seed must be an integer"
+                Nothing -> [0..9]
 
-    putStrLn $ "Seed is: " ++ show seed
-    runGeom (alg, eps, steps, count, burnin, p, seed)
+    if null args
+        then do
+            putStrLn "No args provided, running default configs with seeds 0 to 9"
+            mapM_ (\(alg, eps, steps, count, burnin, p) ->
+                mapM_ (\seed -> do
+                    putStrLn $ "Running alg=" ++ alg ++ " seed=" ++ show seed
+                    runGeom (alg, eps, steps, count, burnin, p, seed)
+                    ) seeds
+                ) defaultConfigs
+
+        else do
+            let alg    = getArgDef "--alg" "nuts"
+            let eps    = getArgNum "--eps" 0.1
+            let steps  = getArgNum "--steps" 5
+            let count  = getArgNum "--count" 1300
+            let burnin = getArgNum "--burnin" 0
+            let p      = getArgNum "--p" 0.2
+
+            mapM_ (\seed -> do
+                putStrLn $ "Running alg=" ++ alg ++ " seed=" ++ show seed
+                runGeom (alg, eps, steps, count, burnin, p, seed)
+                ) seeds

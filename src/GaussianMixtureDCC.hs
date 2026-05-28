@@ -224,12 +224,16 @@ main = do
                 Just v  -> maybe def id (readMaybe v)
                 Nothing -> def
 
-    let alg    = getArgDef "--alg" "hmc"
-    let seed   = maybe (error "Seed must be an integer") id (readMaybe (getArgDef "--seed" "0"))
-    let eps    = getArgNum "--eps" 0.05
-    let steps  = getArgNum "--steps" 20
-    let count  = getArgNum "--count" 2000
-    let burnin = getArgNum "--burnin" 0
+    let defaultConfigs =
+            [ ("hmc", 0.05, 20, 2000, 0), ("hmcosc", 0.05, 20, 2000,0), ("nuts", 0.1, 6, 2000, 0), ("lmh", 0.5, 10, 40000, 0)]
+
+    let seeds =
+            case getArgMaybe "--seed" of
+                Just s ->
+                    case readMaybe s of
+                        Just seed -> [seed]
+                        Nothing -> error "Seed must be an integer"
+                Nothing -> [0..9]
 
     let modelId = 0
     bs <- B.readFile "samples_produced/gmmDCC/datasets/dims1_num_mix5_po_rate9_std1.5_id0.json"
@@ -237,6 +241,27 @@ main = do
 
     case parsed of
         Just [trueMeans, trainData, testData] -> do
-            runGaussianMixtureModel (alg, eps, steps, count, burnin, 1, 5, trueMeans, trainData, testData, modelId, 9, 1.5, seed)
+            if null args
+                then do
+                    putStrLn "No args provided, running default configs with seeds 0 to 9"
+                    mapM_ (\(alg, eps, steps, count, burnin) ->
+                        mapM_ (\seed -> do
+                            putStrLn $ "Running alg=" ++ alg ++ " seed=" ++ show seed
+                            runGaussianMixtureModel (alg, eps, steps, count, burnin, 1, 5, trueMeans, trainData, testData, modelId, 9, 1.5, seed)
+                            ) seeds
+                        ) defaultConfigs
+
+                else do
+                    let alg    = getArgDef "--alg" "hmc"
+                    let eps    = getArgNum "--eps" 0.05
+                    let steps  = getArgNum "--steps" 20
+                    let count  = getArgNum "--count" 2000
+                    let burnin = getArgNum "--burnin" 0
+
+                    mapM_ (\seed -> do
+                        putStrLn $ "Running alg=" ++ alg ++ " seed=" ++ show seed
+                        runGaussianMixtureModel (alg, eps, steps, count, burnin, 1, 5, trueMeans, trainData, testData, modelId, 9, 1.5, seed)
+                        ) seeds
+
         Just _ -> putStrLn "Unexpected JSON structure "
         Nothing -> putStrLn "Failed to parse JSON"

@@ -112,6 +112,10 @@ runWalk (algName, eps, steps, count, burnin, distLim, rep) =
         print "done"
 
 
+testSeed seed = print x
+  where
+    g = mkStdGen seed
+    (x, _) = random g :: (Int, StdGen)
 
 main :: IO ()
 main = do
@@ -132,24 +136,39 @@ main = do
                 Just v  -> maybe def id (readMaybe v)
                 Nothing -> def
 
-    let eps    = getArgNum "--eps" 0.1
-    let steps  = getArgNum "--steps" 10
-    let count  = getArgNum "--count" 100
-    let burnin = getArgNum "--burnin" 100
-    let dist   = getArgNum "--dist" 10
-    let alg    = getArgDef "--alg" "hmc"
+    let defaultConfigs = [ ("hmc", 0.1, 10, 1300, 100, 10), ("hmcosc", 0.1, 10, 1300, 100, 10), ("nuts", 0.1, 6, 1300, 100, 10), ("lmh", 0.5, 10, 20000, 0, 10)]
 
-    case getArgMaybe "--seed" of
-        Just s ->
-            case readMaybe s of
-                Just seed -> do
-                    putStrLn $ "Seed is: " ++ show seed
+    let seeds =
+            case getArgMaybe "--seed" of
+                Just s ->
+                    case readMaybe s of
+                        Just seed -> [seed]
+                        Nothing -> error "Seed must be an integer"
+                Nothing -> [0..9]
+
+    if null args
+        then do
+            putStrLn "No args provided, running default configs with seeds 0 to 9"
+            mapM_ (\(alg, eps, steps, count, burnin, dist) ->
+                mapM_ (\seed -> do
+                    putStrLn $ "Running alg=" ++ alg ++ " seed=" ++ show seed
                     runWalk (alg, eps, steps, count, burnin, dist, seed)
-                Nothing -> error "Seed must be an integer"
+                    ) seeds
+                ) defaultConfigs
+            {- mapM_ (\seed -> do
+                testSeed seed
+                ) seeds -}
 
-        Nothing -> do
-            putStrLn "No seed provided, running seeds 0 to 10"
+        else do
+            let alg    = getArgDef "--alg" "hmc"
+            let eps    = getArgNum "--eps" 0.1
+            let steps  = getArgNum "--steps" 10
+            let count  = getArgNum "--count" 100
+            let burnin = getArgNum "--burnin" 100
+            let dist   = getArgNum "--dist" 10
+
             mapM_ (\seed -> do
-                putStrLn $ "Seed is: " ++ show seed
+                putStrLn $ "Running alg=" ++ alg ++ " seed=" ++ show seed
                 runWalk (alg, eps, steps, count, burnin, dist, seed)
-                ) [0..10]
+                ) seeds
+            
