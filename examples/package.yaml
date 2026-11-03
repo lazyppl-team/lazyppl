@@ -1,0 +1,95 @@
+name: lazyppl-examples
+version: 0.1.0
+license: MIT
+license-file: LICENSE
+author: LazyPPL team
+maintainer: sam.staton@cs.ox.ac.uk
+synopsis: LazyPPL example models and plotting programs
+description: Example models and plotting programs for LazyPPL, written as the literate pages of its website.
+category: Statistics
+build-type: Simple
+extra-source-files:
+- test/check_graph_figure.py
+dependencies:
+- base >= 4.18.3.0 && < 4.23
+- lazyppl >= 1.1 && < 1.2
+- lazyppl-singlesite >= 0.1 && < 0.2
+- random >= 1.3.1 && < 1.4
+- log-domain >= 0.13.2 && < 0.14
+- mtl >= 2.3.1 && < 2.4
+- transformers >= 0.6.1.0 && < 0.7
+- containers >= 0.6.7 && < 0.9
+- parallel >= 3.2 && < 3.4
+- deepseq >= 1.4.8.1 && < 1.6
+- array >= 0.5.8.0 && < 0.6
+library:
+  source-dirs: models
+tests:
+  example-test:
+    main: Api.hs
+    source-dirs: test
+    other-modules: []
+    dependencies: [lazyppl-examples, QuickCheck >= 2.19.0.0 && < 2.20]
+flags:
+  demos:
+    description: Build the native figure-generating examples
+    manual: true
+    default: false
+
+executables:
+  ibp-exe: &native-demo
+    main: IBPOutput.hs
+    source-dirs: native
+    other-modules: []
+    ghc-options: [&native-options "-threaded -rtsopts", "-main-is IBPOutput"]
+    dependencies: [lazyppl-examples]
+    when:
+      - condition: '!flag(demos)'
+        buildable: false
+  wiener-exe: &literate-demo
+    <<: *native-demo
+    main: WienerDemo.lhs
+    ghc-options: [*native-options, "-main-is WienerDemo"]
+    source-dirs: models
+    cpp-options: -DLAZYPPL_DEMOS
+    dependencies: [lazyppl-examples, matplotlib >= 0.7.7 && < 0.8]
+  regression-exe:
+    <<: *literate-demo
+    main: RegressionDemo.lhs
+    ghc-options: [*native-options, "-main-is RegressionDemo"]
+  clustering-exe:
+    <<: *literate-demo
+    main: ClusteringDemo.lhs
+    ghc-options: [*native-options, "-main-is ClusteringDemo"]
+    dependencies: &colour-plot-dependencies [lazyppl-examples, matplotlib >= 0.7.7 && < 0.8, colour >= 2.3.7 && < 2.4]
+  programinduction-exe:
+    <<: *literate-demo
+    main: ProgramInductionDemo.lhs
+    ghc-options: [*native-options, "-main-is ProgramInductionDemo"]
+  mondrian-exe:
+    <<: *native-demo
+    main: MondrianOutput.hs
+    ghc-options: [*native-options, "-main-is MondrianOutput"]
+    other-modules: [MondrianPlotting]
+    dependencies: *colour-plot-dependencies
+  gaussianprocess-exe:
+    <<: *literate-demo
+    main: GaussianProcessDemo.lhs
+    ghc-options: [*native-options, "-main-is GaussianProcessDemo"]
+  graph-sphere-exe:
+    <<: *literate-demo
+    main: GraphSphere.hs
+    ghc-options: [*native-options, "-main-is GraphSphere"]
+    source-dirs: [native, models]
+    other-modules: [GraphDemo]
+  index-exe:
+    <<: *literate-demo
+    main: Index.lhs
+    ghc-options: [*native-options, "-main-is Index"]
+  render-examples:
+    <<: *literate-demo
+    main: RenderExamples.hs
+    ghc-options: [*native-options, "-main-is RenderExamples"]
+    source-dirs: [native, models]
+    other-modules: [IBPOutput, WienerDemo, RegressionDemo, ClusteringDemo, ProgramInductionDemo, MondrianOutput, MondrianPlotting, GaussianProcessDemo, Index, GraphDemo, IrmDemo, AdditiveClusteringDemo, ControlFlowDemo, Helpers, MondrianExample, AdditiveClustering]
+    dependencies: *colour-plot-dependencies

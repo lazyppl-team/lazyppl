@@ -1,5 +1,5 @@
 name:                lazyppl
-version:             1.0.1
+version:             1.1.0
 license:             MIT
 author:              "LazyPPL team"
 maintainer:          "sam.staton@cs.ox.ac.uk"
@@ -10,6 +10,9 @@ homepage: https://lazyppl-team.github.io/
 extra-source-files:
 - README.md
 - ChangeLog.md
+# The api test reads the mpmath reference tables at run time.
+- test/reference/*.tsv
+- test/reference/reference.py
 
 # Metadata used when publishing your package
 synopsis:            Lazy Probabilistic Programming Library
@@ -21,120 +24,128 @@ category:            Statistics
 description: |
   LazyPPL is a Haskell library for Bayesian probabilistic programming. It supports lazy use of probability, which is useful for specifying non-parametric models, and we provide new Metropolis-Hastings algorithms to allow this. For illustrations, see <https://lazyppl-team.github.io/>.
 
-  Note: the Gaussian process module (@LazyPPL.Distributions.GP@) uses @hmatrix@, which links against LAPACK. On Ubuntu install with @sudo apt-get install libgsl0-dev liblapack-dev@.
+  LazyPPL is pure Haskell and needs no BLAS or LAPACK installation.
 
 github: lazyppl-team/lazyppl
 
 tested-with:
-  - GHC == 8.10.7
   - GHC == 9.6.7
-  - GHC == 9.8.4
-  - GHC == 9.10.1
+  - GHC == 9.12.4
+  - GHC == 9.14.1
 
 dependencies:
-- base >= 4.7 && < 9
-- random >= 1.2.0
-- log-domain >= 0.13.2
-- mtl >= 2.2.2
-- transformers >= 0.5.6.2
-- containers >= 0.6.5.1
-- math-functions >= 0.3.4.2
-# for GP
-- hmatrix >= 0.20.2
-# for SingleSite
-- deepseq >= 1.4.4.0
-- ghc-heap >= 8.10.7
-# for exes
-- array
-- colour
-- matplotlib
+- base >= 4.18.3.0 && < 4.23
+# SeedGen serialises StdGen through the public API introduced in random 1.3.
+- random >= 1.3.1 && < 1.4
+- log-domain >= 0.13.2 && < 0.14
+- transformers >= 0.6.1.0 && < 0.7
+- containers >= 0.6.7 && < 0.9
+- math-functions >= 0.3.4.2 && < 0.4
+# Pointer-free replay storage also builds for Wasm.
+- vector >= 0.13.2.0 && < 0.14
 
 library:
   source-dirs: src
+  exposed-modules:
+  - LazyPPL
+  - LazyPPL.Distributions
+  - LazyPPL.Distributions.Counter
+  - LazyPPL.Distributions.DirichletP
+  - LazyPPL.Distributions.GP
+  - LazyPPL.Distributions.IBP
+  - LazyPPL.Distributions.Memoization
+  - LazyPPL.Distributions.Mondrian
+  - LazyPPL.Internal.History
+  - LazyPPL.Internal.Sampler
+  - LazyPPL.Distributions.GP.Pure
+  other-modules: []
 
 tests:
+  chain-test:
+    main: Chain.hs
+    source-dirs: test
+    other-modules: []
+    ghc-options: [-threaded, -rtsopts]
+    dependencies:
+    - lazyppl
+    - QuickCheck >= 2.14.2 && < 2.20
+    - deepseq >= 1.4.8.1 && < 1.6
+    - mtl >= 2.3.1 && < 2.4
+  concurrency-test:
+    main: Concurrency.hs
+    source-dirs: test
+    other-modules: []
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N2
+    dependencies:
+    - lazyppl
+  hidden-state-test:
+    main: HiddenState.hs
+    source-dirs: test
+    other-modules: [KnownLimit]
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N2
+    dependencies:
+    - lazyppl
+  # The same checks with the caller compiled at -O2.
+  hidden-state-o2-test:
+    main: HiddenState.hs
+    source-dirs: test
+    other-modules: [KnownLimit]
+    ghc-options:
+    - -O2
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N2
+    dependencies:
+    - lazyppl
+  gp-test:
+    main: GaussianCondition.hs
+    source-dirs: test
+    other-modules: []
+    dependencies:
+    - lazyppl
+    - QuickCheck >= 2.14.2 && < 2.20
+  replay-test:
+    main: Replay.hs
+    source-dirs: test
+    other-modules: []
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N2
+    dependencies:
+    - lazyppl
+    - QuickCheck >= 2.14.2 && < 2.20
   logpdf-test:
     main: TestLogPdf.hs
     source-dirs: test
+    other-modules: []
     dependencies:
     - lazyppl
-
-executables:
-  ibp-exe:
-    main:                AdditiveClustering.hs
-    source-dirs:         src
+  api-test:
+    main: Api.hs
+    source-dirs: test
+    other-modules: [StrictMemo, Api.Support, Api.Domains, Api.Distributions, Api.Processes, Api.Inference]
+    dependencies:
+    - lazyppl
+    - QuickCheck >= 2.19.0.0 && < 2.20
+    # Runs the log-density table in a child process with a deadline, reading its output while it runs.
+    # 0.2.13.0 is the latest release (Hackage, read 1 Nov 2026).
+    - typed-process >= 0.2.13.0 && < 0.3
+    # The child's output arrives as a lazy ByteString. 0.11.5.4 ships with GHC 9.6.7, the oldest tested compiler, and 0.12.2.0 with GHC 9.12.4 and 9.14.1.
+    - bytestring >= 0.11.5.4 && < 0.13
+  stream-test:
+    main: Stream.hs
+    source-dirs: test
+    other-modules: []
     ghc-options:
     - -threaded
     - -rtsopts
-    - -with-rtsopts=-N
-    - -main-is AdditiveClustering
+    - -with-rtsopts=-M256M
     dependencies:
     - lazyppl
-  wiener-exe:
-    main:                WienerDemo.lhs
-    source-dirs:         src
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    - -main-is WienerDemo
-    dependencies:
-    - lazyppl
-  regression-exe:
-    main:                RegressionDemo.lhs
-    source-dirs:         src
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    - -main-is RegressionDemo
-    dependencies:
-    - lazyppl
-  clustering-exe:
-    main:                ClusteringDemo.lhs
-    source-dirs:         src
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    - -main-is ClusteringDemo
-    dependencies:
-    - lazyppl
-  programinduction-exe:
-    main:                ProgramInductionDemo.lhs
-    source-dirs:         src
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    - -main-is ProgramInductionDemo
-    dependencies:
-    - lazyppl
-  mondrian-exe:
-    main:                MondrianExample.hs
-    source-dirs:         src
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    - -main-is MondrianExample
-    dependencies:
-    - lazyppl
-  gaussianprocess-exe:
-    main:                GaussianProcessDemo.lhs
-    source-dirs:         src
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    - -main-is GaussianProcessDemo
-    dependencies:
-    - lazyppl
-  index-exe:
-    main:                Index.lhs
-    source-dirs:         src
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    - -main-is Index

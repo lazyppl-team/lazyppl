@@ -1,0 +1,86 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.39.6.
+--
+-- see: https://github.com/sol/hpack
+
+name:           lazyppl-singlesite
+version:        0.1.0
+synopsis:       Single-site Metropolis-Hastings for LazyPPL
+description:    Single-site Metropolis-Hastings for LazyPPL. Import LazyPPL.SingleSite
+                to use mh1. The sampler discovers evaluated random choices through GHC's heap.
+category:       Statistics
+stability:      experimental
+homepage:       https://lazyppl-team.github.io/
+bug-reports:    https://github.com/lazyppl-team/lazyppl/issues
+author:         LazyPPL team
+maintainer:     sam.staton@cs.ox.ac.uk
+copyright:      2021-2026 LazyPPL team
+license:        MIT
+license-file:   LICENSE
+build-type:     Simple
+tested-with:
+    GHC == 9.6.7
+  , GHC == 9.12.4
+  , GHC == 9.14.1
+extra-source-files:
+    ChangeLog.md
+
+source-repository head
+  type: git
+  location: https://github.com/lazyppl-team/lazyppl
+
+library
+  exposed-modules:
+      LazyPPL.SingleSite
+      LazyPPL.SingleSite.Internal
+  hs-source-dirs:
+      src
+  build-depends:
+      base >=4.18.3.0 && <4.23
+    , containers >=0.6.7 && <0.9
+    , deepseq >=1.4.8.1 && <1.6
+    , ghc-heap >=9.6.1 && <9.15
+    , lazyppl ==1.1.*
+    , log-domain >=0.13.2 && <0.14
+    , random >=1.3.1 && <1.4
+    , transformers >=0.6.1.0 && <0.7
+  default-language: Haskell2010
+
+test-suite reverse-support-test
+  type: exitcode-stdio-1.0
+  main-is: Api.hs
+  other-modules:
+      ReverseSupport
+  hs-source-dirs:
+      test
+  build-depends:
+      base >=4.18.3.0 && <4.23
+    , containers >=0.6.7 && <0.9
+    , deepseq >=1.4.8.1 && <1.6
+    , ghc-heap >=9.6.1 && <9.15
+    , lazyppl ==1.1.*
+    , lazyppl-singlesite
+    , log-domain >=0.13.2 && <0.14
+    , random >=1.3.1 && <1.4
+    , transformers >=0.6.1.0 && <0.7
+  default-language: Haskell2010
+
+test-suite site-discovery-test
+  type: exitcode-stdio-1.0
+  main-is: SiteDiscovery.hs
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-T -A128M"
+  build-depends:
+      QuickCheck >=2.14.2 && <2.20
+    , base >=4.18.3.0 && <4.23
+    , containers >=0.6.7 && <0.9
+    , deepseq >=1.4.8.1 && <1.6
+    , ghc-heap >=9.6.1 && <9.15
+    , lazyppl ==1.1.*
+    , lazyppl-singlesite
+    , log-domain >=0.13.2 && <0.14
+    , random >=1.3.1 && <1.4
+    , transformers >=0.6.1.0 && <0.7
+  default-language: Haskell2010

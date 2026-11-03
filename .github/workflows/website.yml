@@ -1,38 +1,153 @@
 name: Publish Website
 
+# Automatic website checks run in CI; this workflow rebuilds the verified tree on manual dispatch.
 on:
-  push:
-    branches:
-      - master
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: 'Deploy built website to lazyppl-team/lazyppl-team.github.io'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  publish:
+  build:
+    name: Build and verify website
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read # Download the immutable playground artifact from CI at this exact source commit.
+    outputs:
+      site-commit: ${{ steps.published-site.outputs.commit }}
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: lazyppl
+          persist-credentials: false
 
-    - uses: nikeee/setup-pandoc@v1
+      - name: Checkout lazyppl_physics
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: lazyppl-team/lazyppl_physics
+          # Same ref as ci.yml, so the page that is checked is the page that is published; move both together.
+          ref: f166b3f6429e055ba3b9b7e4ea12774bf48f6176
+          path: lazyppl_physics
+          persist-credentials: false
 
-    - name: Clone lazyppl_physics (Physics example source)
-      run: |
-        git clone https://github.com/lazyppl-team/lazyppl_physics.git ../lazyppl_physics || echo "lazyppl_physics repo not available; skipping Physics page"
+      - name: Checkout the published site
+        id: published-site
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: lazyppl-team/lazyppl-team.github.io
+          # The publication tree starts from the site as published, at its current head, so that the tree that is checked
+          # is the tree that replaces the site. The deploy job refuses to publish if the site has moved since this checkout.
+          path: lazyppl-team.github.io
+          persist-credentials: false
 
-    - name: Generate website
-      run: bash generate_website.sh
+      - name: Find the tested playground at this source commit
+        id: playground-run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_REPO: ${{ github.repository }}
+          SOURCE_REVISION: ${{ github.sha }}
+        run: |
+          run_id=$(gh run list --repo "$SOURCE_REPO" --workflow ci.yml --commit "$SOURCE_REVISION" --status success --json databaseId --jq '.[0].databaseId // empty')
+          if [ -z "$run_id" ]; then
+            echo "CI must complete successfully at ${SOURCE_REVISION} before its tested playground can be published." >&2
+            exit 1
+          fi
+          echo "run-id=$run_id" >> "$GITHUB_OUTPUT"
 
-    - name: Check the generated website
-      run: |
-        ls -R website
+      - name: Download tested playground
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4; exact bytes from the browser job.
+        with:
+          name: lazyppl-playground
+          path: tested-playground
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.playground-run.outputs.run-id }}
 
-    - name: Push to website repository
-      run: |
-        git config --global user.name 'Younesse Kaddar'
-        git config --global user.email 'younesse.kaddar@chch.ox.ac.uk'
-        git clone https://${{ secrets.YOUQAD_TOKEN }}@github.com/lazyppl-team/lazyppl-team.github.io.git
-        cp -r website/* lazyppl-team.github.io/
-        cd lazyppl-team.github.io
-        git add .
-        git diff-index --quiet HEAD || git commit -m "Update website from $GITHUB_SHA in $GITHUB_REPOSITORY (github action: $GITHUB_ACTION)"
-        git push
+      - name: Set up Pandoc
+        uses: nikeee/setup-pandoc@96d7406a408cae3f939dfe9222420c5b9ff9cfbb # v1
+        with:
+          pandoc-version: '3.12.1'
+
+      - name: Generate and verify website
+        working-directory: lazyppl
+        env:
+          LAZYPPL_PLAYGROUND_DIR: ${{ github.workspace }}/tested-playground
+          LAZYPPL_SOURCE_REVISION: ${{ github.sha }}
+          LAZYPPL_PHYSICS_DIR: ${{ github.workspace }}/lazyppl_physics
+          LAZYPPL_SITE_BASE: ${{ github.workspace }}/lazyppl-team.github.io
+          LAZYPPL_PAGE_LIST: ${{ runner.temp }}/pages.txt
+        run: |
+          bash generate_website.sh
+          bash pandoc/golden.sh check
+
+      - name: Check website links
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
+        with:
+          args: --offline --no-progress --files-from ${{ runner.temp }}/pages.txt
+          output: /tmp/lychee-out.md
+
+      - name: Upload website artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: lazyppl-website
+          path: lazyppl/website/
+          # The tree holds the site's own dotfiles (.gitignore, .vscode); the deploy replaces the whole site with this artifact.
+          include-hidden-files: true
+          if-no-files-found: error
+
+  deploy:
+    name: Deploy website
+    needs: build
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: website-publish
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout publication script
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: lazyppl
+          persist-credentials: false
+
+      - name: Download verified website artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: lazyppl-website
+          path: website
+
+      - name: Checkout site with deploy key
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: lazyppl-team/lazyppl-team.github.io
+          path: site
+          ssh-key: ${{ secrets.SITE_DEPLOY_KEY }}
+          # The publisher uses this checkout's SSH configuration; checkout removes the key after the job.
+          persist-credentials: true
+
+      - name: Publish website
+        env:
+          DESTINATION_URL: git@github.com:lazyppl-team/lazyppl-team.github.io.git
+          PUBLISH_BRANCH: master
+          CHECKED_COMMIT: ${{ needs.build.outputs.site-commit }}
+          ARTIFACT_DIR: website
+          PUBLICATION_MESSAGE: Update website from ${{ github.sha }} in ${{ github.repository }}
+        run: |
+          export GIT_SSH_COMMAND="$(git -C site config --local --get core.sshCommand)"
+          test -n "$GIT_SSH_COMMAND"
+          bash lazyppl/.github/workflows/publish-website.sh

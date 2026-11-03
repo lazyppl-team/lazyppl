@@ -1,0 +1,42 @@
+name: lazyppl-singlesite
+version: 0.1.0
+license: MIT
+license-file: LICENSE
+author: LazyPPL team
+maintainer: sam.staton@cs.ox.ac.uk
+copyright: 2021-2026 LazyPPL team
+stability: experimental
+homepage: https://lazyppl-team.github.io/
+github: lazyppl-team/lazyppl
+synopsis: Single-site Metropolis-Hastings for LazyPPL
+category: Statistics
+description: |
+  Single-site Metropolis-Hastings for LazyPPL. Import LazyPPL.SingleSite
+  to use mh1. The sampler discovers evaluated random choices through GHC's heap.
+extra-source-files: [ChangeLog.md]
+tested-with: [GHC == 9.6.7, GHC == 9.12.4, GHC == 9.14.1]
+dependencies:
+- base >= 4.18.3.0 && < 4.23
+- lazyppl >= 1.1 && < 1.2
+- random >= 1.3.1 && < 1.4
+- log-domain >= 0.13.2 && < 0.14
+- transformers >= 0.6.1.0 && < 0.7
+- containers >= 0.6.7 && < 0.9
+- deepseq >= 1.4.8.1 && < 1.6
+- ghc-heap >= 9.6.1 && < 9.15
+library:
+  source-dirs: src
+  exposed-modules: [LazyPPL.SingleSite, LazyPPL.SingleSite.Internal]
+  other-modules: []
+tests:
+  reverse-support-test:
+    main: Api.hs
+    source-dirs: test
+    other-modules: [ReverseSupport]
+    dependencies: [lazyppl-singlesite]
+  site-discovery-test:
+    main: SiteDiscovery.hs
+    source-dirs: test
+    other-modules: []
+    ghc-options: [-threaded, -rtsopts, '"-with-rtsopts=-T -A128M"']
+    dependencies: [lazyppl-singlesite, QuickCheck >= 2.14.2 && < 2.20]

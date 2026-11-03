@@ -1,0 +1,14 @@
+{
+  "name": "lazyppl-playground-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "pretest": "node ../../wasi/check-integrity.mjs",
+    "test": "playwright test",
+    "validators": "node build-validators.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "ajv": "8.20.0"
+  }
+}

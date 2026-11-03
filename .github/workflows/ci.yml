@@ -2,21 +2,34 @@ name: CI
 
 on:
   push:
-    branches: [master, 'upgrade/**']
+    branches: [master]
   pull_request:
     branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   generate-matrix:
     name: Generate GHC matrix
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - name: Generate matrix from tested-with
         id: matrix
-        uses: kleidukos/get-tested@v0.1.9.1
+        uses: kleidukos/get-tested@a55a250eac23bcc4bcd1cb22d77be61baea5a7e2 # v0.1.9.1
         with:
           cabal-file: lazyppl.cabal
           ubuntu: true
@@ -24,21 +37,25 @@ jobs:
   build:
     name: GHC ${{ matrix.ghc }} / ${{ matrix.os }}
     needs: generate-matrix
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
     strategy:
       matrix: ${{ fromJSON(needs.generate-matrix.outputs.matrix) }}
       fail-fast: false
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
-      - uses: haskell-actions/setup@v2
+      - name: Set up Haskell
+        uses: haskell-actions/setup@0f8e8c99d88aeb3fbfd523f1ef2c6f762d10d64d # v2
         id: setup
         with:
           ghc-version: ${{ matrix.ghc }}
           cabal-version: 'latest'
-
-      - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y liblapack-dev libblas-dev
 
       - name: Configure
         run: cabal configure --enable-tests --test-show-details=direct
@@ -47,7 +64,7 @@ jobs:
         run: cabal build all --dry-run
 
       - name: Restore cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         id: cache-restore
         with:
           path: ${{ steps.setup.outputs.cabal-store }}
@@ -60,7 +77,7 @@ jobs:
         run: cabal build all --only-dependencies
 
       - name: Save cache
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         if: steps.cache-restore.outputs.cache-hit != 'true'
         with:
           path: ${{ steps.setup.outputs.cabal-store }}
@@ -69,19 +86,40 @@ jobs:
       - name: Build
         run: cabal build all
 
+      - name: Build flag-gated native demos
+        run: cabal build -fdemos all
+
+      - name: Verify the seeded graph figure
+        if: matrix.ghc == '9.14.1'
+        run: |
+          output=$(cabal run -v0 -fdemos lazyppl-examples:exe:graph-sphere-exe)
+          printf '%s\n' "$output"
+          theta=$(printf '%s\n' "$output" | sed -n 's/^Theta: //p')
+          test -n "$theta"
+          python3 examples/test/check_graph_figure.py images/graph-sphere.html graph-sphere.csv "$theta"
+
       - name: Run tests
         run: cabal test all
 
       - name: Check hpack sync
         if: matrix.ghc == '9.6.7'
         run: |
-          cabal install hpack --overwrite-policy=always
-          hpack
-          git diff --exit-code lazyppl.cabal || (echo "lazyppl.cabal is out of sync with package.yaml" && exit 1)
+          curl -fL https://github.com/sol/hpack/releases/download/0.39.6/hpack_linux.gz -o /tmp/hpack_linux.gz
+          echo "217042ab6bbbd831dd887baaefdeebe70841f601bda22d9ce013a35e1a1f7467  /tmp/hpack_linux.gz" | sha256sum -c -
+          gzip -d -c /tmp/hpack_linux.gz > /tmp/hpack
+          chmod +x /tmp/hpack
+          /tmp/hpack .
+          /tmp/hpack singlesite
+          /tmp/hpack examples
+          git diff --exit-code lazyppl.cabal singlesite/lazyppl-singlesite.cabal examples/lazyppl-examples.cabal || (echo "Cabal files are out of sync with package.yaml" && exit 1)
 
       - name: cabal check
         if: matrix.ghc == '9.6.7'
-        run: cabal check
+        run: |
+          cabal check
+          (cd singlesite && cabal check)
+          (cd examples && cabal check)
+          (cd web/playground && cabal check)
 
       - name: Build documentation
         if: matrix.ghc == '9.6.7'
@@ -89,4 +127,148 @@ jobs:
 
       - name: Create source distribution
         if: matrix.ghc == '9.6.7'
-        run: cabal sdist
+        run: cabal sdist all
+
+  wasm-playground:
+    name: Build and test the browser artifact
+    runs-on: ubuntu-latest
+    # CI's original build allowance; covers the compiler install and browser verification.
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Set up native Haskell
+        uses: haskell-actions/setup@0f8e8c99d88aeb3fbfd523f1ef2c6f762d10d64d # v2
+        with:
+          # Match the release compiler and the recorded native reference.
+          ghc-version: '9.14.1'
+          cabal-version: '3.18.2.0'
+      - name: Install toolchain dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq unzip zstd
+      - name: Check committed playground source
+        run: |
+          if [ ! -f web/playground/build.json ] && [ ! -f web/playground/playground.wasm ]; then
+            echo 'Public source export has no committed playground artifacts'
+            exit 0
+          fi
+          test -f web/playground/build.json && test -f web/playground/playground.wasm
+          revision=$(jq -er '.source_revision' web/playground/build.json)
+          git diff --exit-code "$revision" HEAD -- src singlesite/src singlesite/lazyppl-singlesite.cabal examples/models examples/lazyppl-examples.cabal lazyppl.cabal web/playground/hs web/playground/lazyppl-browser.cabal web/playground/cabal.project web/playground/test/SingleSite.hs web/playground/test/Geometry.hs
+          printf '%s  %s\n' "$(jq -er '.wasm_sha256' web/playground/build.json)" web/playground/playground.wasm | sha256sum -c
+      - name: Install browser test dependencies
+        working-directory: web/playground
+        run: |
+          npm --prefix test ci
+          npx --prefix test playwright install --with-deps chromium
+      - name: Test committed playground
+        if: ${{ hashFiles('web/playground/build.json') != '' && hashFiles('web/playground/playground.wasm') != '' }}
+        working-directory: web/playground
+        run: |
+          committed=$(mktemp -d)
+          cp index.html ./*.js ./*.css playground.wasm "$committed/"
+          cp -a ../wasi "$committed/wasi"
+          LAZYPPL_PLAYGROUND_ROOT="$committed" npm --prefix test test -- --grep 'real WebAssembly worker|compiled worker exports'
+      - name: Build both targets and stage playground
+        env:
+          SOURCE_REVISION: ${{ github.sha }}
+          GHC_WASM_PREFIX: ${{ runner.temp }}/ghc-wasm
+        run: bash web/playground/test/build-playground.sh
+      - name: Test the staged browser directory
+        working-directory: web/playground
+        env:
+          LAZYPPL_PLAYGROUND_ROOT: ${{ github.workspace }}/web/playground/dist-playground
+        run: |
+          npm --prefix test test
+          cd dist-playground
+          sha256sum -c SHA256SUMS
+      - name: Upload tested playground
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4; immutable directory after all checks pass.
+        with:
+          name: lazyppl-playground
+          path: web/playground/dist-playground/
+          include-hidden-files: true
+          if-no-files-found: error
+
+  literate-pages:
+    name: Example pages keep their code
+    needs: wasm-playground
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Checkout lazyppl_physics
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: lazyppl-team/lazyppl_physics
+          # Pinned so that a change in that repository cannot break this repository's page checks; move the ref when the Physics page is updated.
+          ref: f166b3f6429e055ba3b9b7e4ea12774bf48f6176
+          path: lazyppl_physics
+          persist-credentials: false
+      - name: Checkout the published site
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: lazyppl-team/lazyppl-team.github.io
+          # Read-only. Pinned so that the site this check starts from does not change under this repository; move the ref
+          # to the current head of the site when the site changes. website.yml checks the site at its current head.
+          ref: 08e08829f2fb4d1edc0a93d9eeb2e58ce6d68ae5
+          path: lazyppl-team.github.io
+          persist-credentials: false
+      - name: Download tested playground
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4; same immutable artifact as browser tests.
+        with:
+          name: lazyppl-playground
+          path: tested-playground
+      - name: Set up Pandoc
+        uses: nikeee/setup-pandoc@96d7406a408cae3f939dfe9222420c5b9ff9cfbb # v1
+        with:
+          # 3.12.1 is the version that wrote test/golden; a newer pandoc can change the snapshots.
+          pandoc-version: '3.12.1'
+      - name: Audit workflows with actionlint and zizmor
+        run: |
+          curl -fL https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz -o /tmp/actionlint.tar.gz
+          echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  /tmp/actionlint.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/actionlint.tar.gz -C /tmp actionlint
+          chmod +x /tmp/actionlint
+          /tmp/actionlint
+          curl -fL https://github.com/zizmorcore/zizmor/releases/download/v1.31.1/zizmor-x86_64-unknown-linux-gnu.tar.gz -o /tmp/zizmor.tar.gz
+          echo "d185f726bdaf92df78273217dfdd24ebcd6b0ef48cf3ce776ff5762b6e138c99  /tmp/zizmor.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/zizmor.tar.gz -C /tmp zizmor
+          chmod +x /tmp/zizmor
+          /tmp/zizmor --persona pedantic .github/workflows/
+      - name: Check example page snapshots
+        env:
+          LAZYPPL_PLAYGROUND_DIR: ${{ github.workspace }}/tested-playground
+          LAZYPPL_SOURCE_REVISION: ${{ github.sha }}
+          LAZYPPL_PHYSICS_DIR: ${{ github.workspace }}/lazyppl_physics
+          LAZYPPL_SITE_BASE: ${{ github.workspace }}/lazyppl-team.github.io
+          LAZYPPL_PAGE_LIST: ${{ runner.temp }}/pages.txt
+        run: |
+          bash pandoc/golden.sh check
+          bash generate_website.sh
+      - name: Test website generation and publication
+        # The publisher against local Git repositories, and the generated site against the tested artifact.
+        env:
+          LAZYPPL_PLAYGROUND_DIR: ${{ github.workspace }}/tested-playground
+          LAZYPPL_SOURCE_REVISION: ${{ github.sha }}
+        run: |
+          npm --prefix web/playground/test ci
+          npx --prefix web/playground/test playwright install --with-deps chromium
+          pipx run .github/workflows/test-publication.py
+          python3 .github/workflows/test-playground-publication.py
+      - name: Check example page links
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
+        with:
+          args: --offline --no-progress --files-from ${{ runner.temp }}/pages.txt
+          output: /tmp/lychee-out.md

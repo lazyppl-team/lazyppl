@@ -18,8 +18,8 @@ Restaurant, Table, newRestaurant, newCustomer,
 -- * Random distribution interface
 dp) where
 
-import Data.List
-import Data.Maybe
+import Data.Coerce (coerce)
+import qualified Numeric.Sum as Sum
 import LazyPPL
 import LazyPPL.Distributions
 import LazyPPL.Distributions.Memoization (MonadMemo)
@@ -33,35 +33,41 @@ newtype Table = T Int deriving (Eq, Show, MonadMemo Prob)
 
 {-| A customer enters the restaurant and is assigned a table. -}
 newCustomer :: Restaurant -> Prob Table
-newCustomer (R restaurant) =
-  do
-    r <- uniform
-    return $ T $ fromJust $ findIndex (> r) (scanl1 (+) restaurant)
+-- Coercing the newtype preserves categorical's random-tree allocation.
+newCustomer (R restaurant) = coerce (categorical restaurant)
 
-{-| Create a new restaurant with concentration parameter alpha. -}
+{-| Create a new restaurant with concentration parameter alpha, which may be any finite positive number; other values raise an error. -}
 newRestaurant :: Double -- ^ Concentration parameter, alpha
               -> Prob Restaurant
-newRestaurant alpha = do
-  sticks <- stickBreaking alpha 0
-  return $ R sticks
+newRestaurant alpha
+  | not (concentration alpha) = error ("newRestaurant: the concentration alpha must be finite and positive, got " ++ show alpha)
+  | otherwise = do
+      sticks <- stickBreaking alpha Sum.zero
+      return $ R sticks
+
+-- | Whether alpha is a concentration that beta 1 alpha takes: finite and positive.
+concentration :: Double -> Bool
+concentration alpha = alpha > 0 && not (isInfinite alpha)
 
 {- | Stick breaking breaks the unit interval into an
     infinite number of parts (lazily) --}
-stickBreaking :: Double -> Double -> Prob [Double]
+stickBreaking :: Double -> Sum.KBNSum -> Prob [Double]
 stickBreaking alpha lower =
   do
     r <- beta 1 alpha
-    let v = r * (1 - lower)
-    vs <- stickBreaking alpha (lower + v)
+    let v = r * (1 - Sum.kbn lower)
+    vs <- stickBreaking alpha (Sum.add lower v)
     return (v : vs)
 
-{-| [Dirichlet Process](https://en.wikipedia.org/wiki/Dirichlet_process) as a random distribution. -}
+{-| [Dirichlet Process](https://en.wikipedia.org/wiki/Dirichlet_process) as a random distribution. The concentration alpha may be any finite positive number; other values raise an error. -}
 dp :: Double -- ^ Concentration parameter, alpha
    -> Prob a -- ^ Base distribution
    -> Prob (Prob a)
-dp alpha p = do
-  xs <- iid p
-  vs <- stickBreaking alpha 0
-  return $ do
-    r <- uniform
-    return $ xs !! fromJust (findIndex (> r) (scanl1 (+) vs))
+dp alpha p
+  | not (concentration alpha) = error ("dp: the concentration alpha must be finite and positive, got " ++ show alpha)
+  | otherwise = do
+      xs <- iid p
+      vs <- stickBreaking alpha Sum.zero
+      -- Prob's fmap adds a tree split. Map this result on the same tree so the
+      -- shared selector also preserves the existing fixed-seed distribution.
+      return $ Prob $ \tree -> xs !! runProb (categorical vs) tree

@@ -18,13 +18,12 @@ $endif$
 $if(description-meta)$
   <meta name="description" content="$description-meta$" />
 $endif$
-  <!-- Google Fonts (with preconnect for performance) -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&family=Lora:wght@400;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
-  <!-- Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+$-- Fonts and icons come from the site's assets/ folder (copied from pandoc/assets by generate_website.sh), not from a CDN.
+  <link rel="stylesheet" href="assets/fonts/fonts.css">
+  <link rel="stylesheet" href="assets/fontawesome/css/fontawesome.min.css">
+  <link rel="stylesheet" href="assets/fontawesome/css/solid.min.css">
+  <link rel="stylesheet" href="assets/fontawesome/css/brands.min.css">
+  <link rel="stylesheet" href="assets/academicons/css/academicons.min.css">
   <title>$if(title-prefix)$$title-prefix$ – $endif$$pagetitle$</title>
   <!-- Theme initialization (prevents flash) -->
   <!-- Three-state: system (default), light, dark -->
@@ -49,11 +48,10 @@ $for(header-includes)$
   $header-includes$
 $endfor$
 $if(math)$
-  $math$
+$-- MathJax is loaded here, not through $math$: pandoc's own tag follows the latest 4.x and has no integrity attribute.
+$-- To update, see "Math" in pandoc/README.md.
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@4.1.3/tex-chtml.js" integrity="sha384-IgpmJyK7IVIVd18E1Ubslp9a1s6/6VBt9aJFbpzNIJPPMaxwEV7OxR/xY0hHbSck" crossorigin="anonymous" id="MathJax-script" async></script>
 $endif$
-  <!--[if lt IE 9]>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
-  <![endif]-->
 </head>
 <body>
   $lazypplnav.html()$
@@ -214,46 +212,6 @@ $endfor$
           });
         }
       });
-    });
-
-    // Wrap orphan text nodes in <p> tags for proper spacing
-    // Pandoc's literate Haskell output sometimes has unwrapped text content
-    document.addEventListener('DOMContentLoaded', function() {
-      var body = document.body;
-      var blockTags = ['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'UL', 'OL', 'LI',
-                       'TABLE', 'BLOCKQUOTE', 'PRE', 'FIGURE', 'NAV', 'HEADER', 'FOOTER',
-                       'SECTION', 'ARTICLE', 'ASIDE', 'DETAILS', 'HR', 'FORM', 'IMG'];
-      var children = Array.from(body.childNodes);
-      var pendingContent = [];
-
-      function flushPending() {
-        if (pendingContent.length === 0) return;
-        var hasText = pendingContent.some(function(n) {
-          return n.nodeType === Node.TEXT_NODE && n.textContent.trim().length > 0;
-        });
-        if (hasText) {
-          var p = document.createElement('p');
-          var firstNode = pendingContent[0];
-          body.insertBefore(p, firstNode);
-          pendingContent.forEach(function(n) { p.appendChild(n); });
-        }
-        pendingContent = [];
-      }
-
-      children.forEach(function(node) {
-        if (node.nodeType === Node.TEXT_NODE) {
-          if (node.textContent.trim().length > 0) {
-            pendingContent.push(node);
-          }
-        } else if (node.nodeType === Node.ELEMENT_NODE) {
-          if (blockTags.indexOf(node.tagName) !== -1 || node.tagName === 'SCRIPT') {
-            flushPending();
-          } else {
-            pendingContent.push(node);
-          }
-        }
-      });
-      flushPending();
     });
 
     // Copy button for code blocks

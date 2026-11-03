@@ -1,0 +1,26 @@
+:root{color-scheme:light dark;font-family:system-ui,sans-serif;--ink:light-dark(oklch(25% .03 250),oklch(91% .01 240));--page:light-dark(oklch(98% .005 230),oklch(19% .02 250));--panel:light-dark(oklch(100% 0 none),oklch(23% .02 250));--border:light-dark(oklch(87% .02 230),oklch(43% .03 230));--accent:light-dark(oklch(42% .09 210),oklch(75% .1 210));--button-ink:light-dark(oklch(100% 0 none),oklch(18% .02 250));color:var(--ink);background:var(--page)}
+*{box-sizing:border-box;min-inline-size:0}
+body{margin:0}
+main{max-inline-size:64rem;margin-inline:auto;padding-inline:clamp(1rem,.5rem + 2vw,3rem);padding-block:2rem}
+h1{font-size:clamp(1.8rem,1.5rem + 1vw,2.5rem);font-weight:650;line-height:1.2}
+h2{font-size:1.35rem}
+a{color:var(--accent)}
+section{background:var(--panel);border:1px solid var(--border);border-radius:.75rem;padding:clamp(1rem,.8rem + 1vw,2rem);margin-block:1.5rem}
+label{display:inline-flex;align-items:center;flex-wrap:wrap;gap:.6rem;margin-inline-end:1rem;margin-block-end:.7rem}
+input,button{font:inherit;font-size:max(16px,1rem);min-block-size:2.75rem;border-radius:.35rem}
+input{inline-size:7rem;border:1px solid oklch(60% .03 230);padding-inline:.6rem}
+button{color:var(--button-ink);background:var(--accent);border:0;padding-inline:1rem;cursor:pointer}
+button:disabled{opacity:.6;cursor:wait}
+button:active{background:color-mix(in oklch,var(--accent),var(--ink) 20%)}
+:focus-visible{outline:3px solid oklch(55% .14 70);outline-offset:3px}
+@media(hover:hover) and (pointer:fine){button:hover{background:color-mix(in oklch,var(--accent),var(--ink) 12%)}}
+pre{font-size:.9rem;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5}
+svg{display:block;inline-size:100%;block-size:auto;margin-block-start:1rem;overflow:clip}
+.axis{stroke:var(--ink);stroke-width:1}
+.posterior{stroke:var(--accent);stroke-opacity:.015;stroke-width:1;fill:none}
+.function-draw{stroke:var(--accent);stroke-opacity:.3;stroke-width:1.2;fill:none}
+@media(prefers-color-scheme:dark){.function-draw{stroke-opacity:.75}}
+.predictive{fill:var(--accent);fill-opacity:.15;stroke:none}
+.observation{fill:var(--ink);stroke:var(--panel);stroke-width:1}
+.axis-label{fill:var(--ink);font:26px system-ui,sans-serif}
+.point-label{fill:var(--ink);font:16px system-ui,sans-serif}

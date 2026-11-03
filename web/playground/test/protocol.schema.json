@@ -1,0 +1,387 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "protocol",
+  "$comment": "What hs/Main.hs prints for each demo, after protocol.js has collected the JSON lines into one array per record kind (the key is the record kind followed by s). Each demo has one result definition below. A count here is a fact about the demo's dataset or grid; relations between records and the request are in protocol.js. Keep this file free of keywords that make Ajv's standalone output import runtime helpers (uniqueItems, minLength, format, enum or const with objects); test/build-validators.mjs fails the build if the output imports anything.",
+  "$defs": {
+    "timings": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["kind", "elapsed_ms"],
+        "additionalProperties": false,
+        "properties": {
+          "kind": { "const": "timing" },
+          "elapsed_ms": { "type": "number", "minimum": 0 }
+        }
+      }
+    },
+    "observations": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "required": ["kind", "x", "y"],
+        "additionalProperties": false,
+        "properties": {
+          "kind": { "const": "observation" },
+          "x": { "type": "number" },
+          "y": { "type": "number" }
+        }
+      }
+    },
+    "grid": {
+      "type": "array",
+      "minItems": 31,
+      "maxItems": 31,
+      "items": { "type": "number" }
+    },
+    "flags": {
+      "type": "array",
+      "items": { "type": "integer", "minimum": 0, "maximum": 1 }
+    },
+    "unitInterval": { "type": "number", "minimum": 0, "maximum": 1 },
+    "index": { "type": "integer", "minimum": 0 },
+    "logLikelihood": {
+      "$comment": "The natural logarithm of the retained sample's Metropolis-Hastings weight: the likelihood of the observations given this posterior function, because these demos score only observations and no prior term. JSON has no infinities, so the value is finite.",
+      "type": "number"
+    },
+
+    "poisson": {
+      "type": "object",
+      "required": ["samples", "traces", "timings"],
+      "additionalProperties": false,
+      "properties": {
+        "traces": {
+          "type": "array", "minItems": 1, "maxItems": 1,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["kind", "count", "points", "next_point", "addresses", "uniforms"],
+            "properties": {
+              "kind": { "const": "trace" },
+              "count": { "$ref": "#/$defs/index" },
+              "points": { "type": "array", "items": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1 } },
+              "next_point": { "type": "number", "minimum": 1 },
+              "addresses": { "type": "array", "minItems": 1, "items": { "type": "array", "items": { "$ref": "#/$defs/index" } } },
+              "uniforms": { "type": "array", "minItems": 1, "items": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1 } }
+            }
+          }
+        },
+        "samples": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["kind", "count", "frequency"],
+            "additionalProperties": false,
+            "properties": {
+              "kind": { "const": "sample" },
+              "count": { "$ref": "#/$defs/index" },
+              "frequency": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 }
+            }
+          }
+        },
+        "timings": { "$ref": "#/$defs/timings" }
+      }
+    },
+
+    "regression": {
+      "type": "object",
+      "required": ["observations", "samples", "timings"],
+      "additionalProperties": false,
+      "properties": {
+        "observations": { "$ref": "#/$defs/observations" },
+        "samples": {
+          "type": "array",
+          "minItems": 1000,
+          "maxItems": 1000,
+          "items": {
+            "type": "object",
+            "required": ["kind", "draw", "f0", "f6", "predictive", "log_likelihood"],
+            "additionalProperties": false,
+            "properties": {
+              "kind": { "const": "sample" },
+              "draw": { "$ref": "#/$defs/index" },
+              "f0": { "type": "number" },
+              "f6": { "type": "number" },
+              "predictive": { "$ref": "#/$defs/grid" },
+              "log_likelihood": { "$ref": "#/$defs/logLikelihood" }
+            }
+          }
+        },
+        "timings": { "$ref": "#/$defs/timings" }
+      }
+    },
+
+    "piecewise": {
+      "type": "object",
+      "required": ["observations", "samples", "timings"],
+      "additionalProperties": false,
+      "properties": {
+        "observations": { "$ref": "#/$defs/observations" },
+        "samples": {
+          "type": "array", "minItems": 1,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["kind", "draw", "change_points", "pieces", "values", "log_likelihood"],
+            "properties": {
+              "kind": { "const": "sample" },
+              "draw": { "$ref": "#/$defs/index" },
+              "change_points": { "type": "array", "items": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 6 } },
+              "pieces": {
+                "type": "array", "minItems": 1,
+                "items": {
+                  "type": "object", "additionalProperties": false,
+                  "required": ["x_lower", "x_upper", "y_lower", "y_upper"],
+                  "properties": {
+                    "x_lower": { "type": "number", "minimum": 0, "maximum": 6 },
+                    "x_upper": { "type": "number", "minimum": 0, "maximum": 6 },
+                    "y_lower": { "type": "number" },
+                    "y_upper": { "type": "number" }
+                  }
+                }
+              },
+              "values": { "$ref": "#/$defs/grid" },
+              "log_likelihood": { "$ref": "#/$defs/logLikelihood" }
+            }
+          }
+        },
+        "timings": { "$ref": "#/$defs/timings" }
+      }
+    },
+
+    "gp": {
+      "type": "object",
+      "required": ["observations", "samples", "timings"],
+      "additionalProperties": false,
+      "properties": {
+        "observations": { "$ref": "#/$defs/observations" },
+        "samples": { "$ref": "#/$defs/curveSamples" },
+        "timings": { "$ref": "#/$defs/timings" }
+      }
+    },
+    "wiener": {
+      "type": "object",
+      "required": ["observations", "samples", "timings"],
+      "additionalProperties": false,
+      "properties": {
+        "observations": { "$ref": "#/$defs/observations" },
+        "samples": { "$ref": "#/$defs/curveSamples" },
+        "timings": { "$ref": "#/$defs/timings" }
+      }
+    },
+    "curveSamples": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["kind", "draw", "values", "log_likelihood"],
+        "additionalProperties": false,
+        "properties": {
+          "kind": { "const": "sample" },
+          "draw": { "$ref": "#/$defs/index" },
+          "values": { "$ref": "#/$defs/grid" },
+          "log_likelihood": { "$ref": "#/$defs/logLikelihood" }
+        }
+      }
+    },
+
+    "clustering": {
+      "type": "object",
+      "required": ["samples", "timings"],
+      "additionalProperties": false,
+      "properties": {
+        "samples": {
+          "type": "array",
+          "minItems": 10,
+          "maxItems": 10,
+          "items": {
+            "type": "object",
+            "required": ["kind", "point", "x", "y", "cluster", "centre_x", "centre_y", "sigma"],
+            "additionalProperties": false,
+            "properties": {
+              "kind": { "const": "sample" },
+              "point": { "$ref": "#/$defs/index" },
+              "x": { "type": "number" },
+              "y": { "type": "number" },
+              "cluster": { "type": "number" },
+              "centre_x": { "type": "number" },
+              "centre_y": { "type": "number" },
+              "sigma": { "type": "number", "exclusiveMinimum": 0 }
+            }
+          }
+        },
+        "timings": { "$ref": "#/$defs/timings" }
+      }
+    },
+
+    "irm": {
+      "type": "object",
+      "required": ["samples", "timings"],
+      "additionalProperties": false,
+      "properties": {
+        "samples": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "items": {
+            "type": "object",
+            "required": ["kind", "person", "label", "probabilities"],
+            "additionalProperties": false,
+            "properties": {
+              "kind": { "const": "sample" },
+              "person": { "$ref": "#/$defs/index" },
+              "label": { "type": "string" },
+              "probabilities": {
+                "type": "array",
+                "minItems": 6,
+                "maxItems": 6,
+                "items": { "$ref": "#/$defs/unitInterval" }
+              }
+            }
+          }
+        },
+        "timings": { "$ref": "#/$defs/timings" }
+      }
+    },
+
+    "program": {
+      "type": "object",
+      "required": ["observations", "expressions", "samples", "timings"],
+      "additionalProperties": false,
+      "properties": {
+        "observations": { "$ref": "#/$defs/observations" },
+        "expressions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["kind", "program", "expression", "observation_values", "log_likelihood"],
+            "additionalProperties": false,
+            "properties": {
+              "kind": { "const": "expression" },
+              "program": { "$ref": "#/$defs/index" },
+              "expression": { "type": "string" },
+              "observation_values": { "type": "array", "minItems": 7, "maxItems": 7, "items": { "type": "number" } },
+              "log_likelihood": { "$ref": "#/$defs/logLikelihood" }
+            }
+          }
+        },
+        "samples": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": ["kind", "program", "x", "y"],
+            "additionalProperties": false,
+            "properties": {
+              "kind": { "const": "sample" },
+              "program": { "$ref": "#/$defs/index" },
+              "x": { "type": "number" },
+              "y": { "type": "number" }
+            }
+          }
+        },
+        "timings": { "$ref": "#/$defs/timings" }
+      }
+    },
+
+    "ibp": {
+      "type": "object",
+      "required": ["samples", "timings"],
+      "additionalProperties": false,
+      "properties": {
+        "samples": {
+          "type": "array",
+          "minItems": 16,
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "required": ["kind", "country", "label", "features"],
+            "additionalProperties": false,
+            "properties": {
+              "kind": { "const": "sample" },
+              "country": { "$ref": "#/$defs/index" },
+              "label": { "type": "string" },
+              "features": { "$ref": "#/$defs/flags" }
+            }
+          }
+        },
+        "timings": { "$ref": "#/$defs/timings" }
+      }
+    },
+
+    "graph": {
+      "type": "object",
+      "required": ["graph_stats", "samples", "timings"],
+      "additionalProperties": false,
+      "properties": {
+        "graph_stats": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["kind", "matches", "theta"],
+            "additionalProperties": false,
+            "properties": {
+              "kind": { "const": "graph_stat" },
+              "matches": { "$ref": "#/$defs/index" },
+              "theta": { "type": "number", "minimum": 0 }
+            }
+          }
+        },
+        "samples": {
+          "type": "array",
+          "minItems": 15,
+          "maxItems": 15,
+          "items": {
+            "type": "object",
+            "required": ["kind", "vertex", "edges"],
+            "additionalProperties": false,
+            "properties": {
+              "kind": { "const": "sample" },
+              "vertex": { "$ref": "#/$defs/index" },
+              "edges": {
+                "type": "array",
+                "minItems": 15,
+                "maxItems": 15,
+                "items": { "type": "integer", "minimum": 0, "maximum": 1 }
+              }
+            }
+          }
+        },
+        "timings": { "$ref": "#/$defs/timings" }
+      }
+    },
+
+    "mondrian": {
+      "type": "object",
+      "required": ["samples", "timings"],
+      "additionalProperties": false,
+      "properties": {
+        "samples": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["kind", "block", "x_lower", "x_upper", "y_lower", "y_upper", "value"],
+            "additionalProperties": false,
+            "properties": {
+              "kind": { "const": "sample" },
+              "block": { "$ref": "#/$defs/index" },
+              "x_lower": { "$ref": "#/$defs/unitInterval" },
+              "x_upper": { "$ref": "#/$defs/unitInterval" },
+              "y_lower": { "$ref": "#/$defs/unitInterval" },
+              "y_upper": { "$ref": "#/$defs/unitInterval" },
+              "value": { "$ref": "#/$defs/unitInterval" }
+            }
+          }
+        },
+        "timings": { "$ref": "#/$defs/timings" }
+      }
+    }
+  }
+}

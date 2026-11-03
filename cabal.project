@@ -1,0 +1,7 @@
+-- Root native Cabal project for lazyppl, lazyppl-singlesite, and lazyppl-examples.
+-- The WebAssembly browser playground in web/playground/ uses its own standalone
+-- web/playground/cabal.project (which includes ../.., ../../singlesite, ../../examples, and .).
+packages: . singlesite examples
+-- Resolve against the Hackage index of the release build, so the same versions are chosen until it is moved.
+index-state: 2026-10-26T00:00:00Z
+jobs: $ncpus

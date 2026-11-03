@@ -1,0 +1,15 @@
+packages:
+  ../..
+  ../../singlesite
+  ../../examples
+  .
+
+index-state: 2026-10-26T00:00:00Z
+
+optimization: 2
+
+package lazyppl
+  ghc-options: -DLAZYPPL_BROWSER
+
+package lazyppl-singlesite
+  ghc-options: -DLAZYPPL_BROWSER

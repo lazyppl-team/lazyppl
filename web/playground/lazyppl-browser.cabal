@@ -1,0 +1,49 @@
+cabal-version: 3.0
+name: lazyppl-browser
+version: 0.1.0.0
+synopsis: Browser playground executable for LazyPPL
+description: WebAssembly playground executable for running LazyPPL example models in the browser.
+category: Statistics
+author: LazyPPL team
+maintainer: sam.staton@cs.ox.ac.uk
+build-type: Simple
+license: MIT
+
+executable playground
+  main-is: Main.hs
+  hs-source-dirs: hs
+  build-depends:
+    base >=4.18.3.0 && <4.23,
+    random >=1.3.1 && <1.4,
+    lazyppl ==1.1.*,
+    lazyppl-singlesite ==0.1.*,
+    lazyppl-examples ==0.1.*,
+    log-domain >=0.13.2 && <0.14,
+    array >=0.5.8.0 && <0.6,
+    aeson >=2.2 && <2.3,
+    bytestring >=0.11 && <0.13,
+    deepseq >=1.4.8.1 && <1.6
+  default-language: Haskell2010
+  ghc-options: -rtsopts
+  if arch(wasm32)
+    ghc-options: -optl-Wl,--strip-all
+
+test-suite single-site-test
+  type: exitcode-stdio-1.0
+  main-is: SingleSite.hs
+  hs-source-dirs: test
+  build-depends:
+    base >=4.18.3.0 && <4.23,
+    random >=1.3.1 && <1.4,
+    lazyppl ==1.1.*,
+    lazyppl-singlesite ==0.1.*
+  default-language: Haskell2010
+
+test-suite geometric-graph-test
+  type: exitcode-stdio-1.0
+  main-is: Geometry.hs
+  hs-source-dirs: test
+  build-depends:
+    base >=4.18.3.0 && <4.23,
+    lazyppl-examples ==0.1.*
+  default-language: Haskell2010

@@ -74,6 +74,20 @@
   --shadow-sm: 0 2px 4px rgba(26, 39, 68, 0.06);
   --shadow-md: 0 4px 12px rgba(26, 39, 68, 0.08);
   --shadow-lg: 0 12px 32px rgba(26, 39, 68, 0.12);
+
+  /* Code block shadows (the dark values are in the dark blocks below) */
+  --code-shadow: 0 1px 3px rgba(26, 39, 68, 0.04);
+  --code-glow: none;
+}
+
+/* The theme choice sets color-scheme, so light-dark() colours and the browser's own widgets follow the choice.
+   With no choice (System) there is no attribute and :root's "light dark" follows the operating system. */
+[data-theme="light"] {
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 /* Dark mode */
@@ -99,8 +113,10 @@
 
   /* Code blocks */
   --code-bg: linear-gradient(135deg, #1a2028 0%, #151a21 100%);
-  --code-border: #252d36;
+  --code-border: rgba(42, 49, 58, 0.8);
   --code-accent: linear-gradient(90deg, #4a8fa4 0%, #5a9fb4 100%);
+  --code-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(102, 181, 204, 0.05), 0 0 0 1px rgba(42, 49, 58, 0.6);
+  --code-glow: 0 0 12px rgba(102, 181, 204, 0.15);
 
   /* Shadows */
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
@@ -138,8 +154,10 @@
     --link-hover: #85c7db;
     --accent-warm: #c49a6c;
     --code-bg: linear-gradient(135deg, #1a2028 0%, #151a21 100%);
-    --code-border: #252d36;
+    --code-border: rgba(42, 49, 58, 0.8);
     --code-accent: linear-gradient(90deg, #4a8fa4 0%, #5a9fb4 100%);
+    --code-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(102, 181, 204, 0.05), 0 0 0 1px rgba(42, 49, 58, 0.6);
+    --code-glow: 0 0 12px rgba(102, 181, 204, 0.15);
     --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.6), 0 6px 16px rgba(0, 0, 0, 0.5);
@@ -270,12 +288,11 @@ body > *:last-of-type:not(.site-footer):not(.navbar) {
 /* ==========================================================================
    Content Flow - Handle Pandoc Literate Haskell Output
 
-   Pandoc generates raw text nodes (not wrapped in <p>) when text is
-   adjacent to code blocks. CSS cannot style text nodes directly, so we
-   ensure proper spacing on block elements and use flow spacing.
+   Pandoc reads text that sits directly above a code block as Plain and
+   writes it without <p>; pandoc/paragraphs.lua turns it into a paragraph.
+   Spacing is set on the block elements and by flow spacing.
    ========================================================================== */
 
-/* Ensure body has proper line-height for raw text nodes */
 body {
   line-height: var(--line-height-body);
 }
@@ -288,7 +305,6 @@ div.sourceCode, pre, blockquote, ul, ol, dl, figure, table, details {
   margin-bottom: var(--space-md);
 }
 
-/* Add padding to code blocks so raw text around them has visual space */
 div.sourceCode {
   padding-top: 0;
   margin: var(--space-md) auto;
@@ -594,21 +610,7 @@ div.sourceCode {
   border: 1px solid var(--code-border);
   border-radius: var(--radius-md);
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(26, 39, 68, 0.04);
-}
-
-/* Dark mode code blocks */
-[data-theme="dark"] div.sourceCode {
-  box-shadow:
-    0 4px 16px rgba(0, 0, 0, 0.5),
-    0 2px 6px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(102, 181, 204, 0.05),
-    0 0 0 1px rgba(42, 49, 58, 0.6);
-  border-color: rgba(42, 49, 58, 0.8);
-}
-
-[data-theme="dark"] div.sourceCode::before {
-  box-shadow: 0 0 12px rgba(102, 181, 204, 0.15);
+  box-shadow: var(--code-shadow);
 }
 
 /* Custom scrollbar for code blocks */
@@ -644,6 +646,7 @@ div.sourceCode::before {
   width: 3px;
   background: var(--teal-400);
   opacity: 0.7;
+  box-shadow: var(--code-glow);
 }
 
 div.sourceCode pre {
@@ -657,67 +660,38 @@ div.sourceCode pre {
   overflow: visible;
 }
 
-/* Syntax highlighting - Haskell (!important overrides Pandoc) */
-/* Light mode colors - WCAG AA compliant (≥4.5:1 contrast on #fafcfd) */
-code span.kw { color: #7c3aed !important; font-weight: 600 !important; } /* Keywords: purple (5.54:1) */
-code span.dt { color: #0e7490 !important; font-weight: 500 !important; } /* Data types: darker cyan (4.89:1) */
-code span.fu { color: #2563eb !important; } /* Functions: blue (5.02:1) */
-code span.op { color: #dc2626 !important; } /* Operators: red (4.69:1) */
-code span.st { color: #15803d !important; } /* Strings: darker green (4.87:1) */
-code span.dv { color: #b45309 !important; } /* Numbers: darker amber (4.74:1) */
-code span.co { color: #6b7280 !important; font-style: italic !important; } /* Comments: gray (4.70:1) */
-code span.ot { color: #7c3aed !important; } /* Other/Pragma: purple */
-code span.al { color: #dc2626 !important; font-weight: bold !important; } /* Alert */
-code span.an { color: #6b7280 !important; font-style: italic !important; } /* Annotation */
-code span.at { color: #0e7490 !important; } /* Attribute: darker cyan */
-code span.bn { color: #b45309 !important; } /* BaseN: darker amber */
-code span.cf { color: #7c3aed !important; font-weight: 600 !important; } /* ControlFlow */
-code span.ch { color: #15803d !important; } /* Char: darker green */
-code span.cn { color: #b45309 !important; } /* Constant: darker amber */
-code span.er { color: #dc2626 !important; font-weight: bold !important; } /* Error */
-code span.ex { } /* Extension */
-code span.fl { color: #b45309 !important; } /* Float: darker amber */
-code span.im { color: #2563eb !important; } /* Import */
-code span.in { color: #6b7280 !important; font-style: italic !important; } /* Information */
-code span.pp { color: #7c3aed !important; } /* Preprocessor */
-code span.sc { color: #15803d !important; } /* SpecialChar: darker green */
-code span.ss { color: #15803d !important; } /* SpecialString: darker green */
-code span.va { color: var(--text) !important; } /* Variable */
-code span.vs { color: #15803d !important; } /* VerbatimString: darker green */
-code span.wa { color: #b45309 !important; font-style: italic !important; } /* Warning: darker amber */
-
-/* Dark mode syntax highlighting */
-[data-theme="dark"] code span.kw { color: #b5a3dc; } /* Keywords: muted lavender */
-[data-theme="dark"] code span.dt { color: #7bc4d4; } /* Data types: soft teal-cyan */
-[data-theme="dark"] code span.fu { color: #8db4d8; } /* Functions: soft blue */
-[data-theme="dark"] code span.op { color: #d89b9b; } /* Operators: muted coral */
-[data-theme="dark"] code span.st { color: #a8cc9c; } /* Strings: soft sage */
-[data-theme="dark"] code span.dv { color: #e6c179; } /* Numbers: warm amber */
-[data-theme="dark"] code span.co { color: #7a8694; font-style: italic; } /* Comments: neutral gray */
-[data-theme="dark"] code span.ot { color: #b89cd9; } /* Other/Pragma: soft purple */
-[data-theme="dark"] code span.at { color: #7bc4d4; } /* Attributes: teal */
-[data-theme="dark"] code span.bn { color: #e6c179; } /* BaseN: amber */
-
-/* System dark mode: code blocks and syntax highlighting */
-@media (prefers-color-scheme: dark) {
-  html:not([data-theme="light"]) div.sourceCode {
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(102, 181, 204, 0.05), 0 0 0 1px rgba(42, 49, 58, 0.6) !important;
-    border-color: rgba(42, 49, 58, 0.8) !important;
-  }
-  html:not([data-theme="light"]) div.sourceCode::before {
-    box-shadow: 0 0 12px rgba(102, 181, 204, 0.15) !important;
-  }
-  html:not([data-theme="light"]) code span.kw { color: #b5a3dc !important; }
-  html:not([data-theme="light"]) code span.dt { color: #7bc4d4 !important; }
-  html:not([data-theme="light"]) code span.fu { color: #8db4d8 !important; }
-  html:not([data-theme="light"]) code span.op { color: #d89b9b !important; }
-  html:not([data-theme="light"]) code span.st { color: #a8cc9c !important; }
-  html:not([data-theme="light"]) code span.dv { color: #e6c179 !important; }
-  html:not([data-theme="light"]) code span.co { color: #7a8694 !important; font-style: italic; }
-  html:not([data-theme="light"]) code span.ot { color: #b89cd9 !important; }
-  html:not([data-theme="light"]) code span.at { color: #7bc4d4 !important; }
-  html:not([data-theme="light"]) code span.bn { color: #e6c179 !important; }
-}
+/* Syntax highlighting - Haskell. One palette: light-dark(light, dark) picks the first colour in the light scheme and the
+   second in the dark one; color-scheme (see the theme choice above) decides, so an explicit choice and the system
+   setting give the same colours. Needs Chrome/Edge 123, Firefox 120 or Safari 17.5; older browsers show the text colour.
+   Light colours are WCAG AA (>=4.5:1 on #fafcfd). Classes with one colour have no dark counterpart yet.
+   The selectors are one class more specific than pandoc's own rules (code span.kw and so on), which the highlighting-css
+   template variable inserts further down this file, so these win without !important. This file is a pandoc template
+   partial: write no dollar sign followed by a variable name in a comment, because pandoc fills it in. */
+code.sourceCode span.kw { color: light-dark(#7c3aed, #b5a3dc); font-weight: 600; } /* Keywords: purple (5.54:1) */
+code.sourceCode span.dt { color: light-dark(#0e7490, #7bc4d4); font-weight: 500; } /* Data types: darker cyan (4.89:1) */
+code.sourceCode span.fu { color: light-dark(#2563eb, #8db4d8); } /* Functions: blue (5.02:1) */
+code.sourceCode span.op { color: light-dark(#dc2626, #d89b9b); } /* Operators: red (4.69:1) */
+code.sourceCode span.st { color: light-dark(#15803d, #a8cc9c); } /* Strings: darker green (4.87:1) */
+code.sourceCode span.dv { color: light-dark(#b45309, #e6c179); } /* Numbers: darker amber (4.74:1) */
+code.sourceCode span.co { color: light-dark(#6b7280, #7a8694); font-style: italic; } /* Comments: gray (4.70:1) */
+code.sourceCode span.ot { color: light-dark(#7c3aed, #b89cd9); } /* Other/Pragma: purple */
+code.sourceCode span.al { color: #dc2626; font-weight: bold; } /* Alert */
+code.sourceCode span.an { color: #6b7280; font-style: italic; } /* Annotation */
+code.sourceCode span.at { color: light-dark(#0e7490, #7bc4d4); } /* Attribute: darker cyan */
+code.sourceCode span.bn { color: light-dark(#b45309, #e6c179); } /* BaseN: darker amber */
+code.sourceCode span.cf { color: #7c3aed; font-weight: 600; } /* ControlFlow */
+code.sourceCode span.ch { color: #15803d; } /* Char: darker green */
+code.sourceCode span.cn { color: #b45309; } /* Constant: darker amber */
+code.sourceCode span.er { color: #dc2626; font-weight: bold; } /* Error */
+code.sourceCode span.fl { color: #b45309; } /* Float: darker amber */
+code.sourceCode span.im { color: #2563eb; } /* Import */
+code.sourceCode span.in { color: #6b7280; font-style: italic; } /* Information */
+code.sourceCode span.pp { color: #7c3aed; } /* Preprocessor */
+code.sourceCode span.sc { color: #15803d; } /* SpecialChar: darker green */
+code.sourceCode span.ss { color: #15803d; } /* SpecialString: darker green */
+code.sourceCode span.va { color: var(--text); } /* Variable */
+code.sourceCode span.vs { color: #15803d; } /* VerbatimString: darker green */
+code.sourceCode span.wa { color: #b45309; font-style: italic; } /* Warning: darker amber */
 
 code { white-space: pre-wrap; }
 

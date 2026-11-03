@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, ScopedTypeVariables #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, ScopedTypeVariables, CPP #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use second" #-}
 
@@ -23,7 +23,7 @@ This module defines
 
         c. 'wis' (simple reference weighted importance sampling)
 
-        See also the SingleSite module for a separate single-site Metropolis-Hastings algorithm via GHC.Exts.Heap and System.IO.Unsafe.
+        See also "LazyPPL.SingleSite" in @lazyppl-singlesite@ for a separate single-site Metropolis-Hastings algorithm via "GHC.Exts.Heap" and "System.IO.Unsafe".
 
     3. Various useful helpful functions.
 
@@ -35,7 +35,7 @@ This module defines
 
     Most of the structure here will not be needed in typical models. We expose more of the structure for more experimental uses. 
 
-The `Distributions` module provides many useful distributions, and further non-parametric distributions are in `Distributions.DirichletP`, `Distributions.GP`, `Distr.IBP`, and `Distr.Memoization`. 
+The "LazyPPL.Distributions" module provides many useful distributions, and further non-parametric distributions are in "LazyPPL.Distributions.DirichletP", "LazyPPL.Distributions.GP", "LazyPPL.Distributions.IBP", and "LazyPPL.Distributions.Memoization". 
 
 
 -}
@@ -43,7 +43,7 @@ The `Distributions` module provides many useful distributions, and further non-p
 module LazyPPL
     ( -- * Rose tree type
       --
-      -- | Our source of randomness will be an infinitely wide and deep lazy [rose tree](https://en.wikipedia.org/wiki/Rose_tree), regarded as initialized with uniform [0,1] choices for each label.
+      -- | Our source of randomness will be an infinitely wide and deep lazy [rose tree](https://en.wikipedia.org/wiki/Rose_tree), regarded as initialized with uniform choices from the open interval (0,1) for each label.
       Tree(Tree),
       -- * Monads
       Prob(Prob), Meas(Meas),
@@ -63,7 +63,9 @@ import Control.Monad.Trans.Class
 import Data.Monoid
 import System.Random hiding (uniform)
 import Control.Monad
-import Control.Monad.State.Lazy (State, state , put, get, runState)
+import System.IO.Unsafe (unsafeInterleaveIO)
+import LazyPPL.Internal.History (History, newHistory, appendMutation, labelAt)
+import LazyPPL.Internal.Sampler (randomLabel, checkedLogWeight)
 import Numeric.Log
 
 
@@ -103,7 +105,7 @@ instance Applicative Prob where {pure = return ; (<*>) = ap}
 newtype Meas a = Meas (WriterT (Product (Log Double)) Prob a)
   deriving(Functor, Applicative, Monad)
 
-{- | A uniform sample is a building block for probability distributions.
+{- | A uniform sample from the open interval (0,1) is a building block for probability distributions. It is never 0 or 1, so an inverse transform such as @-log u@ stays finite.
 
 This is implemented by getting the label at the head of the tree and discarding the rest.-}
 uniform :: Prob Double
@@ -113,28 +115,48 @@ uniform = Prob $ \(Tree r _) -> r
 sample :: Prob a -> Meas a
 sample p = Meas $ lift p
 
-{- | A one point measure with a given score (or weight, or mass, or likelihood), which should be a positive real number.
+{- | A one point measure with a given score (or weight, or mass, or likelihood), which should be a non-negative real number.
 
-A score of 0 describes impossibility. To avoid numeric issues, we encode it as @ exp(-300) @ instead.-}
+A score of 0 describes impossibility. Negative and non-finite scores raise an error.-}
 score :: Double -> Meas ()
-score r = Meas $ tell $ Product $ (Exp . log) (if r==0 then exp(-300) else r)
+score r = scoreLog (Exp (log r))
 
+{- | 'score' with the weight given by its natural logarithm, so the weight may exceed the range of 'Double'. A logarithm of negative infinity is weight 0; a NaN or positive-infinite logarithm raises an error. -}
 scoreLog :: Log Double -> Meas ()
-scoreLog r = Meas $ tell $ Product r
+scoreLog r = scoreProductLog (Product r)
 
+-- | 'scoreLog' with the weight wrapped in 'Product', the form in which 'Meas' accumulates weights.
 scoreProductLog :: Product (Log Double) -> Meas ()
-scoreProductLog r = Meas $ tell r
+scoreProductLog (Product r) = checkedLogWeight "score" r `seq` Meas (tell (Product r))
 
 
-{- | Generate a tree with uniform random labels.
+{- | Generate a tree with labels drawn uniformly from the open interval (0,1).
 
     This uses 'split' to split a random seed. -}
 randomTree :: RandomGen g => g -> Tree
-randomTree g = let (a,g') = random g in Tree a (randomTrees g')
+randomTree g = let (a,g') = randomLabel g in Tree a (randomTrees g')
 randomTrees :: RandomGen g => g -> [Tree]
 randomTrees g = let (g1,g2) = split g in randomTree g1 : randomTrees g2
 
-{- | 'runProb' runs a probability deterministically, given a source of randomness. -}
+{- | 'runProb' runs a probability deterministically, given a source of randomness.
+
+Some results of 'runProb' hold hidden state: a counter of "LazyPPL.Distributions.Counter", a
+restaurant of 'LazyPPL.Distributions.IBP.newRestaurant', a function of
+'LazyPPL.Distributions.Memoization.generalmemoize' or 'LazyPPL.Distributions.Memoization.memrec',
+and the random functions of 'LazyPPL.Distributions.GP.wiener' and 'LazyPPL.Distributions.GP.gp'.
+Inside a model, bind such a value with @>>=@ and use it there. Outside a model, evaluate the value
+itself once, with 'Control.Exception.evaluate', before an IO action that runs more than once (the
+body of a loop or of a thread) uses it:
+
+> f <- evaluate (runProb wiener tree)
+> ys <- mapM (\x -> evaluate (f x)) xs
+
+Bound with @let@ instead, or returned inside a function from a 'Prob' computation, such a value can
+lose its state when an IO action that runs more than once uses it: GHC may copy the binding into
+the action, so that every run of the action starts from new state, and a counter then returns the
+same number to every read. Evaluating a pair or a list does not evaluate the values inside it, so
+evaluate each value with hidden state. @cabal run lazyppl:test:hidden-state-test -- known-limit@
+runs these unsupported uses. -}
 runProb :: Prob a -> Tree -> a
 runProb (Prob a) = a
 
@@ -149,29 +171,28 @@ weightedsamples (Meas m) =
           (x, w) <- runWriterT m
           rest <- helper
           return $ (x, w) : rest
-    newStdGen
-    g <- getStdGen
+    g <- newStdGen
     let rs = randomTree g
     let xws = runProb helper rs
-    return $ map (\(x,w) -> (x, getProduct w)) xws
+    return $ map (\(x,w) -> (x, checkedLogWeight "weightedsamples" (getProduct w))) xws
 
 {- | Weighted importance sampling first draws n weighted samples,
     and then samples a stream of results from that, regarded as an empirical distribution. Sometimes called "likelihood weighted importance sampling". 
 
-This is a reference implementation. It will not usually be very efficient at all, but may be useful for debugging. 
+This is a reference implementation. It will not usually be very efficient at all, but may be useful for debugging. Raises an error if all @n@ samples have weight 0.
  -}
-wis :: Int -- ^ @n@, the number of samples to base on
+wis :: Int -- ^ @n@, the number of samples to base on, at least 1
     -> Meas a -- ^ @m@, the measure to normalize
     -> IO [a] -- ^ Returns a stream of samples
 wis n m = do
   xws <- weightedsamples m
   let xws' = take n $ accumulate xws 0
   let max = snd $ last xws'
-  newStdGen
-  g <- getStdGen
+  g <- newStdGen
   let rs = (randoms g :: [Double])
-  return $ map (\r -> fst $ head $ filter (\(x, w) -> w >= Exp (log r) * max) xws') rs
-  where accumulate ((x, w) : xws) a = (x, w + a) : (x, w + a) : accumulate xws (w + a)
+  if max == 0 then error "wis: every sample has weight 0"
+    else return $ map (\r -> fst $ head $ filter (\(x, w) -> w > 0 && w >= Exp (log r) * max) xws') rs
+  where accumulate ((x, w) : xws) a = (x, w + a) : accumulate xws (w + a)
         accumulate [] a = []
 
 {- | Produce a stream of samples, using Metropolis Hastings simulation.
@@ -191,86 +212,98 @@ wis n m = do
 
     __Tip:__ if @m :: Prob a@ then use @fmap (map fst) (mh 1 $ sample m)@ to get a stream of samples from a probability distribution without conditioning. 
 --}
-{-- The algorithm is as follows:
 
-    Top level: produces a stream of samples.
-    * Split the random number generator in two
-    * One part is used as the first seed for the simulation,
-    * and one part is used for the randomness in the MH algorithm.
-
-    Then, run 'step' over and over to get a stream of '(tree, result, weight)'s.
-    The stream of seeds is used to produce a stream of result/weight pairs.
-
-    NB There are three kinds of randomness in the step function.
-    1. The start tree 't', which is the source of randomness for simulating the
-    program m to start with. This is sort-of the point in the "state space".
-    2. The randomness needed to propose a new tree ('g1')
-    3. The randomness needed to decide whether to accept or reject that ('g2')
-    The tree t is an argument and result,
-    but we use a state monad ('get'/'put') to deal with the other randomness '(g, g1, g2)'
-
-    Steps of the 'step' function:
-    1. Randomly change some sites, 
-    2. Rerun the model with the new tree, to get a new weight 'w''.
-    3. Compute the MH acceptance ratio. This is the probability of either returning the new seed or the old one.
-    4. Accept or reject the new sample based on the MH ratio.  
---}
 mh :: forall a.
-   Double -- ^ The chance @p@ of changing any site
+   Double -- ^ The chance @p@ of changing any site, in [0,1]
    -> Meas a -- ^ The unnormalized measure to sample from
    -> IO [(a,Product (Log Double))] -- ^ Returns a stream of (result,weight) pairs
-mh p (Meas m) = do
-    -- Top level: produce a stream of samples.
-    -- Split the random number generator in two
-    -- One part is used as the first seed for the simulation,
-    -- and one part is used for the randomness in the MH algorithm.
-    newStdGen
-    g <- getStdGen
-    let (g1,g2) = split g
-    let t = randomTree g1
-    let (x, w) = runProb (runWriterT m) t
-    -- Now run step over and over to get a stream of (tree,result,weight)s.
-    let (samples,_) = runState (iterateM step (t,x,w)) g2
-    -- The stream of seeds is used to produce a stream of result/weight pairs.
-    return $ map (\(_,x,w) -> (x,w)) samples
-    {- NB There are three kinds of randomness in the step function.
-    1. The start tree 't', which is the source of randomness for simulating the
-    program m to start with. This is sort-of the point in the "state space".
-    2. The randomness needed to propose a new tree ('g1')
-    3. The randomness needed to decide whether to accept or reject that ('g2')
-    The tree t is an argument and result,
-    but we use a state monad ('get'/'put') to deal with the other randomness '(g,g1,g2)' -}
-    where step :: RandomGen g => (Tree,a,Product (Log Double)) -> State g (Tree,a,Product (Log Double))
-          step (t, x, w) = do
-            -- Randomly change some sites
-            g <- get
-            let (g1, g2) = split g
-            let t' = mutateTree p g1 t
-            -- Rerun the model with the new tree, to get a new
-            -- weight w'.
-            let (x', w') = runProb (runWriterT m) t'
-            -- MH acceptance ratio. This is the probability of either
-            -- returning the new seed or the old one.
-            let ratio = getProduct w' / getProduct w
-            let (r, g2') = random g2
-            put g2'
-            if r < min 1 (exp $ ln ratio) -- (trace ("-- Ratio: " ++ show ratio) ratio))
-              then return (t', x', w') -- trace ("---- Weight: " ++ show w') w')
-              else return (t, x, w) -- trace ("---- Weight: " ++ show w) w)
+mh p = metropolis p Nothing
+
+-- A label that the model never reads stays unevaluated, and its delayed
+-- mutations keep the earlier trees alive. So every 32 accepted mutateTree
+-- proposals we swap the tree for a checkpoint with the same labels, which
+-- labelAt computes from the stored seeds. The seed store in
+-- LazyPPL.Internal.History appends one 16-byte record per accepted mutateTree
+-- proposal, and its vector doubles when full. An accepted all-sites change
+-- starts a new store.
+metropolis :: Double -> Maybe Double -> Meas a -> IO [(a, Product (Log Double))]
+metropolis p refresh (Meas m)
+  -- The comparisons are false for NaN, so NaN is rejected too.
+  | not (p >= 0 && p <= 1) = error ("mh: the chance p of changing a site must be in [0,1], got " ++ show p)
+  | Just q <- refresh, not (q > 0 && q <= 1) =
+      error ("mhirreducible: the chance q of an all-sites change must be in (0,1], got " ++ show q)
+  | otherwise = do
+    g <- newStdGen
+    let (g1, g2) = split g
+        t = randomTree g1
+        (x, w) = checkedSample (runProb (runWriterT m) t)
+    history <- newHistory g1
+    let go generator tree value weight history count = unsafeInterleaveIO $ do
+          let (proposalSeed, acceptanceSeed) = split generator
+              (fresh, seed) = case refresh of
+                Nothing -> (False, proposalSeed)
+                Just q -> let (r, next) = randomLabel proposalSeed
+                          in (r < q, next)
+              proposed = if fresh then randomTree seed else mutateTree p seed tree
+              (value', weight') = checkedSample (runProb (runWriterT m) proposed)
+              ratio = getProduct weight' / getProduct weight
+              (r, nextGenerator) = randomLabel acceptanceSeed
+          -- At weight 0 the ratio can be 0/0 = NaN and the test then fails,
+          -- so we accept every move until the weight is positive. r is a label, in
+          -- (0,1), as for the tree: random's 1 would reject a move of ratio 1 and
+          -- an all-sites change at q = 1.
+          if getProduct weight == 0 || r < min 1 (exp (ln ratio))
+            then do
+              (history', count') <- if fresh
+                then do h <- newHistory seed; pure (h, 0)
+                else do appendMutation history count seed; pure (history, count+1)
+              let tree' = if count' > 0 && count' `rem` 32 == 0
+                            then checkpoint p history' count'
+                            else proposed
+              tree' `seq` pure ()
+              rest <- go nextGenerator tree' value' weight' history' count'
+              pure ((value', weight') : rest)
+            else do
+              rest <- go nextGenerator tree value weight history count
+              pure ((value, weight) : rest)
+    go g2 t x w history 0
+  where
+    -- A product of valid weights can still overflow to a logarithm of +Infinity.
+    checkedSample (v, Product l) = (v, Product (checkedLogWeight "mh" l))
+
+checkpoint :: Double -> History -> Int -> Tree
+checkpoint p history count = node []
+  where
+    node path = Tree (labelAt p history count path) (children path 0)
+    children path index = node (index:path) : children path (index+1)
 
 
 -- | Replace the labels of a tree randomly, with probability p
 mutateTree :: forall g. RandomGen g => Double -> g -> Tree -> Tree
 mutateTree p g (Tree a ts) =
-  let (a',g') = (random g :: (Double,g)) in
-  let (a'',g'') = random g' in
+  let (a',g') = randomLabel g in
+  let (a'',g'') = randomLabel g' in
+#ifdef LAZYPPL_BROWSER
+  -- Wasm has a 32-bit address space, so we evaluate each visited label to stop
+  -- its thunk from keeping the old trees alive.
+  let label = if a'<p then a'' else a in
+  label `seq` Tree label (mutateTrees p g'' ts)
+#else
   Tree (if a'<p then a'' else a) (mutateTrees p g'' ts)
+#endif
 mutateTrees :: RandomGen g => Double -> g -> [Tree] -> [Tree]
+#ifdef LAZYPPL_BROWSER
+mutateTrees p g (t:ts) =
+  let (g1,g2) = split g
+      t' = mutateTree p g1 t
+  in t' `seq` (t' : mutateTrees p g2 ts)
+#else
 mutateTrees p g (t:ts) = let (g1,g2) = split g in mutateTree p g1 t : mutateTrees p g2 ts
+#endif
 
 
 
-{- | Irreducible form of 'mh'. Takes @p@ like 'mh', but also @q@, which is the chance of proposing an all-sites change. Irreducibility means that, asymptotically, the sequence of samples will converge in distribution to the renormalized version of @m@. 
+{- | Irreducible form of 'mh'. Takes @p@ like 'mh', but also @q@ in (0,1], which is the chance of proposing an all-sites change. Irreducibility means that, asymptotically, the sequence of samples will converge in distribution to the renormalized version of @m@, provided that the total weight of @m@ is positive and finite and that computing each weight terminates. The parts of a sample that are never demanded may be infinite and stay unevaluated. With @q = 0@ there would be no all-sites change, and so no such guarantee; @q = 0@ raises an error. 
 
 The kernel in `mh` is not formally irreducible in the usual sense, although it is an open question whether this is a problem for asymptotic convergence in any definable model. In any case, convergence is only asymptotic, and so it can be helpful to use `mhirreducible` is that in some situations.
 
@@ -279,49 +312,11 @@ Roughly this avoids `mh` getting stuck in one particular mode, although it is a 
  -}
 
 mhirreducible :: forall a.
-              Double -- ^ The chance @p@ of changing any given site
-              -> Double -- ^ The chance @q@ of doing an all-sites change
+              Double -- ^ The chance @p@ of changing any given site, in [0,1]
+              -> Double -- ^ The chance @q@ of doing an all-sites change, in (0,1]
               -> Meas a -- ^ The unnormalized measure @m@ to sample from
               -> IO [(a,Product (Log Double))] -- ^ Returns a stream of (result,weight) pairs
-mhirreducible p q (Meas m) = do
-    -- Top level: produce a stream of samples.
-    -- Split the random number generator in two
-    -- One part is used as the first seed for the simulation,
-    -- and one part is used for the randomness in the MH algorithm.
-    newStdGen
-    g <- getStdGen
-    let (g1,g2) = split g
-    let t = randomTree g1
-    let (x, w) = runProb (runWriterT m) t
-    -- Now run step over and over to get a stream of (tree,result,weight)s.
-    let (samples,_) = runState (iterateM step (t,x,w)) g2
-    -- The stream of seeds is used to produce a stream of result/weight pairs.
-    return $ map (\(t,x,w) -> (x,w)) samples
-    {- NB There are three kinds of randomness in the step function.
-    1. The start tree 't', which is the source of randomness for simulating the
-    program m to start with. This is sort-of the point in the "state space".
-    2. The randomness needed to propose a new tree ('g1')
-    3. The randomness needed to decide whether to accept or reject that ('g2')
-    The tree t is an argument and result,
-    but we use a state monad ('get'/'put') to deal with the other randomness '(g,g1,g2)' -}
-    where step :: RandomGen g => (Tree,a,Product (Log Double)) -> State g (Tree,a,Product (Log Double))
-          step (t,x,w) = do
-            -- Randomly change some sites
-            g <- get
-            let (g1,g2) = split g
-            -- Decide whether to resample all sites (r<q) or just some of them
-            let (r,g1') = random g1
-            let t' = if r<q then randomTree g1' else mutateTree p g1' t
-            -- Rerun the model with the new tree, to get a new
-            -- weight w'.
-            let (x', w') = runProb (runWriterT m) t'
-            -- MH acceptance ratio. This is the probability of either
-            -- returning the new seed or the old one.
-            let ratio = getProduct w' / getProduct w
-            let (r,g2') = random g2
-            put g2'
-            if r < min 1 (exp $ ln ratio) then return (t',x',w') else return (t,x,w)
-
+mhirreducible p q = metropolis p (Just q)
 
 
 {- | Useful function which thins out a stream of results, as is common in Markov Chain Monte Carlo simulation.
@@ -331,10 +326,4 @@ every :: Int -> [a] -> [a]
 every n xs = case drop (n -1) xs of
   (y : ys) -> y : every n ys
   [] -> []
-
--- | Monadic iterate (inlined from monad-extras).
-iterateM :: Monad m => (a -> m a) -> a -> m [a]
-iterateM f x = do
-    x' <- f x
-    (x':) `liftM` iterateM f x'
 

@@ -1,0 +1,342 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.39.6.
+--
+-- see: https://github.com/sol/hpack
+
+name:           lazyppl-examples
+version:        0.1.0
+synopsis:       LazyPPL example models and plotting programs
+description:    Example models and plotting programs for LazyPPL, written as the literate pages of its website.
+category:       Statistics
+author:         LazyPPL team
+maintainer:     sam.staton@cs.ox.ac.uk
+license:        MIT
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    test/check_graph_figure.py
+
+flag demos
+  description: Build the native figure-generating examples
+  manual: True
+  default: False
+
+library
+  exposed-modules:
+      AdditiveClustering
+      AdditiveClusteringDemo
+      ClusteringDemo
+      ControlFlowDemo
+      GaussianProcessDemo
+      GraphDemo
+      Helpers
+      Index
+      IrmDemo
+      IrmTest
+      MinimalDemo
+      MondrianExample
+      ProgramInductionDemo
+      RegressionDemo
+      WienerDemo
+  other-modules:
+      Paths_lazyppl_examples
+  hs-source-dirs:
+      models
+  build-depends:
+      array >=0.5.8.0 && <0.6
+    , base >=4.18.3.0 && <4.23
+    , containers >=0.6.7 && <0.9
+    , deepseq >=1.4.8.1 && <1.6
+    , lazyppl ==1.1.*
+    , lazyppl-singlesite ==0.1.*
+    , log-domain >=0.13.2 && <0.14
+    , mtl >=2.3.1 && <2.4
+    , parallel >=3.2 && <3.4
+    , random >=1.3.1 && <1.4
+    , transformers >=0.6.1.0 && <0.7
+  default-language: Haskell2010
+
+executable clustering-exe
+  main-is: ClusteringDemo.lhs
+  hs-source-dirs:
+      models
+  ghc-options: -threaded -rtsopts -main-is ClusteringDemo
+  cpp-options: -DLAZYPPL_DEMOS
+  build-depends:
+      array >=0.5.8.0 && <0.6
+    , base >=4.18.3.0 && <4.23
+    , colour >=2.3.7 && <2.4
+    , containers >=0.6.7 && <0.9
+    , deepseq >=1.4.8.1 && <1.6
+    , lazyppl ==1.1.*
+    , lazyppl-examples
+    , lazyppl-singlesite ==0.1.*
+    , log-domain >=0.13.2 && <0.14
+    , matplotlib >=0.7.7 && <0.8
+    , mtl >=2.3.1 && <2.4
+    , parallel >=3.2 && <3.4
+    , random >=1.3.1 && <1.4
+    , transformers >=0.6.1.0 && <0.7
+  default-language: Haskell2010
+  if !flag(demos)
+    buildable: False
+
+executable gaussianprocess-exe
+  main-is: GaussianProcessDemo.lhs
+  hs-source-dirs:
+      models
+  ghc-options: -threaded -rtsopts -main-is GaussianProcessDemo
+  cpp-options: -DLAZYPPL_DEMOS
+  build-depends:
+      array >=0.5.8.0 && <0.6
+    , base >=4.18.3.0 && <4.23
+    , containers >=0.6.7 && <0.9
+    , deepseq >=1.4.8.1 && <1.6
+    , lazyppl ==1.1.*
+    , lazyppl-examples
+    , lazyppl-singlesite ==0.1.*
+    , log-domain >=0.13.2 && <0.14
+    , matplotlib >=0.7.7 && <0.8
+    , mtl >=2.3.1 && <2.4
+    , parallel >=3.2 && <3.4
+    , random >=1.3.1 && <1.4
+    , transformers >=0.6.1.0 && <0.7
+  default-language: Haskell2010
+  if !flag(demos)
+    buildable: False
+
+executable graph-sphere-exe
+  main-is: GraphSphere.hs
+  other-modules:
+      GraphDemo
+  hs-source-dirs:
+      native
+      models
+  ghc-options: -threaded -rtsopts -main-is GraphSphere
+  cpp-options: -DLAZYPPL_DEMOS
+  build-depends:
+      array >=0.5.8.0 && <0.6
+    , base >=4.18.3.0 && <4.23
+    , containers >=0.6.7 && <0.9
+    , deepseq >=1.4.8.1 && <1.6
+    , lazyppl ==1.1.*
+    , lazyppl-examples
+    , lazyppl-singlesite ==0.1.*
+    , log-domain >=0.13.2 && <0.14
+    , matplotlib >=0.7.7 && <0.8
+    , mtl >=2.3.1 && <2.4
+    , parallel >=3.2 && <3.4
+    , random >=1.3.1 && <1.4
+    , transformers >=0.6.1.0 && <0.7
+  default-language: Haskell2010
+  if !flag(demos)
+    buildable: False
+
+executable ibp-exe
+  main-is: IBPOutput.hs
+  hs-source-dirs:
+      native
+  ghc-options: -threaded -rtsopts -main-is IBPOutput
+  build-depends:
+      array >=0.5.8.0 && <0.6
+    , base >=4.18.3.0 && <4.23
+    , containers >=0.6.7 && <0.9
+    , deepseq >=1.4.8.1 && <1.6
+    , lazyppl ==1.1.*
+    , lazyppl-examples
+    , lazyppl-singlesite ==0.1.*
+    , log-domain >=0.13.2 && <0.14
+    , mtl >=2.3.1 && <2.4
+    , parallel >=3.2 && <3.4
+    , random >=1.3.1 && <1.4
+    , transformers >=0.6.1.0 && <0.7
+  default-language: Haskell2010
+  if !flag(demos)
+    buildable: False
+
+executable index-exe
+  main-is: Index.lhs
+  hs-source-dirs:
+      models
+  ghc-options: -threaded -rtsopts -main-is Index
+  cpp-options: -DLAZYPPL_DEMOS
+  build-depends:
+      array >=0.5.8.0 && <0.6
+    , base >=4.18.3.0 && <4.23
+    , containers >=0.6.7 && <0.9
+    , deepseq >=1.4.8.1 && <1.6
+    , lazyppl ==1.1.*
+    , lazyppl-examples
+    , lazyppl-singlesite ==0.1.*
+    , log-domain >=0.13.2 && <0.14
+    , matplotlib >=0.7.7 && <0.8
+    , mtl >=2.3.1 && <2.4
+    , parallel >=3.2 && <3.4
+    , random >=1.3.1 && <1.4
+    , transformers >=0.6.1.0 && <0.7
+  default-language: Haskell2010
+  if !flag(demos)
+    buildable: False
+
+executable mondrian-exe
+  main-is: MondrianOutput.hs
+  other-modules:
+      MondrianPlotting
+  hs-source-dirs:
+      native
+  ghc-options: -threaded -rtsopts -main-is MondrianOutput
+  build-depends:
+      array >=0.5.8.0 && <0.6
+    , base >=4.18.3.0 && <4.23
+    , colour >=2.3.7 && <2.4
+    , containers >=0.6.7 && <0.9
+    , deepseq >=1.4.8.1 && <1.6
+    , lazyppl ==1.1.*
+    , lazyppl-examples
+    , lazyppl-singlesite ==0.1.*
+    , log-domain >=0.13.2 && <0.14
+    , matplotlib >=0.7.7 && <0.8
+    , mtl >=2.3.1 && <2.4
+    , parallel >=3.2 && <3.4
+    , random >=1.3.1 && <1.4
+    , transformers >=0.6.1.0 && <0.7
+  default-language: Haskell2010
+  if !flag(demos)
+    buildable: False
+
+executable programinduction-exe
+  main-is: ProgramInductionDemo.lhs
+  hs-source-dirs:
+      models
+  ghc-options: -threaded -rtsopts -main-is ProgramInductionDemo
+  cpp-options: -DLAZYPPL_DEMOS
+  build-depends:
+      array >=0.5.8.0 && <0.6
+    , base >=4.18.3.0 && <4.23
+    , containers >=0.6.7 && <0.9
+    , deepseq >=1.4.8.1 && <1.6
+    , lazyppl ==1.1.*
+    , lazyppl-examples
+    , lazyppl-singlesite ==0.1.*
+    , log-domain >=0.13.2 && <0.14
+    , matplotlib >=0.7.7 && <0.8
+    , mtl >=2.3.1 && <2.4
+    , parallel >=3.2 && <3.4
+    , random >=1.3.1 && <1.4
+    , transformers >=0.6.1.0 && <0.7
+  default-language: Haskell2010
+  if !flag(demos)
+    buildable: False
+
+executable regression-exe
+  main-is: RegressionDemo.lhs
+  hs-source-dirs:
+      models
+  ghc-options: -threaded -rtsopts -main-is RegressionDemo
+  cpp-options: -DLAZYPPL_DEMOS
+  build-depends:
+      array >=0.5.8.0 && <0.6
+    , base >=4.18.3.0 && <4.23
+    , containers >=0.6.7 && <0.9
+    , deepseq >=1.4.8.1 && <1.6
+    , lazyppl ==1.1.*
+    , lazyppl-examples
+    , lazyppl-singlesite ==0.1.*
+    , log-domain >=0.13.2 && <0.14
+    , matplotlib >=0.7.7 && <0.8
+    , mtl >=2.3.1 && <2.4
+    , parallel >=3.2 && <3.4
+    , random >=1.3.1 && <1.4
+    , transformers >=0.6.1.0 && <0.7
+  default-language: Haskell2010
+  if !flag(demos)
+    buildable: False
+
+executable render-examples
+  main-is: RenderExamples.hs
+  other-modules:
+      IBPOutput
+      WienerDemo
+      RegressionDemo
+      ClusteringDemo
+      ProgramInductionDemo
+      MondrianOutput
+      MondrianPlotting
+      GaussianProcessDemo
+      Index
+      GraphDemo
+      IrmDemo
+      AdditiveClusteringDemo
+      ControlFlowDemo
+      Helpers
+      MondrianExample
+      AdditiveClustering
+  hs-source-dirs:
+      native
+      models
+  ghc-options: -threaded -rtsopts -main-is RenderExamples
+  cpp-options: -DLAZYPPL_DEMOS
+  build-depends:
+      array >=0.5.8.0 && <0.6
+    , base >=4.18.3.0 && <4.23
+    , colour >=2.3.7 && <2.4
+    , containers >=0.6.7 && <0.9
+    , deepseq >=1.4.8.1 && <1.6
+    , lazyppl ==1.1.*
+    , lazyppl-examples
+    , lazyppl-singlesite ==0.1.*
+    , log-domain >=0.13.2 && <0.14
+    , matplotlib >=0.7.7 && <0.8
+    , mtl >=2.3.1 && <2.4
+    , parallel >=3.2 && <3.4
+    , random >=1.3.1 && <1.4
+    , transformers >=0.6.1.0 && <0.7
+  default-language: Haskell2010
+  if !flag(demos)
+    buildable: False
+
+executable wiener-exe
+  main-is: WienerDemo.lhs
+  hs-source-dirs:
+      models
+  ghc-options: -threaded -rtsopts -main-is WienerDemo
+  cpp-options: -DLAZYPPL_DEMOS
+  build-depends:
+      array >=0.5.8.0 && <0.6
+    , base >=4.18.3.0 && <4.23
+    , containers >=0.6.7 && <0.9
+    , deepseq >=1.4.8.1 && <1.6
+    , lazyppl ==1.1.*
+    , lazyppl-examples
+    , lazyppl-singlesite ==0.1.*
+    , log-domain >=0.13.2 && <0.14
+    , matplotlib >=0.7.7 && <0.8
+    , mtl >=2.3.1 && <2.4
+    , parallel >=3.2 && <3.4
+    , random >=1.3.1 && <1.4
+    , transformers >=0.6.1.0 && <0.7
+  default-language: Haskell2010
+  if !flag(demos)
+    buildable: False
+
+test-suite example-test
+  type: exitcode-stdio-1.0
+  main-is: Api.hs
+  hs-source-dirs:
+      test
+  build-depends:
+      QuickCheck >=2.19.0.0 && <2.20
+    , array >=0.5.8.0 && <0.6
+    , base >=4.18.3.0 && <4.23
+    , containers >=0.6.7 && <0.9
+    , deepseq >=1.4.8.1 && <1.6
+    , lazyppl ==1.1.*
+    , lazyppl-examples
+    , lazyppl-singlesite ==0.1.*
+    , log-domain >=0.13.2 && <0.14
+    , mtl >=2.3.1 && <2.4
+    , parallel >=3.2 && <3.4
+    , random >=1.3.1 && <1.4
+    , transformers >=0.6.1.0 && <0.7
+  default-language: Haskell2010

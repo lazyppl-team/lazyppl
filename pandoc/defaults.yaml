@@ -1,0 +1,11 @@
+from: markdown+lhs+markdown_in_html_blocks
+to: html
+standalone: true
+template: ${.}/lazyppltemplate.html
+syntax-highlighting: default
+# Pandoc keeps the TeX as \(...\) for MathJax. The template loads MathJax itself (see "Math" in pandoc/README.md).
+html-math-method:
+  method: mathjax
+# Pandoc writes text that sits directly above a code block with no <p>; this filter makes it a paragraph.
+filters:
+  - ${.}/paragraphs.lua

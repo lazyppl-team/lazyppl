@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LazyPPL playground</title>
+<link rel="stylesheet" href="playground.css">
+<main>
+  <header><a href="https://lazyppl-team.github.io/">LazyPPL</a><h1>Try LazyPPL in your browser</h1></header>
+  <nav aria-label="Demos"><a href="#poisson-title">Poisson</a> · <a href="#regression-title">Linear regression</a> · <a href="#gp-title">Gaussian process</a> · <a href="#wiener-title">Wiener</a> · <a href="#clustering-title">Clustering</a> · <a href="#irm-title">Relations</a> · <a href="#program-title">Programs</a> · <a href="#ibp-title">Features</a> · <a href="#graph-title">Graphs</a> · <a href="#mondrian-title">Mondrian</a></nav>
+  <label>Random seed <input id="seed" type="number" value="42" min="-2147483648" max="2147483647" step="1" required></label>
+  <section aria-labelledby="poisson-title">
+    <h2 id="poisson-title">Poisson point process</h2>
+    <p>Count points in the unit interval of an infinite lazy Poisson process.</p>
+    <button id="poisson-run">Run Poisson simulation</button>
+    <button data-cancel disabled>Cancel</button>
+    <pre id="poisson-result" role="status" aria-live="polite">Loading…</pre>
+    <script id="poisson-data" type="application/json">[]</script>
+  </section>
+  <section aria-labelledby="regression-title">
+    <h2 id="regression-title">Bayesian linear regression</h2>
+    <label>Observation noise <input id="noise" type="number" min="0.1" max="3" step="0.1" value="0.5" required></label>
+    <button id="regression-run">Run regression</button>
+    <button data-cancel disabled>Cancel</button>
+    <pre id="regression-result" role="status" aria-live="polite">Ready.</pre>
+    <svg id="regression-plot" viewBox="0 0 720 420" role="img" aria-labelledby="plot-title" aria-describedby="plot-description"><title id="plot-title">Posterior regression functions and observations</title><desc id="plot-description">Run regression to draw the posterior predictive distribution.</desc></svg>
+    <p>Shaded: 95% posterior predictive interval. Lines: posterior functions. Dots: observations.</p>
+    <script id="regression-data" type="application/json">[]</script>
+  </section>
+  <section aria-labelledby="gp-title">
+    <h2 id="gp-title">Gaussian-process regression</h2>
+    <p>Infer a random function with a squared-exponential covariance, a slope and an intercept from seven observations.</p>
+    <label>Posterior functions <input id="gp-count" type="number" min="5" max="100" step="1" value="20" required></label>
+    <button id="gp-run">Run Gaussian process</button>
+    <button data-cancel disabled>Cancel</button>
+    <pre id="gp-result" role="status" aria-live="polite">Ready.</pre>
+    <svg id="gp-plot" viewBox="0 0 720 420" role="img" aria-labelledby="gp-plot-title" aria-describedby="gp-description"><title id="gp-plot-title">Gaussian-process posterior functions</title><desc id="gp-description">Run the Gaussian process to draw functions and observations.</desc></svg>
+    <script id="gp-data" type="application/json">[]</script>
+  </section>
+  <section aria-labelledby="wiener-title">
+    <h2 id="wiener-title">Wiener-process regression</h2>
+    <p>Condition Brownian motion with a random starting point on the same seven observations.</p>
+    <label>Posterior functions <input id="wiener-count" type="number" min="5" max="100" step="1" value="20" required></label>
+    <button id="wiener-run">Run Wiener process</button>
+    <button data-cancel disabled>Cancel</button>
+    <pre id="wiener-result" role="status" aria-live="polite">Ready.</pre>
+    <svg id="wiener-plot" viewBox="0 0 720 420" role="img" aria-labelledby="wiener-plot-title" aria-describedby="wiener-description"><title id="wiener-plot-title">Wiener-process posterior functions</title><desc id="wiener-description">Run the Wiener process to draw functions and observations.</desc></svg>
+    <script id="wiener-data" type="application/json">[]</script>
+  </section>
+  <section aria-labelledby="clustering-title">
+    <h2 id="clustering-title">Dirichlet-process clustering</h2>
+    <p>Group ten points without fixing the number of clusters in advance.</p>
+    <label>Inference steps <input id="clustering-count" type="number" min="1000" max="50000" step="1000" value="20000" required></label>
+    <button id="clustering-run">Run clustering</button>
+    <button data-cancel disabled>Cancel</button>
+    <pre id="clustering-result" role="status" aria-live="polite">Ready.</pre>
+    <svg id="clustering-plot" viewBox="0 0 720 420" role="img" aria-labelledby="clustering-plot-title" aria-describedby="clustering-description"><title id="clustering-plot-title">Cluster assignments and centres</title><desc id="clustering-description">Run clustering to group the observations.</desc></svg>
+    <p>Numbers and colours identify clusters. Ellipses show two standard deviations around the sampled centres.</p>
+    <script id="clustering-data" type="application/json">[]</script>
+  </section>
+  <section aria-labelledby="irm-title">
+    <h2 id="irm-title">Infinite relational model</h2>
+    <p>Infer groups of people from observations of who talks to whom.</p>
+    <label>Inference steps <input id="irm-count" type="number" min="1000" max="50000" step="1000" value="10000" required></label>
+    <button id="irm-run">Run relational inference</button>
+    <button data-cancel disabled>Cancel</button>
+    <pre id="irm-result" role="status" aria-live="polite">Ready.</pre>
+    <svg id="irm-plot" viewBox="0 0 720 420" role="img" aria-labelledby="irm-plot-title" aria-describedby="irm-description"><title id="irm-plot-title">Probabilities of sharing a group</title><desc id="irm-description">Run inference to compare pairs of people.</desc></svg>
+    <p>Each cell estimates the posterior probability that two people belong to the same group.</p>
+    <script id="irm-data" type="application/json">[]</script>
+  </section>
+  <section aria-labelledby="program-title">
+    <h2 id="program-title">Program induction</h2>
+    <p>Infer arithmetic expressions and conditional branches from the observations.</p>
+    <label>Posterior programs <input id="program-count" type="number" min="1" max="20" step="1" value="3" required></label>
+    <button id="program-run">Run program induction</button>
+    <button data-cancel disabled>Cancel</button>
+    <pre id="program-result" role="status" aria-live="polite">Ready.</pre>
+    <svg id="program-plot" viewBox="0 0 720 420" role="img" aria-labelledby="program-plot-title" aria-describedby="program-description"><title id="program-plot-title">Posterior programs and observations</title><desc id="program-description">Run program induction to draw inferred functions.</desc></svg>
+    <script id="program-data" type="application/json">[]</script>
+  </section>
+  <section aria-labelledby="ibp-title">
+    <h2 id="ibp-title">Indian buffet process: feature finding</h2>
+    <p>Infer shared features of sixteen countries from their similarity scores.</p>
+    <label>Inference steps <input id="ibp-count" type="number" min="1000" max="200000" step="1000" value="100000" required></label>
+    <button id="ibp-run">Run feature finding</button>
+    <button data-cancel disabled>Cancel</button>
+    <pre id="ibp-result" role="status" aria-live="polite">Ready.</pre>
+    <svg id="ibp-plot" viewBox="0 0 720 420" role="img" aria-labelledby="ibp-plot-title" aria-describedby="ibp-description"><title id="ibp-plot-title">Inferred country features</title><desc id="ibp-description">Run feature finding to draw the feature matrix.</desc></svg>
+    <p>A filled cell means that the country has that feature in the highest-scoring sampled assignment.</p>
+    <script id="ibp-data" type="application/json">[]</script>
+  </section>
+  <section aria-labelledby="graph-title">
+    <h2 id="graph-title">Geometric graph inference</h2>
+    <p>Infer a geometric graph on a three-dimensional sphere from a fifteen-vertex graph.</p>
+    <label>Inference steps <input id="graph-count" type="number" min="1000" max="50000" step="1000" value="20000" required></label>
+    <button id="graph-run">Run graph inference</button>
+    <button data-cancel disabled>Cancel</button>
+    <pre id="graph-result" role="status" aria-live="polite">Ready.</pre>
+    <svg id="graph-plot" viewBox="0 0 720 420" role="img" aria-labelledby="graph-plot-title" aria-describedby="graph-description"><title id="graph-plot-title">Sampled graph edges</title><desc id="graph-description">Run graph inference to draw a sampled graph.</desc></svg>
+    <p>Nodes use a circular layout; edges come from the sampled geometric graph.</p>
+    <script id="graph-data" type="application/json">[]</script>
+  </section>
+  <section aria-labelledby="mondrian-title">
+    <h2 id="mondrian-title">Mondrian process</h2>
+    <p>Sample a random partition of the unit square. A larger lifetime allows more cuts.</p>
+    <label>Lifetime <input id="mondrian-count" type="number" min="0.5" max="10" step="0.5" value="5" required></label>
+    <button id="mondrian-run">Run Mondrian process</button>
+    <button data-cancel disabled>Cancel</button>
+    <pre id="mondrian-result" role="status" aria-live="polite">Ready.</pre>
+    <svg id="mondrian-plot" viewBox="0 0 720 420" role="img" aria-labelledby="mondrian-plot-title" aria-describedby="mondrian-description"><title id="mondrian-plot-title">Random Mondrian partition</title><desc id="mondrian-description">Run the process to draw its blocks.</desc></svg>
+    <p>Each block has an independent uniform value between zero and one.</p>
+    <script id="mondrian-data" type="application/json">[]</script>
+  </section>
+  <button id="cancel" disabled>Cancel computation</button>
+</main>
+<script type="module" src="playground.js"></script>
+</html>
