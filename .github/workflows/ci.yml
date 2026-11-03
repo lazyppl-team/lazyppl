@@ -258,7 +258,7 @@ jobs:
           bash pandoc/golden.sh check
           bash generate_website.sh
       - name: Test website generation and publication
-        # The publisher against local Git repositories, and the generated site against the tested artifact.
+        # The no-publisher guard over the workflows, and the generated site against the tested artifact.
         env:
           LAZYPPL_PLAYGROUND_DIR: ${{ github.workspace }}/tested-playground
           LAZYPPL_SOURCE_REVISION: ${{ github.sha }}

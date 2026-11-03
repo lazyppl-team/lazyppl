@@ -1,14 +1,10 @@
 name: Publish Website
 
 # Automatic website checks run in CI; this workflow rebuilds the verified tree on manual dispatch.
+# It only builds and checks: the live site has a publisher of its own, and nothing here can write
+# to lazyppl-team/lazyppl-team.github.io.
 on:
   workflow_dispatch:
-    inputs:
-      deploy:
-        description: 'Deploy built website to lazyppl-team/lazyppl-team.github.io'
-        required: false
-        default: false
-        type: boolean
 
 permissions:
   contents: read
@@ -25,8 +21,6 @@ jobs:
     permissions:
       contents: read
       actions: read # Download the immutable playground artifact from CI at this exact source commit.
-    outputs:
-      site-commit: ${{ steps.published-site.outputs.commit }}
 
     steps:
       - name: Checkout repository
@@ -39,18 +33,17 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: lazyppl-team/lazyppl_physics
-          # Same ref as ci.yml, so the page that is checked is the page that is published; move both together.
+          # Same ref as ci.yml, so the page that is checked is the page that is generated; move both together.
           ref: f166b3f6429e055ba3b9b7e4ea12774bf48f6176
           path: lazyppl_physics
           persist-credentials: false
 
       - name: Checkout the published site
-        id: published-site
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: lazyppl-team/lazyppl-team.github.io
-          # The publication tree starts from the site as published, at its current head, so that the tree that is checked
-          # is the tree that replaces the site. The deploy job refuses to publish if the site has moved since this checkout.
+          # The checked tree starts from the site as published, at its current head, so that the checks run against
+          # the real site. Read-only: nothing in this workflow writes to the site repository.
           path: lazyppl-team.github.io
           persist-credentials: false
 
@@ -63,7 +56,7 @@ jobs:
         run: |
           run_id=$(gh run list --repo "$SOURCE_REPO" --workflow ci.yml --commit "$SOURCE_REVISION" --status success --json databaseId --jq '.[0].databaseId // empty')
           if [ -z "$run_id" ]; then
-            echo "CI must complete successfully at ${SOURCE_REVISION} before its tested playground can be published." >&2
+            echo "CI must complete successfully at ${SOURCE_REVISION} before its tested playground can be used." >&2
             exit 1
           fi
           echo "run-id=$run_id" >> "$GITHUB_OUTPUT"
@@ -104,50 +97,6 @@ jobs:
         with:
           name: lazyppl-website
           path: lazyppl/website/
-          # The tree holds the site's own dotfiles (.gitignore, .vscode); the deploy replaces the whole site with this artifact.
+          # The tree holds the site's own dotfiles (.gitignore, .vscode), so the artifact is the complete site.
           include-hidden-files: true
           if-no-files-found: error
-
-  deploy:
-    name: Deploy website
-    needs: build
-    if: github.event_name == 'workflow_dispatch' && inputs.deploy == true
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    environment: website-publish
-    permissions:
-      contents: read
-
-    steps:
-      - name: Checkout publication script
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          path: lazyppl
-          persist-credentials: false
-
-      - name: Download verified website artifact
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        with:
-          name: lazyppl-website
-          path: website
-
-      - name: Checkout site with deploy key
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          repository: lazyppl-team/lazyppl-team.github.io
-          path: site
-          ssh-key: ${{ secrets.SITE_DEPLOY_KEY }}
-          # The publisher uses this checkout's SSH configuration; checkout removes the key after the job.
-          persist-credentials: true
-
-      - name: Publish website
-        env:
-          DESTINATION_URL: git@github.com:lazyppl-team/lazyppl-team.github.io.git
-          PUBLISH_BRANCH: master
-          CHECKED_COMMIT: ${{ needs.build.outputs.site-commit }}
-          ARTIFACT_DIR: website
-          PUBLICATION_MESSAGE: Update website from ${{ github.sha }} in ${{ github.repository }}
-        run: |
-          export GIT_SSH_COMMAND="$(git -C site config --local --get core.sshCommand)"
-          test -n "$GIT_SSH_COMMAND"
-          bash lazyppl/.github/workflows/publish-website.sh

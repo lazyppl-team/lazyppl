@@ -1,10 +1,12 @@
-# <img style="height:45px" src="https://user-images.githubusercontent.com/8027127/223598298-21dd4207-612d-4b4e-be9c-4daa2ae2de5b.png" /> LazyPPL
+# <picture><source media="(prefers-color-scheme: dark)" srcset="https://lazyppl.org/brand/lockup-dark.svg"><img width="201" height="64" src="https://lazyppl.org/brand/lockup.svg" alt="LazyPPL"></picture>
+
+[![Hackage](https://img.shields.io/hackage/v/lazyppl?color=0B9A9C)](https://hackage.haskell.org/package/lazyppl) [![CI](https://github.com/lazyppl-team/lazyppl/actions/workflows/ci.yml/badge.svg)](https://github.com/lazyppl-team/lazyppl/actions/workflows/ci.yml) [![license: MIT](https://img.shields.io/badge/license-MIT-002147)](https://github.com/lazyppl-team/lazyppl/blob/master/LICENSE) [![website: lazyppl.org](https://img.shields.io/badge/website-lazyppl.org-0B9A9C)](https://lazyppl.org)
 
 LazyPPL is a Haskell library for Bayesian probabilistic programming, drawing on the fact that lazy data structures are a natural idiom for programming with infinite-dimensional Bayesian methods such as Poisson/Gaussian/Dirichlet processes.
 
 The crucial semantic idea, inspired by developments in synthetic probability theory, is to work with two separate monads: an affine monad of probability, which supports laziness, and a commutative, non-affine monad of measures, which does not. This gives a Metropolis-Hastings implementation that works with lazy programs.
 
-The main LazyPPL modules are on [Hackage](https://hackage.haskell.org/package/lazyppl) and [Stackage](https://www.stackage.org/). Various worked examples in literate Haskell are at [https://lazyppl-team.github.io](https://lazyppl-team.github.io).
+The main LazyPPL modules are on [Hackage](https://hackage.haskell.org/package/lazyppl) and [Stackage](https://www.stackage.org/package/lazyppl). Various worked examples in literate Haskell are at [https://lazyppl.org](https://lazyppl.org).
 
 Laziness lets us specify non-parametric models cleanly: processes or infinite-dimensional functions only have their finite explored portion materialised. We have first-class
 
@@ -16,21 +18,21 @@ Laziness lets us specify non-parametric models cleanly: processes or infinite-di
 
 ## Examples
 
-* [`WienerDemo`](https://lazyppl-team.github.io/WienerDemo.html) ([`lhs`](examples/models/WienerDemo.lhs)) is a simple implementation of regression using a Wiener process. Via maintaining a hidden table of previous calls, it appears to be a bona fide random function $R\to R$ constructed lazily. Some values are sampled during simulation, others during plotting.
+* [`WienerDemo`](https://lazyppl.org/examples/WienerDemo/) ([`lhs`](examples/models/WienerDemo.lhs)) is a simple implementation of regression using a Wiener process. Via maintaining a hidden table of previous calls, it appears to be a bona fide random function $R\to R$ constructed lazily. Some values are sampled during simulation, others during plotting.
 
-![Wiener process regression](https://lazyppl-team.github.io/images/wiener-reg.svg)
+![Wiener process regression](https://lazyppl.org/images/wiener-reg.svg)
 
-* [`RegressionDemo`](https://lazyppl-team.github.io/RegressionDemo.html) ([`lhs`](examples/models/RegressionDemo.lhs)) demonstrates piecewise linear regression. The change points are drawn from a lazy Poisson process.
+* [`RegressionDemo`](https://lazyppl.org/examples/RegressionDemo/) ([`lhs`](examples/models/RegressionDemo.lhs)) demonstrates piecewise linear regression. The change points are drawn from a lazy Poisson process.
 
-![Poisson-split piecewise linear regression](https://lazyppl-team.github.io/images/regression-piecewise-reg.svg)
+![Poisson-split piecewise linear regression](https://lazyppl.org/images/regression-piecewise-reg.svg)
 
-* [`Clustering`](https://lazyppl-team.github.io/ClusteringDemo.html) ([`lhs`](examples/models/ClusteringDemo.lhs)) contains some simple clustering examples, where the number of clusters is unknown. Stick-breaking is lazy, and we use stochastic memoization.
+* [`Clustering`](https://lazyppl.org/examples/ClusteringDemo/) ([`lhs`](examples/models/ClusteringDemo.lhs)) contains some simple clustering examples, where the number of clusters is unknown. Stick-breaking is lazy, and we use stochastic memoization.
 
-![Dirichlet process clustering](https://lazyppl-team.github.io/images/clustering-map.svg)
+![Dirichlet process clustering](https://lazyppl.org/images/clustering-map.svg)
 
-* [`ProgramInduction`](https://lazyppl-team.github.io/ProgramInductionDemo.html) ([`lhs`](examples/models/ProgramInductionDemo.lhs)) is a simple example of program induction over an arithmetic language. Random expressions are represented as an infinite forest with a finite path through it.
+* [`ProgramInduction`](https://lazyppl.org/examples/ProgramInductionDemo/) ([`lhs`](examples/models/ProgramInductionDemo.lhs)) is a simple example of program induction over an arithmetic language. Random expressions are represented as an infinite forest with a finite path through it.
 
-![Program induction](https://lazyppl-team.github.io/images/programinduction-reg.svg)
+![Program induction](https://lazyppl.org/images/programinduction-reg.svg)
 
 * Feature extraction via the [Indian Buffet Process](examples/models/AdditiveClustering.hs), and relation inference via the [Mondrian Process](examples/models/MondrianExample.hs) and a Chinese-Restaurant-Process-based [Infinite Relational Model](examples/models/IrmTest.hs).
 
