@@ -1,6 +1,6 @@
 # <picture><source media="(prefers-color-scheme: dark)" srcset="https://lazyppl.org/brand/lockup-dark.svg"><img width="201" height="64" src="https://lazyppl.org/brand/lockup.svg" alt="LazyPPL"></picture>
 
-[![Hackage](https://img.shields.io/hackage/v/lazyppl?color=0B9A9C)](https://hackage.haskell.org/package/lazyppl) [![CI](https://github.com/lazyppl-team/lazyppl/actions/workflows/ci.yml/badge.svg)](https://github.com/lazyppl-team/lazyppl/actions/workflows/ci.yml) [![license: MIT](https://img.shields.io/badge/license-MIT-002147)](https://github.com/lazyppl-team/lazyppl/blob/master/LICENSE) [![website: lazyppl.org](https://img.shields.io/badge/website-lazyppl.org-0B9A9C)](https://lazyppl.org)
+[![Hackage](https://img.shields.io/hackage/v/lazyppl?color=0B9A9C)](https://hackage.haskell.org/package/lazyppl) [![CI](https://github.com/lazyppl-team/lazyppl/actions/workflows/ci.yml/badge.svg)](https://github.com/lazyppl-team/lazyppl/actions/workflows/ci.yml) [![license: MIT](https://img.shields.io/badge/license-MIT-002147)](https://github.com/lazyppl-team/lazyppl/blob/master/LICENSE) [![website: lazyppl.org](https://img.shields.io/badge/website-lazyppl.org-0B9A9C)](https://lazyppl.org) [![open in GitHub Codespaces](https://img.shields.io/badge/open%20in-Codespaces-0B9A9C?logo=github)](https://codespaces.new/lazyppl-team/lazyppl)
 
 LazyPPL is a Haskell library for Bayesian probabilistic programming, drawing on the fact that lazy data structures are a natural idiom for programming with infinite-dimensional Bayesian methods such as Poisson/Gaussian/Dirichlet processes.
 
@@ -51,7 +51,7 @@ Run a demo: `cabal run -fdemos wiener-exe` (or `regression-exe`, `clustering-exe
 
 The library is pure Haskell and needs no LAPACK or BLAS installation. The plotting demos use the `matplotlib` Haskell wrapper, which calls into Python: `sudo apt-get install -y --no-install-recommends python3-matplotlib python3-numpy python3-scipy python-is-python3`.
 
-To try lazyppl in your browser without installing anything, click [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/lazyppl-team/lazyppl). This opens a ready-to-use VS Code environment with GHC and Cabal already in place.
+To try lazyppl in your browser without installing anything, open it in [GitHub Codespaces](https://codespaces.new/lazyppl-team/lazyppl). This opens a ready-to-use VS Code environment with GHC and Cabal already in place.
 
 
 ## Writing your own probabilistic models
