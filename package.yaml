@@ -1,5 +1,5 @@
 name:                lazyppl
-version:             1.1.0
+version:             1.1.0.1
 license:             MIT
 author:              "LazyPPL team"
 maintainer:          "sam.staton@cs.ox.ac.uk"
@@ -41,6 +41,8 @@ dependencies:
 - transformers >= 0.6.1.0 && < 0.7
 - containers >= 0.6.7 && < 0.9
 - math-functions >= 0.3.4.2 && < 0.4
+# wis resamples in log space through the bounded samplers of mwc-random.
+- mwc-random >= 0.15.3.0 && < 0.16
 # Pointer-free replay storage also builds for Wasm.
 - vector >= 0.13.2.0 && < 0.14
 
@@ -133,6 +135,7 @@ tests:
     other-modules: [StrictMemo, Api.Support, Api.Domains, Api.Distributions, Api.Processes, Api.Inference]
     dependencies:
     - lazyppl
+    - mwc-random >= 0.15.3.0 && < 0.16
     - QuickCheck >= 2.19.0.0 && < 2.20
     # Runs the log-density table in a child process with a deadline, reading its output while it runs.
     # 0.2.13.0 is the latest release (Hackage, read 1 Nov 2026).

@@ -1,5 +1,12 @@
 # Changelog for lazyppl
 
+## 1.1.0.1
+
+### Fixed
+
+- `wis`: when the log weights were large and equal, adding them rounded, so the cumulative weights all equalled the maximum and the first particle always won.
+- `wis` now resamples in log space through the bounded categorical sampler of `mwc-random`, so equal large weights share the resamples; fixed-seed results change.
+
 ## 1.1.0
 
 ### Added

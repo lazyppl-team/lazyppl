@@ -3,11 +3,13 @@ module Api.Inference where
 
 import Control.Exception (ErrorCall, SomeException, evaluate, try)
 import Data.List (isInfixOf, isPrefixOf, nub, sort, tails)
-import LazyPPL (Meas(..), Prob, Tree(..), mh, mhirreducible, randomTree, runProb, sample, score, scoreLog, scoreProductLog, uniform, weightedsamples, wis)
+import LazyPPL (Meas(..), Prob, ProbGen(..), Tree(..), mh, mhirreducible, randomTree, runProb, sample, score, scoreLog, scoreProductLog, uniform, weightedsamples, wis)
 import Data.Monoid (Product(..), getProduct)
 import Numeric.Log (Log(..), ln)
 import LazyPPL.Distributions
 import System.Random (RandomGen(..), SplitGen(..), mkStdGen, setStdGen)
+import qualified Data.Vector.Unboxed as V
+import qualified System.Random.MWC.Distributions as MWC
 import Control.Monad (replicateM)
 
 import Api.Support
@@ -64,7 +66,30 @@ zeroAcceptanceChecks = do
     pure x)
   positiveSupport <- assertBool "wis returns supported samples from a batch containing zero weights"
     (all (>0.5) positive)
-  pure (escaped : retained : moving ++ [noZeroNormalization, positiveSupport])
+  emptyBatch <- try (wis 0 (pure ()) >>= evaluate . take 1) :: IO (Either ErrorCall [()])
+  emptyRejected <- assertBool "wis rejects an empty empirical measure"
+    (either (const True) (const False) emptyBatch)
+  let base = do x <- sample uniform; scoreLog (Exp 0); pure x
+  setStdGen (mkStdGen 29)
+  [(target, _)] <- take 1 <$> weightedsamples base
+  let oneModel = do
+        x <- sample uniform
+        scoreLog (Exp (if x == target then 0 else -1 / 0))
+        pure x
+  setStdGen (mkStdGen 29)
+  oneParticles <- take 64 <$> weightedsamples oneModel
+  setStdGen (mkStdGen 29)
+  oneResamples <- take 2000 <$> wis 64 oneModel
+  onePositive <- assertBool "the batch has one positive particle and only it is resampled"
+    (length (filter ((> 0) . snd) oneParticles) == 1 && all (== target) oneResamples)
+  let sepModel = do
+        x <- sample (bernoulli 0.5)
+        scoreLog (Exp (if x then -1000 else 0))
+        pure x
+  setStdGen (mkStdGen 24)
+  sepResamples <- take 2000 <$> wis 64 sepModel
+  separated <- assertBool "negligible-weight particles are not sampled" (all not sepResamples)
+  pure (escaped : retained : moving ++ [noZeroNormalization, positiveSupport, emptyRejected, onePositive, separated])
 
 -- A fair coin b. On true, a uniform u is read and scored 6u, which integrates
 -- to 3; on false, the score is 1. So P(b) = 3/4 exactly, and the site u exists
@@ -110,10 +135,55 @@ wisResamplingCheck = do
   assertBool ("wis 5 resamples each particle in proportion to its weight, (observed, expected) = " ++ show shares)
     (all within5 shares && length (filter (`elem` map fst particles) resamples) == draws)
 
+-- Resampling in log space through the bounded categorical sampler of
+-- mwc-random: zero-weight particles are never selected, even at the endpoints
+-- of the label interval, and equal weights share the resamples equally no
+-- matter how large the log weights are.
+wisLogSpaceChecks :: IO [Bool]
+wisLogSpaceChecks = do
+  let endpointModel = do x <- sample uniform; score (if x > 0.5 then 1 else 0); pure x
+  setStdGen (mkStdGen 29)
+  endpointParticles <- take 64 <$> weightedsamples endpointModel
+  let endpointWeights = V.fromList (map (ln . snd) endpointParticles)
+  bothWeights <- assertBool "the model produces both zero and positive weights"
+    (any ((== 0) . snd) endpointParticles && any ((> 0) . snd) endpointParticles)
+  endpoints <- mapM (\label -> do
+      let selected = runProb (MWC.logCategorical endpointWeights ProbGen) (constantLabel label)
+      assertBool ("endpoint selected an impossible particle: " ++ show selected)
+        (selected >= 0 && selected < length endpointParticles && snd (endpointParticles !! selected) > 0))
+    [2 ** (-53), 1 - 2 ** (-53)]
+  zeroEndpoints <- mapM (\label -> do
+      let weights = V.fromList [-1 / 0, 0, -1 / 0]
+          selected = runProb (MWC.logCategorical weights ProbGen) (constantLabel label)
+      assertBool ("zero-weight category selected at label " ++ show label ++ ": " ++ show selected) (selected == 1))
+    [2 ** (-53), 1 - 2 ** (-53)]
+  separated <- mapM (\label -> do
+      let weights = V.fromList [-1 / 0, -1000, 0, -1 / 0]
+          selected = runProb (MWC.logCategorical weights ProbGen) (constantLabel label)
+      assertBool ("unexpected category at label " ++ show label ++ ": " ++ show selected) (selected == 2))
+    [2 ** (-53), 1 - 2 ** (-53)]
+  let equalModel = do
+        x <- sample (bernoulli 0.5)
+        scoreLog (Exp 1e308)
+        pure x
+      n = 64
+      draws = 4000
+  setStdGen (mkStdGen 29)
+  equalParticles <- take n <$> weightedsamples equalModel
+  setStdGen (mkStdGen 29)
+  equalResamples <- take draws <$> wis n equalModel
+  let expected = fromIntegral (length (filter fst equalParticles)) / fromIntegral n :: Double
+      observed = fromIntegral (length (filter id equalResamples)) / fromIntegral draws
+  equalLarge <- assertBool ("equal-weight wis share, expected " ++ show expected ++ ", got " ++ show observed)
+    (expected > 0 && expected < 1 && abs (observed - expected) < 0.05)
+  pure ([bothWeights, equalLarge] ++ endpoints ++ zeroEndpoints ++ separated)
+
 posteriorChecks :: IO [Bool]
 posteriorChecks = do
   setStdGen (mkStdGen 21)
   chain <- map fst . take 40000 . drop 1000 <$> mh 0.5 coinModel
   setStdGen (mkStdGen 22)
   irreducible <- map fst . take 40000 . drop 1000 <$> mhirreducible 0.5 0.1 coinModel
-  sequence [posteriorFraction "mh 0.5 coin posterior" chain, posteriorFraction "mhirreducible 0.5 0.1 coin posterior" irreducible, wisResamplingCheck]
+  logSpace <- wisLogSpaceChecks
+  rest <- sequence [posteriorFraction "mh 0.5 coin posterior" chain, posteriorFraction "mhirreducible 0.5 0.1 coin posterior" irreducible, wisResamplingCheck]
+  pure (logSpace ++ rest)

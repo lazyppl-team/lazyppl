@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, ScopedTypeVariables, CPP #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, ScopedTypeVariables, CPP, MultiParamTypeClasses #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use second" #-}
 
@@ -51,6 +51,10 @@ module LazyPPL
       --
       -- | There are three building blocks for measures: `uniform` for probability measures; `sample` and `score` for unnormalized measures. Combined with the monad structure, these give all s-finite measures.
       uniform, sample, score, scoreLog, scoreProductLog,
+      -- * Standard generator interface
+      --
+      -- | `ProbGen` is the stock `StatefulGen` view of `Prob`, for the bounded samplers of `random`.
+      ProbGen(ProbGen),
       -- * Monte Carlo simulation
       --
       -- | The `Meas` type describes unnormalized measures. Monte Carlo simulation allows us to sample from an unnormalized measure. Our main Monte Carlo simulator is `mh`. 
@@ -60,12 +64,20 @@ module LazyPPL
 
 import Control.Monad.Trans.Writer
 import Control.Monad.Trans.Class
+import Control.Monad.ST (runST)
+import Data.Bits ((.|.), shiftL, shiftR)
 import Data.Monoid
+import Data.STRef (newSTRef, readSTRef, writeSTRef)
+import Data.Word (Word64)
+import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed as VU
 import System.Random hiding (uniform)
+import System.Random.Stateful (StatefulGen(..), fillByteArrayST)
+import qualified System.Random.MWC.Distributions as MWC
 import Control.Monad
 import System.IO.Unsafe (unsafeInterleaveIO)
 import LazyPPL.Internal.History (History, newHistory, appendMutation, labelAt)
-import LazyPPL.Internal.Sampler (randomLabel, checkedLogWeight)
+import LazyPPL.Internal.Sampler (randomLabel, checkedLogWeight, labelIndex)
 import Numeric.Log
 
 
@@ -104,6 +116,62 @@ instance Applicative Prob where {pure = return ; (<*>) = ap}
 {- | An unnormalized measure is represented by a probability distribution over pairs of a weight and a result. -}
 newtype Meas a = Meas (WriterT (Product (Log Double)) Prob a)
   deriving(Functor, Applicative, Monad)
+
+{- | A stateful generator view of a probability computation, for the stock
+sampling algorithms of @random@ that take a 'StatefulGen', such as
+'uniformRM'.
+
+Precondition: the tree must provide a child for every requested word; the
+library's trees always do (a hand-built tree that runs out of children raises
+\"LazyPPL: random tree exhausted\").
+
+'randomLabel' puts every label on the midpoint grid (k + 1/2) / 2^52 with k a
+uniform 52-bit integer, and 'labelIndex' recovers k exactly, so each label
+supplies 52 uniform bits. 'uniformWord64' joins the label at its tree node
+with the label of the node's first child — a subtree that 'Prob' sequencing
+reserves to this primitive — into 64 uniform bits; the smaller word methods
+use one label. Every request a stock algorithm makes, including the repeated
+draws of its rejection loops, reads a distinct tree coordinate under the
+monad structure of 'Prob', and running the same computation on the same tree
+gives the same words. -}
+data ProbGen = ProbGen
+
+instance StatefulGen ProbGen Prob where
+  uniformWord64 ProbGen = Prob $ \(Tree r ts) -> case ts of
+    (Tree c _ : _) -> (labelIndex r `shiftL` 12) .|. (labelIndex c `shiftR` 40)
+    [] -> treeExhausted
+  {-# INLINE uniformWord64 #-}
+  uniformWord32 ProbGen = Prob $ \(Tree r _) -> fromIntegral (labelIndex r `shiftR` 20)
+  {-# INLINE uniformWord32 #-}
+  -- The class default delegates to a frozen generator (System.Random.Internal
+  -- 1.3.1, uniformByteArrayM's default signature), which a tree coordinate has
+  -- no notion of. The stock fillByteArrayST (System.Random.Stateful, under
+  -- "Helper functions for creating instances") fills the array little-endian
+  -- from successive words, drawn here from successive children through an
+  -- STRef; the empty list is matched explicitly, so no byte stays
+  -- uninitialised.
+  uniformByteArrayM isPinned n ProbGen = Prob $ \(Tree _ gs) -> runST $ do
+    ref <- newSTRef gs
+    fillByteArrayST isPinned n $ do
+      ts <- readSTRef ref
+      case ts of
+        (t : ts') -> do
+          writeSTRef ref ts'
+          pure (treeWord t)
+        [] -> treeExhausted
+  {-# INLINE uniformByteArrayM #-}
+
+-- One clear error when a hand-built tree runs out of children.
+treeExhausted :: a
+treeExhausted = error "LazyPPL: random tree exhausted"
+{-# NOINLINE treeExhausted #-}
+
+-- One tree word per node, as uniformWord64 makes it.
+treeWord :: Tree -> Word64
+treeWord (Tree r ts) = case ts of
+  (Tree c _ : _) -> (labelIndex r `shiftL` 12) .|. (labelIndex c `shiftR` 40)
+  [] -> treeExhausted
+{-# INLINE treeWord #-}
 
 {- | A uniform sample from the open interval (0,1) is a building block for probability distributions. It is never 0 or 1, so an inverse transform such as @-log u@ stays finite.
 
@@ -179,21 +247,19 @@ weightedsamples (Meas m) =
 {- | Weighted importance sampling first draws n weighted samples,
     and then samples a stream of results from that, regarded as an empirical distribution. Sometimes called "likelihood weighted importance sampling". 
 
-This is a reference implementation. It will not usually be very efficient at all, but may be useful for debugging. Raises an error if all @n@ samples have weight 0.
+This is a reference implementation. It will not usually be very efficient at all, but may be useful for debugging. Raises an error if @n@ is less than 1 or all @n@ samples have weight 0.
  -}
 wis :: Int -- ^ @n@, the number of samples to base on, at least 1
     -> Meas a -- ^ @m@, the measure to normalize
     -> IO [a] -- ^ Returns a stream of samples
+wis n _ | n <= 0 = error "wis: the number of samples must be positive"
 wis n m = do
   xws <- weightedsamples m
-  let xws' = take n $ accumulate xws 0
-  let max = snd $ last xws'
+  let particles = V.fromList (take n xws)
+      weights = VU.fromList (map (ln . snd) (V.toList particles))
   g <- newStdGen
-  let rs = (randoms g :: [Double])
-  if max == 0 then error "wis: every sample has weight 0"
-    else return $ map (\r -> fst $ head $ filter (\(x, w) -> w > 0 && w >= Exp (log r) * max) xws') rs
-  where accumulate ((x, w) : xws) a = (x, w + a) : accumulate xws (w + a)
-        accumulate [] a = []
+  if VU.all (== (-1 / 0)) weights then error "wis: every sample has weight 0"
+    else return $ map (\tree -> fst (particles V.! runProb (MWC.logCategorical weights ProbGen) tree)) (randomTrees g)
 
 {- | Produce a stream of samples, using Metropolis Hastings simulation.
 

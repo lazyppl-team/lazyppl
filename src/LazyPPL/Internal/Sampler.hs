@@ -1,8 +1,9 @@
 {- | Rules that every sampler of the random tree shares: how a label is drawn,
 and which weights inference accepts. This module is internal. -}
-module LazyPPL.Internal.Sampler (randomLabel, checkedLogWeight) where
+module LazyPPL.Internal.Sampler (randomLabel, checkedLogWeight, labelIndex) where
 
 import Data.Bits (complement, shiftR)
+import Data.Word (Word64)
 import Numeric.Log (Log, ln)
 import System.Random (RandomGen, genWord64)
 
@@ -19,6 +20,14 @@ randomLabel :: RandomGen g => g -> (Double, g)
 randomLabel g =
   let (w, g') = genWord64 g
   in (encodeFloat (2 * toInteger (complement w `shiftR` 12) + 1) (-53), g')
+
+{- | The 52-bit grid index of a label, the k of the midpoint grid
+u = (k + 1/2) / 2^52 above. It is exact for every label 'randomLabel' draws:
+u * 2^52 = k + 1/2 is exactly representable in binary64, and floor (k + 1/2)
+is k. Labels of hand-built trees keep the index of the grid point at or below
+them. -}
+labelIndex :: Double -> Word64
+labelIndex u = fromInteger (floor (u * 4503599627370496))
 
 {- | A weight is a non-negative real number, kept as its logarithm so that it
 may exceed the range of 'Double': the logarithm is finite, or negative
