@@ -60,7 +60,10 @@ library:
   - LazyPPL.Internal.History
   - LazyPPL.Internal.Sampler
   - LazyPPL.Distributions.GP.Pure
-  other-modules: []
+  # ProbGen is the StatefulGen adapter wis resamples through. It is not
+  # exposed, so the interface of the exposed modules is unchanged.
+  other-modules:
+  - LazyPPL.Internal.ProbGen
 
 tests:
   chain-test:
@@ -135,7 +138,6 @@ tests:
     other-modules: [StrictMemo, Api.Support, Api.Domains, Api.Distributions, Api.Processes, Api.Inference]
     dependencies:
     - lazyppl
-    - mwc-random >= 0.15.3.0 && < 0.16
     - QuickCheck >= 2.19.0.0 && < 2.20
     # Runs the log-density table in a child process with a deadline, reading its output while it runs.
     # 0.2.13.0 is the latest release (Hackage, read 1 Nov 2026).

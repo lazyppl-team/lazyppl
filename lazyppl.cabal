@@ -50,6 +50,8 @@ library
       LazyPPL.Internal.History
       LazyPPL.Internal.Sampler
       LazyPPL.Distributions.GP.Pure
+  other-modules:
+      LazyPPL.Internal.ProbGen
   hs-source-dirs:
       src
   build-depends:
