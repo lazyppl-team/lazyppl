@@ -5,7 +5,7 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           lazyppl
-version:        1.1.0
+version:        1.1.0.1
 synopsis:       Lazy Probabilistic Programming Library
 description:    LazyPPL is a Haskell library for Bayesian probabilistic programming. It supports lazy use of probability, which is useful for specifying non-parametric models, and we provide new Metropolis-Hastings algorithms to allow this. For illustrations, see <https://lazyppl-team.github.io/>.
                 .
@@ -50,6 +50,8 @@ library
       LazyPPL.Internal.History
       LazyPPL.Internal.Sampler
       LazyPPL.Distributions.GP.Pure
+  other-modules:
+      LazyPPL.Internal.ProbGen
   hs-source-dirs:
       src
   build-depends:
@@ -57,6 +59,7 @@ library
     , containers >=0.6.7 && <0.9
     , log-domain >=0.13.2 && <0.14
     , math-functions >=0.3.4.2 && <0.4
+    , mwc-random >=0.15.3.0 && <0.16
     , random >=1.3.1 && <1.4
     , transformers >=0.6.1.0 && <0.7
     , vector >=0.13.2.0 && <0.14
@@ -82,6 +85,7 @@ test-suite api-test
     , lazyppl
     , log-domain >=0.13.2 && <0.14
     , math-functions >=0.3.4.2 && <0.4
+    , mwc-random >=0.15.3.0 && <0.16
     , random >=1.3.1 && <1.4
     , transformers >=0.6.1.0 && <0.7
     , typed-process >=0.2.13.0 && <0.3
@@ -103,6 +107,7 @@ test-suite chain-test
     , log-domain >=0.13.2 && <0.14
     , math-functions >=0.3.4.2 && <0.4
     , mtl >=2.3.1 && <2.4
+    , mwc-random >=0.15.3.0 && <0.16
     , random >=1.3.1 && <1.4
     , transformers >=0.6.1.0 && <0.7
     , vector >=0.13.2.0 && <0.14
@@ -120,6 +125,7 @@ test-suite concurrency-test
     , lazyppl
     , log-domain >=0.13.2 && <0.14
     , math-functions >=0.3.4.2 && <0.4
+    , mwc-random >=0.15.3.0 && <0.16
     , random >=1.3.1 && <1.4
     , transformers >=0.6.1.0 && <0.7
     , vector >=0.13.2.0 && <0.14
@@ -137,6 +143,7 @@ test-suite gp-test
     , lazyppl
     , log-domain >=0.13.2 && <0.14
     , math-functions >=0.3.4.2 && <0.4
+    , mwc-random >=0.15.3.0 && <0.16
     , random >=1.3.1 && <1.4
     , transformers >=0.6.1.0 && <0.7
     , vector >=0.13.2.0 && <0.14
@@ -156,6 +163,7 @@ test-suite hidden-state-o2-test
     , lazyppl
     , log-domain >=0.13.2 && <0.14
     , math-functions >=0.3.4.2 && <0.4
+    , mwc-random >=0.15.3.0 && <0.16
     , random >=1.3.1 && <1.4
     , transformers >=0.6.1.0 && <0.7
     , vector >=0.13.2.0 && <0.14
@@ -175,6 +183,7 @@ test-suite hidden-state-test
     , lazyppl
     , log-domain >=0.13.2 && <0.14
     , math-functions >=0.3.4.2 && <0.4
+    , mwc-random >=0.15.3.0 && <0.16
     , random >=1.3.1 && <1.4
     , transformers >=0.6.1.0 && <0.7
     , vector >=0.13.2.0 && <0.14
@@ -191,6 +200,7 @@ test-suite logpdf-test
     , lazyppl
     , log-domain >=0.13.2 && <0.14
     , math-functions >=0.3.4.2 && <0.4
+    , mwc-random >=0.15.3.0 && <0.16
     , random >=1.3.1 && <1.4
     , transformers >=0.6.1.0 && <0.7
     , vector >=0.13.2.0 && <0.14
@@ -209,6 +219,7 @@ test-suite replay-test
     , lazyppl
     , log-domain >=0.13.2 && <0.14
     , math-functions >=0.3.4.2 && <0.4
+    , mwc-random >=0.15.3.0 && <0.16
     , random >=1.3.1 && <1.4
     , transformers >=0.6.1.0 && <0.7
     , vector >=0.13.2.0 && <0.14
@@ -226,6 +237,7 @@ test-suite stream-test
     , lazyppl
     , log-domain >=0.13.2 && <0.14
     , math-functions >=0.3.4.2 && <0.4
+    , mwc-random >=0.15.3.0 && <0.16
     , random >=1.3.1 && <1.4
     , transformers >=0.6.1.0 && <0.7
     , vector >=0.13.2.0 && <0.14

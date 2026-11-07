@@ -1,5 +1,5 @@
 name:                lazyppl
-version:             1.1.0
+version:             1.1.0.1
 license:             MIT
 author:              "LazyPPL team"
 maintainer:          "sam.staton@cs.ox.ac.uk"
@@ -41,6 +41,8 @@ dependencies:
 - transformers >= 0.6.1.0 && < 0.7
 - containers >= 0.6.7 && < 0.9
 - math-functions >= 0.3.4.2 && < 0.4
+# wis resamples in log space through the bounded samplers of mwc-random.
+- mwc-random >= 0.15.3.0 && < 0.16
 # Pointer-free replay storage also builds for Wasm.
 - vector >= 0.13.2.0 && < 0.14
 
@@ -58,7 +60,10 @@ library:
   - LazyPPL.Internal.History
   - LazyPPL.Internal.Sampler
   - LazyPPL.Distributions.GP.Pure
-  other-modules: []
+  # ProbGen is the StatefulGen adapter wis resamples through. It is not
+  # exposed, so the interface of the exposed modules is unchanged.
+  other-modules:
+  - LazyPPL.Internal.ProbGen
 
 tests:
   chain-test:

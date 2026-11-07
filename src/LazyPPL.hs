@@ -61,10 +61,14 @@ module LazyPPL
 import Control.Monad.Trans.Writer
 import Control.Monad.Trans.Class
 import Data.Monoid
+import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed as VU
 import System.Random hiding (uniform)
+import qualified System.Random.MWC.Distributions as MWC
 import Control.Monad
 import System.IO.Unsafe (unsafeInterleaveIO)
 import LazyPPL.Internal.History (History, newHistory, appendMutation, labelAt)
+import LazyPPL.Internal.ProbGen (ProbGen(..))
 import LazyPPL.Internal.Sampler (randomLabel, checkedLogWeight)
 import Numeric.Log
 
@@ -179,21 +183,19 @@ weightedsamples (Meas m) =
 {- | Weighted importance sampling first draws n weighted samples,
     and then samples a stream of results from that, regarded as an empirical distribution. Sometimes called "likelihood weighted importance sampling". 
 
-This is a reference implementation. It will not usually be very efficient at all, but may be useful for debugging. Raises an error if all @n@ samples have weight 0.
+This is a reference implementation. It will not usually be very efficient at all, but may be useful for debugging. Raises an error if @n@ is less than 1 or all @n@ samples have weight 0.
  -}
 wis :: Int -- ^ @n@, the number of samples to base on, at least 1
     -> Meas a -- ^ @m@, the measure to normalize
     -> IO [a] -- ^ Returns a stream of samples
+wis n _ | n <= 0 = error "wis: the number of samples must be positive"
 wis n m = do
   xws <- weightedsamples m
-  let xws' = take n $ accumulate xws 0
-  let max = snd $ last xws'
+  let particles = V.fromList (take n xws)
+      weights = VU.fromList (map (ln . snd) (V.toList particles))
   g <- newStdGen
-  let rs = (randoms g :: [Double])
-  if max == 0 then error "wis: every sample has weight 0"
-    else return $ map (\r -> fst $ head $ filter (\(x, w) -> w > 0 && w >= Exp (log r) * max) xws') rs
-  where accumulate ((x, w) : xws) a = (x, w + a) : accumulate xws (w + a)
-        accumulate [] a = []
+  if VU.all (== (-1 / 0)) weights then error "wis: every sample has weight 0"
+    else return $ map (\tree -> fst (particles V.! runProb (MWC.logCategorical weights ProbGen) tree)) (randomTrees g)
 
 {- | Produce a stream of samples, using Metropolis Hastings simulation.
 

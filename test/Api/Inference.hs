@@ -64,7 +64,30 @@ zeroAcceptanceChecks = do
     pure x)
   positiveSupport <- assertBool "wis returns supported samples from a batch containing zero weights"
     (all (>0.5) positive)
-  pure (escaped : retained : moving ++ [noZeroNormalization, positiveSupport])
+  emptyBatch <- try (wis 0 (pure ()) >>= evaluate . take 1) :: IO (Either ErrorCall [()])
+  emptyRejected <- assertBool "wis rejects an empty empirical measure"
+    (either (const True) (const False) emptyBatch)
+  let base = do x <- sample uniform; scoreLog (Exp 0); pure x
+  setStdGen (mkStdGen 29)
+  [(target, _)] <- take 1 <$> weightedsamples base
+  let oneModel = do
+        x <- sample uniform
+        scoreLog (Exp (if x == target then 0 else -1 / 0))
+        pure x
+  setStdGen (mkStdGen 29)
+  oneParticles <- take 64 <$> weightedsamples oneModel
+  setStdGen (mkStdGen 29)
+  oneResamples <- take 2000 <$> wis 64 oneModel
+  onePositive <- assertBool "the batch has one positive particle and only it is resampled"
+    (length (filter ((> 0) . snd) oneParticles) == 1 && all (== target) oneResamples)
+  let sepModel = do
+        x <- sample (bernoulli 0.5)
+        scoreLog (Exp (if x then -1000 else 0))
+        pure x
+  setStdGen (mkStdGen 24)
+  sepResamples <- take 2000 <$> wis 64 sepModel
+  separated <- assertBool "negligible-weight particles are not sampled" (all not sepResamples)
+  pure (escaped : retained : moving ++ [noZeroNormalization, positiveSupport, emptyRejected, onePositive, separated])
 
 -- A fair coin b. On true, a uniform u is read and scored 6u, which integrates
 -- to 3; on false, the score is 1. So P(b) = 3/4 exactly, and the site u exists
@@ -110,10 +133,35 @@ wisResamplingCheck = do
   assertBool ("wis 5 resamples each particle in proportion to its weight, (observed, expected) = " ++ show shares)
     (all within5 shares && length (filter (`elem` map fst particles) resamples) == draws)
 
+-- Resampling in log space: equal weights share the resamples equally no
+-- matter how large the log weights are. With log weight 1e308 the cumulative
+-- sums of the weights all round to the maximum, so a resampler that adds the
+-- weights always picks the first particle; this regression check observes the
+-- share of one coin instead.
+wisLogSpaceChecks :: IO [Bool]
+wisLogSpaceChecks = do
+  let equalModel = do
+        x <- sample (bernoulli 0.5)
+        scoreLog (Exp 1e308)
+        pure x
+      n = 64
+      draws = 4000
+  setStdGen (mkStdGen 29)
+  equalParticles <- take n <$> weightedsamples equalModel
+  setStdGen (mkStdGen 29)
+  equalResamples <- take draws <$> wis n equalModel
+  let expected = fromIntegral (length (filter fst equalParticles)) / fromIntegral n :: Double
+      observed = fromIntegral (length (filter id equalResamples)) / fromIntegral draws
+  equalLarge <- assertBool ("equal-weight wis share, expected " ++ show expected ++ ", got " ++ show observed)
+    (expected > 0 && expected < 1 && abs (observed - expected) < 0.05)
+  pure [equalLarge]
+
 posteriorChecks :: IO [Bool]
 posteriorChecks = do
   setStdGen (mkStdGen 21)
   chain <- map fst . take 40000 . drop 1000 <$> mh 0.5 coinModel
   setStdGen (mkStdGen 22)
   irreducible <- map fst . take 40000 . drop 1000 <$> mhirreducible 0.5 0.1 coinModel
-  sequence [posteriorFraction "mh 0.5 coin posterior" chain, posteriorFraction "mhirreducible 0.5 0.1 coin posterior" irreducible, wisResamplingCheck]
+  logSpace <- wisLogSpaceChecks
+  rest <- sequence [posteriorFraction "mh 0.5 coin posterior" chain, posteriorFraction "mhirreducible 0.5 0.1 coin posterior" irreducible, wisResamplingCheck]
+  pure (logSpace ++ rest)
